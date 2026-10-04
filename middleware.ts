@@ -37,7 +37,16 @@ function hasSupabaseSessionCookie(request: NextRequest) {
  * and hangs on Vercel Edge (sin1), which surfaces as MIDDLEWARE_INVOCATION_TIMEOUT.
  * Session refresh and real auth checks stay in server layouts / pages.
  */
+const CANONICAL_ORIGIN = "https://dashboard.swypejobs.app"
+const VERCEL_HOST = "swypejobsdashboard.vercel.app"
+
 export function middleware(request: NextRequest) {
+  const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "").split(":")[0]
+  if (host === VERCEL_HOST) {
+    const dest = new URL(request.nextUrl.pathname + request.nextUrl.search, CANONICAL_ORIGIN)
+    return NextResponse.redirect(dest, 308)
+  }
+
   const { pathname } = request.nextUrl
 
   if (isPublicPath(pathname) || pathname.startsWith("/api")) {
