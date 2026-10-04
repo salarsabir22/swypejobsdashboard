@@ -1,5 +1,5 @@
 export const LANDING_ORIGIN = "https://job-match-self.vercel.app"
-export const DASHBOARD_ORIGIN = "https://swypejobsdashboard.vercel.app"
+export const DASHBOARD_ORIGIN = "https://dashboard.swypejobs.app"
 
 export function isAllowedReturn(value: string) {
   let url: URL
@@ -8,12 +8,18 @@ export function isAllowedReturn(value: string) {
   } catch {
     return false
   }
-  if (url.origin === DASHBOARD_ORIGIN || url.origin === LANDING_ORIGIN) return true
+  if (
+    url.origin === DASHBOARD_ORIGIN ||
+    url.origin === "https://swypejobsdashboard.vercel.app" ||
+    url.origin === LANDING_ORIGIN
+  ) {
+    return true
+  }
   return url.hostname === "localhost" || url.hostname === "127.0.0.1"
 }
 
 export function usesLocalGoogle(origin: string) {
-  if (origin === LANDING_ORIGIN) return true
+  if (origin === LANDING_ORIGIN || origin === DASHBOARD_ORIGIN) return true
   try {
     const host = new URL(origin).hostname
     return host === "localhost" || host === "127.0.0.1"
