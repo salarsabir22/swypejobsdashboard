@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { googleStartUrl, usesLocalGoogle } from "@/lib/auth-sites"
 import { cn } from "@/lib/utils"
 import { Loader2, Eye, EyeOff } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -118,6 +119,10 @@ export default function SignupPage() {
     setError(null)
     setGoogleLoading(true)
     localStorage.setItem("pending_role", role)
+    if (!usesLocalGoogle(window.location.origin)) {
+      window.location.href = googleStartUrl(window.location.origin, { role })
+      return
+    }
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

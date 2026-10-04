@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { googleStartUrl, usesLocalGoogle } from "@/lib/auth-sites"
 import { Loader2, Eye, EyeOff } from "lucide-react"
 import { safeInternalPath } from "@/lib/utils"
 import {
@@ -104,14 +105,17 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setError(null)
     setGoogleLoading(true)
+    const nextPath = safeInternalPath(new URLSearchParams(window.location.search).get("next"))
+    if (!usesLocalGoogle(window.location.origin)) {
+      window.location.href = googleStartUrl(window.location.origin, { next: nextPath })
+      return
+    }
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback${
-          safeInternalPath(new URLSearchParams(window.location.search).get("next"))
-            ? `?next=${encodeURIComponent(new URLSearchParams(window.location.search).get("next") || "")}`
-            : ""
+          nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""
         }`,
       },
     })
