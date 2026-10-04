@@ -7,6 +7,7 @@
     radial-gradient(700px 360px at 0% 100%, rgba(59, 130, 246, 0.04), transparent 55%),
     var(--background);
   overscroll-behavior: contain;
+  
 }
 
 .jm-chat-thread {
