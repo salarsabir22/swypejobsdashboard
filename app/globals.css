@@ -1,0 +1,631 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Design Token Layer — Clearpath app theme ───────────────────── */
+:root {
+  --radius: 0.75rem;
+  --app-tabbar-height: 3.25rem;
+  --app-tabbar-offset: calc(var(--app-tabbar-height) + env(safe-area-inset-bottom, 0px));
+  --app-tabbar-clearance: calc(var(--app-tabbar-offset) + 0.5rem);
+
+  /* Clearpath palette */
+  --clearpath-page: #f5f5f5;
+  --clearpath-surface: #ffffff;
+  --clearpath-text: #0a1628;
+  --clearpath-text-secondary: #6b7280;
+  --clearpath-navy: #1e3a5f;
+  --clearpath-navy-hover: #254a73;
+  --clearpath-accent: #3b82f6;
+  --clearpath-separator: rgba(10, 22, 40, 0.12);
+
+  /* Apple-like surfaces — aligned to page/surface (legacy class names) */
+  --apple-grouped: #f5f5f5;
+  --apple-card: #ffffff;
+  --apple-blue: #1e3a5f;
+  --apple-blue-hover: #254a73;
+  --apple-blue-press: #1a3250;
+
+  /* Waitlist / marketing — same primary navy as app shell */
+  --waitlist-blue: #1e3a5f;
+  --waitlist-blue-hover: #254a73;
+  --waitlist-blue-deep: #162d4a;
+  --apple-label: #0a1628;
+  --apple-secondary-label: #6b7280;
+  --apple-separator: var(--clearpath-separator);
+  --apple-shadow: none;
+  --apple-shadow-lg: none;
+  --apple-radius-lg: 22px;
+  --apple-radius-md: 14px;
+
+  /* Monochrome (legacy) */
+  --void:       var(--clearpath-page);
+  --surface:    var(--clearpath-surface);
+  --foreground: var(--clearpath-text);
+  --muted:      #9ca3af;
+  --boundary:   #262626;
+  --btc:        #fafafa;
+  --btc-deep:   #737373;
+  --gold:       #d4d4d4;
+
+  /* shadcn compat — Clearpath */
+  --background: #f5f5f5;
+  --foreground: #0a1628;
+  --card:       #ffffff;
+  --card-foreground: #0a1628;
+  --popover:    #ffffff;
+  --popover-foreground: #0a1628;
+  --primary:    #1e3a5f;
+  --primary-foreground: #ffffff;
+  --secondary:  #f3f4f6;
+  --secondary-foreground: #0a1628;
+  --muted-var:  #f3f4f6;
+  --muted-foreground: #6b7280;
+  --accent:     #eff6ff;
+  --accent-foreground: #0a1628;
+  --destructive: #b91c1c;
+  --border:     rgba(10, 22, 40, 0.12);
+  --input:      rgba(10, 22, 40, 0.14);
+  --ring:       #1e3a5f;
+  --success:    #15803d;
+  --success-foreground: #ffffff;
+}
+
+/* Logged-in product: Handshake/LinkedIn navy on dark (marketing stays on :root) */
+.dark {
+  color-scheme: dark;
+  --clearpath-page: #0b1220;
+  --clearpath-surface: #131c2e;
+  --clearpath-text: #e8eef8;
+  --clearpath-text-secondary: #93a0b8;
+  --clearpath-navy: #5b9cff;
+  --clearpath-navy-hover: #7eb0ff;
+  --clearpath-accent: #3b82f6;
+  --clearpath-separator: rgba(232, 238, 248, 0.1);
+
+  --apple-grouped: #0b1220;
+  --apple-card: #131c2e;
+  --apple-blue: #5b9cff;
+  --apple-blue-hover: #7eb0ff;
+  --apple-blue-press: #3d7ae0;
+  --apple-label: #e8eef8;
+  --apple-secondary-label: #93a0b8;
+  --apple-separator: var(--clearpath-separator);
+
+  --void:       var(--clearpath-page);
+  --surface:    var(--clearpath-surface);
+  --foreground: var(--clearpath-text);
+  --muted:      #6b7a94;
+  --background: #0b1220;
+  --card:       #131c2e;
+  --card-foreground: #e8eef8;
+  --popover:    #1a2540;
+  --popover-foreground: #e8eef8;
+  --primary:    #5b9cff;
+  --primary-foreground: #071018;
+  --secondary:  #1a2540;
+  --secondary-foreground: #e8eef8;
+  --muted-var:  #1a2540;
+  --muted-foreground: #93a0b8;
+  --accent:     #1a2540;
+  --accent-foreground: #e8eef8;
+  --destructive: #f07178;
+  --border:     rgba(232, 238, 248, 0.1);
+  --input:      rgba(232, 238, 248, 0.14);
+  --ring:       #5b9cff;
+  --success:    #3dd68c;
+  --success-foreground: #062016;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  /* Semantic aliases for Clearpath navy (same as primary; use for explicit brand surfaces) */
+  --color-navy: var(--clearpath-navy);
+  --color-navy-hover: var(--clearpath-navy-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted-var);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────── */
+body {
+  font-family:
+    var(--font-outfit),
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* { border-color: var(--border); }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+
+/* ─── Typography Utilities ───────────────────────────────────────── */
+.font-heading {
+  font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.03em;
+}
+.font-body {
+  font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.011em;
+}
+.font-data {
+  font-family: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ─── Apple-style surfaces ───────────────────────────────────────── */
+.apple-grouped-bg {
+  background-color: var(--background);
+}
+
+.dark .apple-card,
+.dark .apple-card-solid,
+.dark .apple-platter {
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+.dark .glass {
+  background: rgba(11, 18, 32, 0.86);
+  border-color: var(--border);
+}
+
+.dark .apple-grouped-bg {
+  background:
+    radial-gradient(900px 420px at 8% -12%, rgba(91, 156, 255, 0.12), transparent 52%),
+    radial-gradient(720px 360px at 100% 0%, rgba(30, 58, 95, 0.35), transparent 48%),
+    var(--background);
+}
+
+.dark .gradient-text,
+.dark .gradient-text-fire {
+  color: var(--clearpath-text);
+  -webkit-text-fill-color: var(--clearpath-text);
+}
+
+.apple-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-radius: var(--apple-radius-lg);
+  box-shadow: var(--apple-shadow);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+}
+
+.apple-card-solid {
+  background: var(--apple-card);
+  border-radius: var(--apple-radius-lg);
+  box-shadow: var(--apple-shadow);
+  border: 1px solid var(--apple-separator);
+}
+
+.apple-platter {
+  border-radius: var(--apple-radius-lg);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: var(--apple-shadow);
+}
+
+.apple-vibrancy-header {
+  background: linear-gradient(180deg, #1e3a5f 0%, #0f1c33 100%);
+}
+
+/* ─── Accent text (no gradients) ───────────────────────────────── */
+.gradient-text,
+.gradient-text-fire {
+  color: #000000;
+  -webkit-text-fill-color: #000000;
+}
+
+/* ─── Grid Background Pattern (flat, no gradients) ───────────────── */
+.bg-grid-pattern {
+  background-color: #f5f5f5;
+  background-image: none;
+}
+
+/* Subtle dot grid — black dots on white (no gray fills) */
+.bg-dot-grid {
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='2' cy='2' r='1' fill='%23000000' fill-opacity='0.12'/%3E%3C/svg%3E");
+  background-size: 24px 24px;
+}
+
+/* Marketing / waitlist — quieter rhythm, larger spacing (feels calmer) */
+.bg-dot-grid-soft {
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Ccircle cx='2' cy='2' r='0.85' fill='%23000000' fill-opacity='0.055'/%3E%3C/svg%3E");
+  background-size: 28px 28px;
+}
+
+/* Waitlist footer — full-bleed surface, no bitmaps (perf) */
+.footer-premium-surface {
+  background-color: #050506;
+  background-image:
+    radial-gradient(ellipse 95% 75% at 50% -25%, rgba(30, 58, 95, 0.2), transparent 55%),
+    radial-gradient(ellipse 100% 90% at 50% -30%, rgba(255, 255, 255, 0.055), transparent 52%),
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 72px 72px, 72px 72px;
+  background-position: center top, center top, center center, center center;
+}
+
+/* ─── Glass Morphism ─────────────────────────────────────────────── */
+.glass {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.glass-dark {
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ─── Animations ─────────────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-20px); }
+}
+@keyframes float-sm {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+@keyframes float-card {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33%       { transform: translateY(-12px) rotate(1deg); }
+  66%       { transform: translateY(-6px) rotate(-1deg); }
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%       { opacity: 0.7; transform: scale(1.05); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes orbit-cw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes orbit-ccw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+.animate-float         { animation: float 8s ease-in-out infinite; }
+.animate-float-sm      { animation: float-sm 6s ease-in-out infinite; }
+.animate-float-card    { animation: float-card 7s ease-in-out infinite; }
+.animate-float-card-2  { animation: float-card 9s ease-in-out infinite; animation-delay: -3s; }
+.animate-float-card-3  { animation: float-card 8s ease-in-out infinite; animation-delay: -5s; }
+.animate-float-card-4  { animation: float-card 10s ease-in-out infinite; animation-delay: -2s; }
+.animate-glow-pulse    { animation: glow-pulse 3s ease-in-out infinite; }
+.animate-ticker        { animation: ticker 25s linear infinite; }
+.animate-orbit-cw      { animation: orbit-cw 12s linear infinite; }
+.animate-orbit-ccw     { animation: orbit-ccw 18s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-float-sm,
+  .animate-float-card,
+  .animate-float-card-2,
+  .animate-float-card-3,
+  .animate-float-card-4,
+  .animate-glow-pulse,
+  .animate-ticker,
+  .animate-orbit-cw,
+  .animate-orbit-ccw { animation: none !important; }
+}
+
+/* ─── Waitlist USP demos (CSS only, no video) ───────────────────── */
+@keyframes usp-demo-swipe {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  38% { transform: translateX(32%) rotate(8deg); }
+  52% { transform: translateX(0) rotate(0deg); }
+}
+.usp-demo-swipe-card {
+  animation: usp-demo-swipe 4.2s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes usp-demo-heart-ring {
+  0%, 100% { transform: scale(1); opacity: 0.35; }
+  50% { transform: scale(1.08); opacity: 0.55; }
+}
+.usp-demo-heart-ring {
+  animation: usp-demo-heart-ring 2.8s ease-in-out infinite;
+}
+
+@keyframes usp-demo-heart {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.12); }
+}
+.usp-demo-heart-icon {
+  animation: usp-demo-heart 2.8s ease-in-out infinite;
+}
+
+@keyframes usp-demo-chat-a {
+  0%, 100% { opacity: 0; transform: translateY(10px); }
+  8%, 32% { opacity: 1; transform: translateY(0); }
+  40%, 99% { opacity: 0; transform: translateY(8px); }
+}
+@keyframes usp-demo-chat-b {
+  0%, 100% { opacity: 0; transform: translateY(10px); }
+  36%, 58% { opacity: 1; transform: translateY(0); }
+  66%, 99% { opacity: 0; transform: translateY(8px); }
+}
+@keyframes usp-demo-chat-c {
+  0%, 100% { opacity: 0; transform: translateY(10px); }
+  62%, 88% { opacity: 1; transform: translateY(0); }
+  95%, 99% { opacity: 0; transform: translateY(8px); }
+}
+.usp-demo-chat-a {
+  animation: usp-demo-chat-a 9s ease-in-out infinite;
+}
+.usp-demo-chat-b {
+  animation: usp-demo-chat-b 9s ease-in-out infinite;
+}
+.usp-demo-chat-c {
+  animation: usp-demo-chat-c 9s ease-in-out infinite;
+}
+
+@keyframes usp-demo-typing-dot {
+  0%, 100% { transform: translateY(0); opacity: 0.35; }
+  50% { transform: translateY(-3px); opacity: 1; }
+}
+.usp-demo-typing-dot {
+  animation: usp-demo-typing-dot 0.9s ease-in-out infinite;
+}
+
+@keyframes usp-demo-pipeline-slide {
+  0%, 100% { transform: translateX(0); }
+  30% { transform: translateX(calc(100% + 4px)); }
+  60% { transform: translateX(calc(200% + 8px)); }
+}
+.usp-demo-pipeline-highlight {
+  animation: usp-demo-pipeline-slide 7s cubic-bezier(0.45, 0, 0.15, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .usp-demo-swipe-card,
+  .usp-demo-heart-ring,
+  .usp-demo-heart-icon,
+  .usp-demo-chat-a,
+  .usp-demo-chat-b,
+  .usp-demo-chat-c,
+  .usp-demo-typing-dot,
+  .usp-demo-pipeline-highlight {
+    animation: none !important;
+  }
+  .usp-demo-chat-a,
+  .usp-demo-chat-b,
+  .usp-demo-chat-c {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .usp-demo-pipeline-highlight {
+    transform: translateX(calc(100% + 4px)) !important;
+  }
+}
+
+/* ─── Audience sections (recruiters / universities) metric bars ─── */
+/* High baselines; motion only nudges upward (no deep dips into “empty” reads). */
+@keyframes audience-metric-bar-a {
+  0%,
+  100% {
+    transform: scaleX(0.86);
+  }
+  50% {
+    transform: scaleX(0.96);
+  }
+}
+@keyframes audience-metric-bar-b {
+  0%,
+  100% {
+    transform: scaleX(0.8);
+  }
+  50% {
+    transform: scaleX(0.9);
+  }
+}
+@keyframes audience-metric-bar-c {
+  0%,
+  100% {
+    transform: scaleX(0.9);
+  }
+  50% {
+    transform: scaleX(0.99);
+  }
+}
+@keyframes audience-metric-bar-d {
+  0%,
+  100% {
+    transform: scaleX(0.84);
+  }
+  50% {
+    transform: scaleX(0.94);
+  }
+}
+@keyframes audience-metric-bar-e {
+  0%,
+  100% {
+    transform: scaleX(0.78);
+  }
+  50% {
+    transform: scaleX(0.88);
+  }
+}
+@keyframes audience-metric-bar-f {
+  0%,
+  100% {
+    transform: scaleX(0.82);
+  }
+  50% {
+    transform: scaleX(0.92);
+  }
+}
+
+.audience-metric-fill-a {
+  transform-origin: left center;
+  animation: audience-metric-bar-a 5.2s ease-in-out infinite;
+}
+.audience-metric-fill-b {
+  transform-origin: left center;
+  animation: audience-metric-bar-b 5.2s ease-in-out infinite;
+  animation-delay: 0.35s;
+}
+.audience-metric-fill-c {
+  transform-origin: left center;
+  animation: audience-metric-bar-c 5.2s ease-in-out infinite;
+  animation-delay: 0.7s;
+}
+.audience-metric-fill-d {
+  transform-origin: left center;
+  animation: audience-metric-bar-d 5.4s ease-in-out infinite;
+}
+.audience-metric-fill-e {
+  transform-origin: left center;
+  animation: audience-metric-bar-e 5.4s ease-in-out infinite;
+  animation-delay: 0.4s;
+}
+.audience-metric-fill-f {
+  transform-origin: left center;
+  animation: audience-metric-bar-f 5.4s ease-in-out infinite;
+  animation-delay: 0.8s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .audience-metric-fill-a {
+    animation: none !important;
+    transform: scaleX(0.92) !important;
+  }
+  .audience-metric-fill-b {
+    animation: none !important;
+    transform: scaleX(0.86) !important;
+  }
+  .audience-metric-fill-c {
+    animation: none !important;
+    transform: scaleX(0.96) !important;
+  }
+  .audience-metric-fill-d {
+    animation: none !important;
+    transform: scaleX(0.9) !important;
+  }
+  .audience-metric-fill-e {
+    animation: none !important;
+    transform: scaleX(0.84) !important;
+  }
+  .audience-metric-fill-f {
+    animation: none !important;
+    transform: scaleX(0.88) !important;
+  }
+}
+
+@keyframes jm-confetti-fall {
+  0% {
+    transform: translate3d(0, -12vh, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 110vh, 0) rotate(540deg);
+    opacity: 0;
+  }
+}
+
+.jm-confetti {
+  position: absolute;
+  top: -8px;
+  border-radius: 1px;
+  animation-name: jm-confetti-fall;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation-fill-mode: forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jm-confetti {
+    display: none;
+  }
+}
+
+/* ─── iOS UIActivityIndicatorView (12 fading spokes) ─────────────── */
+.apple-activity-indicator {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  color: #8e8e93;
+}
+
+.dark .apple-activity-indicator {
+  color: rgba(235, 235, 245, 0.6);
+}
+
+.apple-activity-indicator > span {
+  position: absolute;
+  inset: 0;
+  transform: rotate(calc(var(--i) * 30deg));
+}
+
+.apple-activity-indicator > span::before {
+  content: "";
+  display: block;
+  width: 11%;
+  height: 28%;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: currentColor;
+  animation: apple-activity-fade 1s linear infinite;
+  animation-delay: calc((var(--i) * 0.08333s) - 1s);
+}
+
+@keyframes apple-activity-fade {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.12;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apple-activity-indicator > span::before {
+    animation: none;
+    opacity: 0.4;
+  }
+}
