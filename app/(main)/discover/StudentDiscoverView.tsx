@@ -21,6 +21,7 @@ import {
 import { MatchModal } from "@/components/match/MatchModal"
 import { recordJobView, notifyApplicationMilestone } from "@/lib/engagement"
 import { jobFitScore, whyThisJob } from "@/lib/match/fit"
+import { applyHref, jobHasMandatoryQuestions, studentEligibleForJob } from "@/lib/jobs/screening"
 import { JOB_CATEGORIES } from "@/lib/company-options"
 import { excludeInFilter, isUniqueViolation } from "@/lib/swipe/errors"
 import { X, Check, RotateCcw, Bookmark, RefreshCw } from "lucide-react"
@@ -44,12 +45,16 @@ export function StudentDiscoverView({
   userId,
   skills,
   preferredCategories,
+  stillEnrolled,
+  currentSemester,
   selfImageUrl,
   selfName = "You",
 }: {
   userId: string
   skills?: string[] | null
   preferredCategories?: string[] | null
+  stillEnrolled?: boolean | null
+  currentSemester?: number | null
   selfImageUrl?: string | null
   selfName?: string
 }) {
@@ -88,9 +93,18 @@ export function StudentDiscoverView({
       if (remote === "onsite" && job.is_remote) return false
       if (category !== "all" && (job.category || "") !== category) return false
       if (loc && !(job.location || "").toLowerCase().includes(loc) && !job.is_remote) return false
+      if (
+        !studentEligibleForJob({
+          requiredSemesters: job.required_semesters,
+          stillEnrolled,
+          currentSemester,
+        })
+      ) {
+        return false
+      }
       return true
     })
-  }, [allJobs, jobType, remote, category, location])
+  }, [allJobs, jobType, remote, category, location, stillEnrolled, currentSemester])
 
   const rankJobs = useCallback(
     (rows: Job[]) =>
@@ -226,6 +240,10 @@ export function StudentDiscoverView({
     async (direction: SwipeDirection) => {
       if (swiping || !currentJob) return
       const job = currentJob
+      if (direction === "right" && jobHasMandatoryQuestions(job)) {
+        router.push(applyHref(job.id))
+        return
+      }
       setSwiping(true)
       const supabase = createClient()
       const { error } = await supabase.from("job_swipes").insert({ student_id: userId, job_id: job.id, direction })
@@ -274,7 +292,7 @@ export function StudentDiscoverView({
 
       setTimeout(() => setSwiping(false), 100)
     },
-    [userId, swiping, currentJob, toast]
+    [userId, swiping, currentJob, toast, router]
   )
 
   const handleUndo = useCallback(async () => {

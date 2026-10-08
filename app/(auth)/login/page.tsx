@@ -15,7 +15,6 @@ import {
 } from "@/lib/profile/completeness"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
@@ -125,24 +124,24 @@ export default function LoginPage() {
     }
   }
 
-  return (
-    <Card>
-      <CardHeader className="text-center">
-        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Account</p>
-        <CardTitle className="text-[20px] sm:text-[21px]">Welcome back</CardTitle>
-        <CardDescription>Sign in to swypejobs</CardDescription>
-      </CardHeader>
-      <CardContent>
+  const inputClass =
+    "h-12 rounded-full border-input bg-white px-5 text-[15px] focus-visible:ring-primary focus-visible:ring-offset-0"
 
-      {/* Global error */}
+  return (
+    <div>
+      <h1 className="text-[clamp(2rem,4vw,2.6rem)] font-semibold leading-[1.02] tracking-[-0.045em]">
+        Welcome back
+      </h1>
+      <p className="mt-2 text-[15px] text-muted-foreground">Sign in to swypejobs.</p>
+
       {error && (
-        <Alert variant="destructive" className="mb-5">
+        <Alert variant="destructive" className="mt-6">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {success && (
-        <Alert className="mb-5">
+        <Alert className="mt-6 border-[var(--lp-mint-ink)]/40 bg-[#e6fbf2]">
           <AlertDescription>Signed in. Redirecting…</AlertDescription>
         </Alert>
       )}
@@ -150,7 +149,7 @@ export default function LoginPage() {
       <Button
         type="button"
         variant="outline"
-        className="mb-5 w-full"
+        className="mt-8 h-12 w-full border border-[#14102e]/30 bg-white text-[15px] font-semibold text-foreground hover:bg-secondary"
         onClick={handleGoogleLogin}
         disabled={googleLoading || loading}
       >
@@ -158,16 +157,15 @@ export default function LoginPage() {
         Continue with Google
       </Button>
 
-      <div className="relative mb-5 flex items-center gap-3">
+      <div className="relative my-6 flex items-center gap-3">
         <Separator className="flex-1" />
-        <span className="font-data text-[10px] uppercase tracking-[0.2em] text-muted-foreground">or email</span>
+        <span className="text-[12px] text-muted-foreground">or</span>
         <Separator className="flex-1" />
       </div>
 
       <form onSubmit={handleLogin} noValidate className="space-y-4">
-        {/* Email */}
         <div className="space-y-1.5">
-          <Label htmlFor="login-email">Email address</Label>
+          <Label htmlFor="login-email">Email</Label>
           <Input
             id="login-email"
             type="email"
@@ -175,19 +173,18 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => { setEmail(e.target.value); setFieldErrors(p => ({ ...p, email: undefined })); setError(null) }}
             autoComplete="email"
-            className={fieldErrors.email ? "border-destructive" : ""}
+            className={`${inputClass} ${fieldErrors.email ? "border-destructive" : ""}`}
           />
           {fieldErrors.email && (
-            <p className="text-xs text-destructive font-body mt-1 pl-0.5">{fieldErrors.email}</p>
+            <p className="mt-1 pl-1 text-xs text-destructive">{fieldErrors.email}</p>
           )}
         </div>
 
-        {/* Password */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
             <Label htmlFor="login-password">Password</Label>
-            <Link href="/forgot-password" className="font-body text-xs text-primary hover:opacity-80 transition-colors">
-              Forgot password
+            <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+              Forgot password?
             </Link>
           </div>
           <div className="relative">
@@ -198,36 +195,35 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => { setPassword(e.target.value); setFieldErrors(p => ({ ...p, password: undefined })); setError(null) }}
               autoComplete="current-password"
-              className={`pr-11 ${fieldErrors.password ? "border-destructive" : ""}`}
+              className={`${inputClass} pr-12 ${fieldErrors.password ? "border-destructive" : ""}`}
             />
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground"
+              className="absolute right-1.5 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full text-muted-foreground"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
           </div>
           {fieldErrors.password && (
-            <p className="text-xs text-destructive font-body mt-1 pl-0.5">{fieldErrors.password}</p>
+            <p className="mt-1 pl-1 text-xs text-destructive">{fieldErrors.password}</p>
           )}
         </div>
 
-        <Button type="submit" className="w-full" disabled={loading || success}>
+        <Button type="submit" className="h-12 w-full text-[15px] font-semibold" disabled={loading || success}>
           {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</> : "Sign in"}
         </Button>
       </form>
 
-      <p className="font-body text-center text-sm text-muted-foreground mt-6">
+      <p className="mt-8 text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-primary font-medium hover:opacity-80 transition-colors">
+        <Link href="/signup" className="font-semibold text-primary hover:underline">
           Create one
         </Link>
       </p>
-      </CardContent>
-    </Card>
+    </div>
   )
 }

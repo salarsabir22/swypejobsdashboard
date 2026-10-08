@@ -46,7 +46,7 @@ export async function resolveNotificationPath(
   }
 
   if (n.type === "new_jobs_digest") return "/discover"
-  if (n.type === "profile_views_milestone") return "/dashboard"
+  if (n.type === "profile_opened" || n.type === "profile_views_milestone") return "/dashboard"
   if (jobId) return `/jobs/${jobId}`
   return "/notifications"
 }

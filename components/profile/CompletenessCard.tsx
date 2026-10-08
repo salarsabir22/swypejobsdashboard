@@ -7,22 +7,28 @@ export function CompletenessCard({ percent, items }: { percent: number; items: C
 
   return (
     <Card>
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-data text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Profile strength</p>
-          <p className="font-heading text-sm font-semibold tabular-nums">{percent}%</p>
+      <CardContent className="space-y-4 p-5">
+        <div className="flex items-end justify-between gap-2">
+          <p className="text-[14px] font-medium text-muted-foreground">Profile strength</p>
+          <p className="text-[2rem] font-semibold leading-none tabular-nums tracking-[-0.05em]">{percent}%</p>
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
+        <div className="h-2.5 overflow-hidden rounded-full bg-secondary">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-[#5a48ff] to-[#3ee0a8] transition-[width]"
+            style={{ width: `${percent}%` }}
+          />
         </div>
         {remaining.length === 0 ? (
-          <p className="font-body text-xs text-muted-foreground">Complete.</p>
+          <p className="text-[13px] text-muted-foreground">Your profile is complete.</p>
         ) : (
-          <ul className="space-y-1.5">
+          <ul className="space-y-2">
             {remaining.map((item) => (
-              <li key={item.id} className="flex items-center justify-between gap-2 text-xs">
+              <li
+                key={item.id}
+                className="flex items-center justify-between gap-2 rounded-xl bg-secondary/60 px-3 py-2 text-[13px]"
+              >
                 <span className="truncate text-foreground">{item.label}</span>
-                <Link href={item.href} className="shrink-0 font-medium text-primary hover:underline">
+                <Link href={item.href} className="shrink-0 font-semibold text-primary hover:underline">
                   Add
                 </Link>
               </li>

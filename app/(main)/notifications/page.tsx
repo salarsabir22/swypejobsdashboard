@@ -63,7 +63,7 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-xl font-bold text-foreground sm:text-2xl">Pings</h1>
+        <h1 className="font-heading text-2xl font-semibold text-foreground sm:text-[2.25rem]">Pings</h1>
         <p className="mt-1 font-body text-sm text-muted-foreground">
           {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
           {" · "}

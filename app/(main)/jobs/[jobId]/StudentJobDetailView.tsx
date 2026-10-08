@@ -10,6 +10,7 @@ import type { Job, RecruiterProfile } from "@/types"
 import { StudentJobActions } from "./StudentJobActions"
 import { ShareButton } from "@/components/share/ShareButton"
 import { JobViewTracker } from "@/components/profile/JobViewTracker"
+import { parseScreeningQuestions, parseRequiredSemesters } from "@/lib/jobs/screening"
 
 const JOB_TYPE_LABEL: Record<string, string> = {
   internship: "Internship",
@@ -30,6 +31,8 @@ export function StudentJobDetailView({ job, userId }: { job: JobRow; userId: str
     note: job.compensation_note,
   })
   const backHref = userId ? "/discover" : `/company/${job.recruiter_id}`
+  const questions = parseScreeningQuestions(job.screening_questions)
+  const semesters = parseRequiredSemesters(job.required_semesters)
 
   return (
     <div className="space-y-10">
@@ -154,6 +157,27 @@ export function StudentJobDetailView({ job, userId }: { job: JobRow; userId: str
             </div>
           ) : null}
 
+          {questions.length > 0 ? (
+            <div>
+              <h2 className="mb-2 font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Application questions
+              </h2>
+              <ul className="space-y-1.5 text-sm text-foreground">
+                {questions.map((q) => (
+                  <li key={q.id}>
+                    {q.prompt}
+                    {q.required ? <span className="text-muted-foreground"> · required</span> : null}
+                    {q.type === "video" ? <span className="text-muted-foreground"> · 90 sec video</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {semesters.length > 0 ? (
+            <p className="text-sm text-muted-foreground">Open to semester {semesters.join(" and ")} only.</p>
+          ) : null}
+
           {company?.description ? (
             <div>
               <h2 className="mb-2 font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -179,7 +203,12 @@ export function StudentJobDetailView({ job, userId }: { job: JobRow; userId: str
           <p className="font-body text-xs text-muted-foreground">Posted {formatDate(job.created_at)}</p>
 
           {userId ? (
-            <StudentJobActions userId={userId} jobId={job.id} jobTitle={job.title} />
+            <StudentJobActions
+              userId={userId}
+              jobId={job.id}
+              jobTitle={job.title}
+              screeningQuestions={job.screening_questions}
+            />
           ) : (
             <Button asChild className="w-full rounded-full">
               <Link href={`/login?next=${encodeURIComponent(`/jobs/${job.id}`)}`}>Sign in to apply</Link>

@@ -97,11 +97,47 @@ export async function recordProfileView(
 ) {
   if (opts.viewerId === opts.studentId) return
 
-  const { error } = await supabase.from("profile_views").insert({
+  const { data: viewer } = await supabase.from("profiles").select("role, full_name").eq("id", opts.viewerId).maybeSingle()
+  const isRecruiter = viewer?.role === "recruiter"
+  let companyName: string | null = null
+  if (isRecruiter) {
+    const { data: company } = await supabase
+      .from("recruiter_profiles")
+      .select("company_name")
+      .eq("id", opts.viewerId)
+      .maybeSingle()
+    companyName = company?.company_name ?? null
+  }
+
+  await supabase.from("profile_views").insert({
     viewer_id: opts.viewerId,
     student_id: opts.studentId,
   })
-  if (error) return
+
+  if (isRecruiter) {
+    const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+    const { data: recent } = await supabase
+      .from("notifications")
+      .select("id, data")
+      .eq("user_id", opts.studentId)
+      .eq("type", "profile_opened")
+      .gte("created_at", since)
+      .limit(20)
+    const already = (recent || []).some((row) => {
+      const payload = row.data && typeof row.data === "object" ? (row.data as Record<string, unknown>) : {}
+      return payload.viewer_id === opts.viewerId
+    })
+    if (!already) {
+      const who = [viewer?.full_name, companyName].filter(Boolean).join(" at ") || "A recruiter"
+      await notify(supabase, {
+        user_id: opts.studentId,
+        type: "profile_opened",
+        title: `${who} opened your profile`,
+        body: "They can see your experience, skills, and applications.",
+        data: { viewer_id: opts.viewerId, student_id: opts.studentId },
+      })
+    }
+  }
 
   const { count } = await supabase
     .from("profile_views")

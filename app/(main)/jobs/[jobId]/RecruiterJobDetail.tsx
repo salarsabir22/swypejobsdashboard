@@ -41,6 +41,13 @@ export async function RecruiterJobDetail({
     .select("*", { count: "exact", head: true })
     .eq("job_id", jobId)
 
+  const { data: recruiter } = await supabase
+    .from("recruiter_profiles")
+    .select("company_name, calendly_url")
+    .eq("id", userId)
+    .maybeSingle()
+  const { data: me } = await supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle()
+
   const pay = formatSalary({
     min: job.salary_min,
     max: job.salary_max,
@@ -79,7 +86,15 @@ export async function RecruiterJobDetail({
         ]}
       />
 
-      <InterestedCandidatesPanel recruiterId={userId} jobId={jobId} />
+      <InterestedCandidatesPanel
+        recruiterId={userId}
+        jobId={jobId}
+        jobTitle={job.title}
+        screeningQuestions={job.screening_questions}
+        recruiterName={me?.full_name || "A recruiter"}
+        companyName={recruiter?.company_name || "their company"}
+        calendlyUrl={recruiter?.calendly_url}
+      />
 
       <Card className="shadow-sm">
         <CardHeader className="flex flex-row flex-wrap items-center gap-2 space-y-0 pb-4">

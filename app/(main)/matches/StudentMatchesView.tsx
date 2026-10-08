@@ -102,7 +102,7 @@ export async function StudentMatchesView({ userId }: { userId: string }) {
     <div className="space-y-8">
       <header className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 space-y-1">
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-[1.75rem]">Applications</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-[2.25rem]">Applications</h1>
           <p className="font-body text-sm text-muted-foreground">
             {applications.length === 0
               ? "Apply from Discover. Status moves from applied to chatting when a recruiter likes you back."

@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { UserRole } from "@/types"
 import { recruiterTabs, studentTabs } from "@/components/nav/app-nav-config"
+import { useChatUnread } from "@/lib/hooks/use-chat-unread"
+import { NavUnreadBadge } from "@/components/nav/NavUnreadBadge"
 
 export function AppBottomNav({ role }: { role: UserRole | "admin" }) {
   const pathname = usePathname()
+  const chatUnread = useChatUnread()
   if (role === "admin") return null
 
   const items = role === "recruiter" ? recruiterTabs : studentTabs
@@ -32,8 +35,11 @@ export function AppBottomNav({ role }: { role: UserRole | "admin" }) {
                 active ? "text-primary hover:bg-accent hover:text-primary" : "text-muted-foreground"
               )}
             >
-              <Link href={href} aria-current={active ? "page" : undefined}>
-                <Icon strokeWidth={active ? 2.15 : 1.7} />
+              <Link href={href} aria-current={active ? "page" : undefined} className="relative flex flex-col items-center gap-0.5">
+                <span className="relative">
+                  <Icon strokeWidth={active ? 2.15 : 1.7} />
+                  {href === "/chat" ? <NavUnreadBadge count={chatUnread} /> : null}
+                </span>
                 <span className="max-w-full truncate">{label}</span>
               </Link>
             </Button>

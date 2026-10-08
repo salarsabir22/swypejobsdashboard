@@ -92,7 +92,7 @@ export default function AdminChannelsPage() {
     <div className="mx-auto max-w-4xl space-y-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-bold">Community Channels</h1>
+          <h1 className="font-heading text-3xl font-semibold sm:text-[2.25rem]">Community Channels</h1>
           <p className="font-body text-sm text-muted-foreground">{channels.length} channels</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>

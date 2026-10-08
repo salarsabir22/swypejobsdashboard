@@ -3,17 +3,17 @@
   min-height: 0;
   color: var(--foreground);
   background:
-    radial-gradient(900px 420px at 100% 0%, rgba(30, 58, 95, 0.06), transparent 58%),
-    radial-gradient(700px 360px at 0% 100%, rgba(59, 130, 246, 0.04), transparent 55%),
+    radial-gradient(900px 420px at 100% 0%, rgba(90, 72, 255, 0.07), transparent 58%),
+    radial-gradient(700px 360px at 0% 100%, rgba(62, 224, 168, 0.05), transparent 55%),
     var(--background);
   overscroll-behavior: contain;
-  
+
 }
 
 .jm-chat-thread {
   background-image:
-    linear-gradient(rgba(10, 22, 40, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(10, 22, 40, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(90, 72, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 72, 255, 0.05) 1px, transparent 1px);
   background-size: 48px 48px;
   background-position: center top;
 }
@@ -30,7 +30,7 @@
   border-radius: 16px 16px 4px 16px;
   background: var(--primary);
   color: var(--primary-foreground);
-  box-shadow: 0 8px 22px rgba(30, 58, 95, 0.12);
+  box-shadow: 0 8px 22px rgba(90, 72, 255, 0.28);
 }
 
 .jm-bubble--peer {

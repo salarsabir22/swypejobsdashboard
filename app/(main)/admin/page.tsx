@@ -74,7 +74,7 @@ export default async function AdminOverviewPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-3xl font-bold text-foreground">Admin Dashboard</h1>
+          <h1 className="font-heading text-3xl font-semibold text-foreground sm:text-[2.25rem]">Admin Dashboard</h1>
           <p className="mt-0.5 font-body text-sm text-muted-foreground">
             Platform overview · {allProfiles.length} total users
           </p>

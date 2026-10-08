@@ -342,17 +342,16 @@ export function ListRowSkeleton({ count = 5, className }: { count?: number; clas
 
 export function AuthFormSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-card p-6 sm:p-8" role="status" aria-label="Loading sign in">
-      <div className="space-y-2 text-center">
-        <Skeleton className="mx-auto h-3 w-16" />
-        <Skeleton className="mx-auto h-7 w-40" />
-        <Skeleton className="mx-auto h-4 w-52" />
+    <div role="status" aria-label="Loading sign in">
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-56" />
+        <Skeleton className="h-4 w-44" />
       </div>
       <div className="mt-8 space-y-4">
-        <Skeleton className="h-11 w-full rounded-xl" />
-        <Skeleton className="h-10 w-full rounded-xl" />
-        <Skeleton className="h-10 w-full rounded-xl" />
-        <Skeleton className="h-11 w-full rounded-full" />
+        <Skeleton className="h-12 w-full rounded-full" />
+        <Skeleton className="h-12 w-full rounded-full" />
+        <Skeleton className="h-12 w-full rounded-full" />
+        <Skeleton className="h-12 w-full rounded-full" />
       </div>
     </div>
   )

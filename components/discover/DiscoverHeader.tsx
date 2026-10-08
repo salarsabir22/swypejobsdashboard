@@ -1,14 +1,14 @@
 import { cn } from "@/lib/utils"
 
 type DiscoverHeaderProps = {
-  eyebrow: string
+  eyebrow?: string
   title: string
   description: React.ReactNode
   action?: React.ReactNode
   className?: string
 }
 
-export function DiscoverHeader({ eyebrow, title, description, action, className }: DiscoverHeaderProps) {
+export function DiscoverHeader({ title, description, action, className }: DiscoverHeaderProps) {
   return (
     <div
       className={cn(
@@ -17,8 +17,7 @@ export function DiscoverHeader({ eyebrow, title, description, action, className 
       )}
     >
       <div className="min-w-0 max-w-2xl space-y-2">
-        <p className="font-data text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</p>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem] sm:leading-snug">
+        <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-[2.25rem]">
           {title}
         </h1>
         <div className="font-body text-sm leading-relaxed text-muted-foreground">{description}</div>

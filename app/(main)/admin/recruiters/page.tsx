@@ -27,7 +27,7 @@ export default async function AdminRecruitersPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-5">
       <div>
-        <h1 className="font-heading text-2xl font-bold">Recruiter Approvals</h1>
+        <h1 className="font-heading text-3xl font-semibold sm:text-[2.25rem]">Recruiter Approvals</h1>
         <p className="font-body text-sm text-muted-foreground">{pending} pending</p>
       </div>
 

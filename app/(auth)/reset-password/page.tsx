@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -89,74 +88,71 @@ export default function ResetPasswordPage() {
 
   if (!sessionReady && !sessionError) {
     return (
-      <Card>
-        <CardContent className="space-y-4 pt-8" role="status" aria-label="Verifying your reset link">
+      <div>
+        <div className="space-y-4 pt-8" role="status" aria-label="Verifying your reset link">
           <Skeleton className="mx-auto h-3 w-24" />
           <Skeleton className="mx-auto h-7 w-48" />
           <Skeleton className="h-10 w-full rounded-xl" />
           <Skeleton className="h-10 w-full rounded-xl" />
           <Skeleton className="h-11 w-full rounded-full" />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   if (sessionError) {
     return (
-      <Card>
-        <CardHeader className="text-center">
-          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Reset link</p>
-          <CardTitle>Link expired or invalid</CardTitle>
-          <CardDescription>
+      <div>
+        <div className="mb-6">
+          <h1 className="text-[clamp(2rem,4vw,2.6rem)] font-semibold leading-[1.02] tracking-[-0.045em]">Link expired or invalid</h1>
+          <p className="mt-2 text-[15px] text-muted-foreground">
             Reset links last <span className="font-medium text-foreground">1 hour</span> and work once.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-center">
-          <p className="mb-6 font-body text-xs text-muted-foreground">Request a fresh link below.</p>
+          </p>
+        </div>
+        <div className="text-center">
+          <p className="mb-6 text-xs text-muted-foreground">Request a fresh link below.</p>
           <Button asChild className="mb-3 w-full">
             <Link href="/forgot-password">Request a new link</Link>
           </Button>
           <Button variant="ghost" asChild>
             <Link href="/login">← Back to sign in</Link>
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   if (done) {
     return (
-      <Card>
-        <CardHeader className="text-center">
-          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Complete</p>
-          <CardTitle>Password updated</CardTitle>
-          <CardDescription>You&apos;re all set. Redirecting to sign in…</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div>
+        <div className="mb-6">
+          <h1 className="text-[clamp(2rem,4vw,2.6rem)] font-semibold leading-[1.02] tracking-[-0.045em]">Password updated</h1>
+          <p className="mt-2 text-[15px] text-muted-foreground">You&apos;re all set. Redirecting to sign in…</p>
+        </div>
+        <div>
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="font-body text-sm">Loading login</span>
+            <span className="text-sm">Loading login</span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Security</p>
-        <CardTitle>New password</CardTitle>
-        <CardDescription>Choose something strong you haven&apos;t used before</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-[clamp(2rem,4vw,2.6rem)] font-semibold leading-[1.02] tracking-[-0.045em]">New password</h1>
+        <p className="mt-2 text-[15px] text-muted-foreground">Choose something strong you haven&apos;t used before</p>
+      </div>
+      <div>
         {error && (
           <Alert variant="destructive" className="mb-5">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        <form onSubmit={handleReset} noValidate className="space-y-4">
+        <form onSubmit={handleReset} noValidate className="space-y-4 [&_input]:h-12 [&_input]:rounded-full [&_input]:bg-white [&_input]:px-5 [&_input]:text-[15px]">
           <div className="space-y-1.5">
             <Label htmlFor="reset-password">New password</Label>
             <div className="relative">
@@ -199,7 +195,7 @@ export default function ResetPasswordPage() {
                   ))}
                 </div>
                 {strength.label && (
-                  <p className="font-data text-[10px] text-muted-foreground">
+                  <p className="text-[10px] text-muted-foreground">
                     Strength: <span className="text-foreground">{strength.label}</span>
                   </p>
                 )}
@@ -220,7 +216,7 @@ export default function ResetPasswordPage() {
                     />
                     <span
                       className={cn(
-                        "font-body text-[11px] transition-colors",
+                        "text-[11px] transition-colors",
                         ok ? "text-muted-foreground" : "text-muted-foreground/50"
                       )}
                     >
@@ -264,7 +260,7 @@ export default function ResetPasswordPage() {
             {confirm.length > 0 && (
               <p
                 className={cn(
-                  "font-body text-[11px]",
+                  "text-[11px]",
                   confirm === password ? "text-emerald-700" : "text-destructive"
                 )}
               >
@@ -275,7 +271,7 @@ export default function ResetPasswordPage() {
 
           <Button
             type="submit"
-            className="w-full"
+            className="h-12 w-full text-[15px] font-semibold"
             disabled={loading || password !== confirm || password.length < 8}
           >
             {loading ? (
@@ -293,7 +289,7 @@ export default function ResetPasswordPage() {
             <Link href="/login">← Back to sign in</Link>
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

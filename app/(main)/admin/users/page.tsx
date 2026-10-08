@@ -43,7 +43,7 @@ export default async function AdminUsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-3xl font-bold">User Management</h1>
+          <h1 className="font-heading text-3xl font-semibold sm:text-[2.25rem]">User Management</h1>
           <p className="font-body text-sm text-muted-foreground">{profiles?.length || 0} total users</p>
         </div>
         <Button asChild variant="ghost">

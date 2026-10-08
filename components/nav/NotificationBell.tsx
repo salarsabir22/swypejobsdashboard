@@ -38,12 +38,11 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState<Notification[]>([])
-  const [chatUnreadCount, setChatUnreadCount] = useState(0)
   const [coords, setCoords] = useState<PanelCoords | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
 
-  const unreadCount = items.filter((n) => !n.is_read).length + chatUnreadCount
+  const unreadCount = items.filter((n) => !n.is_read).length
 
   const placePanel = () => {
     const el = buttonRef.current
@@ -70,20 +69,9 @@ export function NotificationBell() {
     setLoading(false)
   }
 
-  const loadChatUnread = async () => {
-    try {
-      const res = await fetch("/api/chat/unread", { method: "GET" })
-      const data = (await res.json().catch(() => ({}))) as { totalUnreadCount?: number }
-      setChatUnreadCount(Number(data.totalUnreadCount ?? 0))
-    } catch {
-      setChatUnreadCount(0)
-    }
-  }
-
   useEffect(() => {
     startTransition(() => {
       void loadItems()
-      void loadChatUnread()
     })
   }, [])
 
@@ -107,7 +95,6 @@ export function NotificationBell() {
     if (!open) return
     startTransition(() => {
       void loadItems()
-      void loadChatUnread()
     })
   }, [open])
 

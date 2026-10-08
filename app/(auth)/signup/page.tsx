@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils"
 import { Loader2, Eye, EyeOff } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
@@ -35,7 +34,7 @@ function getPasswordStrength(pw: string): PasswordStrength {
     0: { score: 0, label: "", color: "" },
     1: { score: 1, label: "Weak", color: "bg-red-500" },
     2: { score: 2, label: "Fair", color: "bg-neutral-400" },
-    3: { score: 3, label: "Good", color: "bg-blue-500" },
+    3: { score: 3, label: "Good", color: "bg-primary" },
     4: { score: 4, label: "Strong", color: "bg-neutral-1000" },
   }
   return map[score as keyof typeof map]
@@ -137,44 +136,42 @@ export default function SignupPage() {
 
   if (verifyMode) {
     return (
-      <Card>
-        <CardHeader className="text-center">
-          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Verify email</p>
-          <CardTitle>Check your inbox</CardTitle>
-          <CardDescription>
+      <div>
+        <div className="mb-6">
+          <h1 className="text-[clamp(2rem,4vw,2.6rem)] font-semibold leading-[1.02] tracking-[-0.045em]">Check your inbox</h1>
+          <p className="mt-2 text-[15px] text-muted-foreground">
             We sent a confirmation link to <span className="font-medium text-foreground">{email}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div>
           <div className="mb-5 rounded-xl border border-border bg-muted/50 p-3.5 text-left">
-            <p className="mb-2 font-data text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Next steps</p>
+            <p className="mb-2 text-sm font-medium text-foreground">Next steps</p>
             <ol className="list-inside list-decimal space-y-1">
-              <li className="font-body text-xs text-muted-foreground">Open the email from swypejobs</li>
-              <li className="font-body text-xs text-muted-foreground">Click &quot;Confirm your email&quot;</li>
-              <li className="font-body text-xs text-muted-foreground">Complete your profile</li>
+              <li className="text-xs text-muted-foreground">Open the email from swypejobs</li>
+              <li className="text-xs text-muted-foreground">Click &quot;Confirm your email&quot;</li>
+              <li className="text-xs text-muted-foreground">Complete your profile</li>
             </ol>
           </div>
-          <p className="text-center font-body text-xs text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground">
             Didn&apos;t receive it? Check spam or{" "}
             <Button variant="link" className="h-auto p-0 text-xs" onClick={() => setVerifyMode(false)}>
               try again
             </Button>
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <p className="mb-2 font-data text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Welcome</p>
-        <CardTitle>Create your account</CardTitle>
-        <CardDescription>Free - under a minute</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-[clamp(2rem,4vw,2.6rem)] font-semibold leading-[1.02] tracking-[-0.045em]">Create your account</h1>
+        <p className="mt-2 text-[15px] text-muted-foreground">Free - under a minute</p>
+      </div>
+      <div>
         <div className="mb-5">
-          <p className="mb-2 font-data text-[11px] uppercase tracking-[0.2em] text-muted-foreground">I am joining as…</p>
+          <p className="mb-2 text-sm font-medium text-foreground">I am joining as…</p>
           <div className="grid grid-cols-2 gap-3">
             {(["student", "recruiter"] as SignupRole[]).map((r) => {
               const { label, description } = ROLE_INFO[r]
@@ -187,7 +184,9 @@ export default function SignupPage() {
                   onClick={() => setRole(r)}
                   className={cn(
                     "h-auto whitespace-normal rounded-2xl px-3.5 py-3 text-left",
-                    active ? "border-primary bg-primary/10" : ""
+                    active
+                      ? "border-primary bg-secondary hover:bg-secondary"
+                      : "border-border bg-white hover:border-primary/60 hover:bg-secondary"
                   )}
                 >
                   <span className="flex flex-col items-start gap-1.5">
@@ -207,7 +206,7 @@ export default function SignupPage() {
             <AlertDescription>
               {error}
               {error.includes("already exists") && (
-                <Link href="/login" className="mt-1 inline-block font-body text-xs text-primary hover:underline">
+                <Link href="/login" className="mt-1 inline-block text-xs text-primary hover:underline">
                   Go to sign in →
                 </Link>
               )}
@@ -218,7 +217,7 @@ export default function SignupPage() {
         <Button
           type="button"
           variant="outline"
-          className="mb-4 w-full"
+          className="mb-4 h-12 w-full border border-[#14102e]/30 bg-white font-semibold hover:bg-secondary"
           onClick={handleGoogleSignup}
           disabled={googleLoading || loading}
         >
@@ -228,11 +227,11 @@ export default function SignupPage() {
 
         <div className="relative mb-4 flex items-center gap-3">
           <Separator className="flex-1" />
-          <span className="font-data text-[10px] uppercase tracking-[0.2em] text-muted-foreground">or email</span>
+          <span className="text-[12px] text-muted-foreground">or</span>
           <Separator className="flex-1" />
         </div>
 
-        <form onSubmit={handleSignup} noValidate className="space-y-4">
+        <form onSubmit={handleSignup} noValidate className="space-y-4 [&_input]:h-12 [&_input]:rounded-full [&_input]:bg-white [&_input]:px-5 [&_input]:text-[15px]">
           <div className="space-y-1.5">
             <Label htmlFor="signup-name">Full name</Label>
             <Input
@@ -244,7 +243,7 @@ export default function SignupPage() {
               className={fieldErrors.fullName ? "border-destructive" : ""}
             />
             {fieldErrors.fullName && (
-              <p className="pl-0.5 font-body text-xs text-destructive">{fieldErrors.fullName}</p>
+              <p className="pl-0.5 text-xs text-destructive">{fieldErrors.fullName}</p>
             )}
           </div>
 
@@ -260,7 +259,7 @@ export default function SignupPage() {
               className={fieldErrors.email ? "border-destructive" : ""}
             />
             {fieldErrors.email && (
-              <p className="pl-0.5 font-body text-xs text-destructive">{fieldErrors.email}</p>
+              <p className="pl-0.5 text-xs text-destructive">{fieldErrors.email}</p>
             )}
           </div>
 
@@ -294,7 +293,7 @@ export default function SignupPage() {
                     <div key={i} className={cn("h-1 flex-1 rounded-full transition-all duration-300", i <= strength.score ? strength.color : "bg-muted")} />
                   ))}
                 </div>
-                <p className="font-data text-[10px] text-muted-foreground">
+                <p className="text-[10px] text-muted-foreground">
                   {strength.score < 3 && "Use uppercase, numbers & symbols"}
                   {strength.score >= 3 && (
                     <span className="text-foreground/80">{strength.label} password</span>
@@ -303,7 +302,7 @@ export default function SignupPage() {
               </div>
             )}
             {fieldErrors.password && (
-              <p className="pl-0.5 font-body text-xs text-destructive">{fieldErrors.password}</p>
+              <p className="pl-0.5 text-xs text-destructive">{fieldErrors.password}</p>
             )}
           </div>
 
@@ -315,19 +314,19 @@ export default function SignupPage() {
             </Alert>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="h-12 w-full text-[15px] font-semibold" disabled={loading}>
             {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating account…</> : "Create account"}
           </Button>
         </form>
 
-        <p className="mt-5 text-center font-body text-sm text-muted-foreground">
+        <p className="mt-5 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link href="/login" className="font-medium text-primary transition-colors hover:opacity-80">
             Sign in
           </Link>
         </p>
 
-        <p className="mt-4 text-center font-body text-[10px] text-muted-foreground">
+        <p className="mt-4 text-center text-[10px] text-muted-foreground">
           By signing up you agree to our{" "}
           <a href="#" className="text-muted-foreground underline underline-offset-2 hover:text-foreground">
             Terms
@@ -337,7 +336,7 @@ export default function SignupPage() {
             Privacy
           </a>
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

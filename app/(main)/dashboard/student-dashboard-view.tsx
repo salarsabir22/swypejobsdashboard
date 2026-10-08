@@ -244,7 +244,16 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
     <div className="space-y-8">
       <DashboardPageHeader
         eyebrow="Insights"
-        title={firstName ? `Welcome back, ${firstName}` : "Your overview"}
+        title={
+          firstName ? (
+            <>
+              Welcome back,{" "}
+              <span className="text-primary">{firstName}</span>
+            </>
+          ) : (
+            "Your overview"
+          )
+        }
         description="Applications, who viewed you, and what to do next — from your live activity."
         action={
           <Button asChild variant="outline" className="rounded-full">

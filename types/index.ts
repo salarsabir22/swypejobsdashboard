@@ -1,3 +1,5 @@
+import type { ScreeningQuestion } from "@/lib/jobs/screening"
+
 export type UserRole = "student" | "recruiter" | "admin"
 export type JobType = "internship" | "full_time" | "part_time" | "contract"
 export type SwipeDirection = "right" | "left" | "saved"
@@ -19,6 +21,9 @@ export interface StudentProfile {
   university: string | null
   degree: string | null
   graduation_year: number | null
+  institution_type?: "university" | "college" | null
+  still_enrolled?: boolean | null
+  current_semester?: number | null
   skills: string[]
   interests: string[]
   resume_url: string | null
@@ -40,6 +45,7 @@ export interface RecruiterProfile {
   website_url: string | null
   employee_count: string | null
   industry: string | null
+  calendly_url?: string | null
   is_approved: boolean
   created_at: string
   updated_at: string
@@ -62,6 +68,8 @@ export interface Job {
   salary_max?: number | null
   salary_currency?: string | null
   compensation_note?: string | null
+  screening_questions?: ScreeningQuestion[] | null
+  required_semesters?: number[] | null
   created_at: string
   updated_at: string
   recruiter_profiles?: RecruiterProfile

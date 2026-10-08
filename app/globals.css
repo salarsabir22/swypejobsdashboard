@@ -5,37 +5,37 @@
 
 /* ─── Design Token Layer — Clearpath app theme ───────────────────── */
 :root {
-  --radius: 0.75rem;
+  --radius: 1rem;
   --app-tabbar-height: 3.25rem;
   --app-tabbar-offset: calc(var(--app-tabbar-height) + env(safe-area-inset-bottom, 0px));
   --app-tabbar-clearance: calc(var(--app-tabbar-offset) + 0.5rem);
 
   /* Clearpath palette */
-  --clearpath-page: #f5f5f5;
+  --clearpath-page: #f7f6ff;
   --clearpath-surface: #ffffff;
-  --clearpath-text: #0a1628;
-  --clearpath-text-secondary: #6b7280;
-  --clearpath-navy: #1e3a5f;
-  --clearpath-navy-hover: #254a73;
-  --clearpath-accent: #3b82f6;
-  --clearpath-separator: rgba(10, 22, 40, 0.12);
+  --clearpath-text: #14102e;
+  --clearpath-text-secondary: #55506b;
+  --clearpath-navy: #5a48ff;
+  --clearpath-navy-hover: #4a39e0;
+  --clearpath-accent: #7a6bff;
+  --clearpath-separator: rgba(20, 16, 46, 0.14);
 
   /* Apple-like surfaces — aligned to page/surface (legacy class names) */
-  --apple-grouped: #f5f5f5;
+  --apple-grouped: #f7f6ff;
   --apple-card: #ffffff;
-  --apple-blue: #1e3a5f;
-  --apple-blue-hover: #254a73;
-  --apple-blue-press: #1a3250;
+  --apple-blue: #5a48ff;
+  --apple-blue-hover: #4a39e0;
+  --apple-blue-press: #4331d6;
 
   /* Waitlist / marketing — same primary navy as app shell */
-  --waitlist-blue: #1e3a5f;
-  --waitlist-blue-hover: #254a73;
-  --waitlist-blue-deep: #162d4a;
-  --apple-label: #0a1628;
-  --apple-secondary-label: #6b7280;
+  --waitlist-blue: #5a48ff;
+  --waitlist-blue-hover: #4a39e0;
+  --waitlist-blue-deep: #3a2bc8;
+  --apple-label: #14102e;
+  --apple-secondary-label: #55506b;
   --apple-separator: var(--clearpath-separator);
-  --apple-shadow: none;
-  --apple-shadow-lg: none;
+  --apple-shadow: 0 10px 30px -18px rgba(90, 72, 255, 0.35);
+  --apple-shadow-lg: 0 18px 48px -20px rgba(90, 72, 255, 0.4);
   --apple-radius-lg: 22px;
   --apple-radius-md: 14px;
 
@@ -50,24 +50,24 @@
   --gold:       #d4d4d4;
 
   /* shadcn compat — Clearpath */
-  --background: #f5f5f5;
-  --foreground: #0a1628;
+  --background: #f7f6ff;
+  --foreground: #14102e;
   --card:       #ffffff;
-  --card-foreground: #0a1628;
+  --card-foreground: #14102e;
   --popover:    #ffffff;
-  --popover-foreground: #0a1628;
-  --primary:    #1e3a5f;
+  --popover-foreground: #14102e;
+  --primary:    #5a48ff;
   --primary-foreground: #ffffff;
-  --secondary:  #f3f4f6;
-  --secondary-foreground: #0a1628;
-  --muted-var:  #f3f4f6;
-  --muted-foreground: #6b7280;
-  --accent:     #eff6ff;
-  --accent-foreground: #0a1628;
+  --secondary:  #ecebff;
+  --secondary-foreground: #14102e;
+  --muted-var:  #ecebff;
+  --muted-foreground: #55506b;
+  --accent:     #e9e6ff;
+  --accent-foreground: #251c4d;
   --destructive: #b91c1c;
-  --border:     rgba(10, 22, 40, 0.12);
-  --input:      rgba(10, 22, 40, 0.14);
-  --ring:       #1e3a5f;
+  --border:     rgba(20, 16, 46, 0.14);
+  --input:      rgba(20, 16, 46, 0.24);
+  --ring:       #5a48ff;
   --success:    #15803d;
   --success-foreground: #ffffff;
 }
@@ -185,7 +185,30 @@ body {
 
 /* ─── Apple-style surfaces ───────────────────────────────────────── */
 .apple-grouped-bg {
-  background-color: var(--background);
+  background:
+    radial-gradient(900px 420px at 8% -12%, rgba(90, 72, 255, 0.14), transparent 55%),
+    linear-gradient(rgba(90, 72, 255, 0.05) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(90deg, rgba(90, 72, 255, 0.05) 1px, transparent 1px) 0 0 / 48px 48px,
+    var(--background);
+}
+
+/* No tiny uppercase captions: same plain-text labels as landing + login */
+.apple-grouped-bg .uppercase {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* Match landing + login typography across every internal page */
+.apple-grouped-bg h1 {
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+.apple-grouped-bg h2 {
+  font-weight: 600;
+  letter-spacing: -0.035em;
 }
 
 .dark .apple-card,
@@ -240,19 +263,19 @@ body {
 }
 
 .apple-vibrancy-header {
-  background: linear-gradient(180deg, #1e3a5f 0%, #0f1c33 100%);
+  background: linear-gradient(180deg, #5a48ff 0%, #3a2bc8 100%);
 }
 
 /* ─── Accent text (no gradients) ───────────────────────────────── */
 .gradient-text,
 .gradient-text-fire {
-  color: #000000;
-  -webkit-text-fill-color: #000000;
+  color: #5a48ff;
+  -webkit-text-fill-color: #5a48ff;
 }
 
 /* ─── Grid Background Pattern (flat, no gradients) ───────────────── */
 .bg-grid-pattern {
-  background-color: #f5f5f5;
+  background-color: #f7f6ff;
   background-image: none;
 }
 
@@ -272,14 +295,8 @@ body {
 
 /* Waitlist footer — full-bleed surface, no bitmaps (perf) */
 .footer-premium-surface {
-  background-color: #050506;
-  background-image:
-    radial-gradient(ellipse 95% 75% at 50% -25%, rgba(30, 58, 95, 0.2), transparent 55%),
-    radial-gradient(ellipse 100% 90% at 50% -30%, rgba(255, 255, 255, 0.055), transparent 52%),
-    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 72px 72px, 72px 72px;
-  background-position: center top, center top, center center, center center;
+  background-color: #ffffff;
+  border-top: 1px solid var(--border);
 }
 
 /* ─── Glass Morphism ─────────────────────────────────────────────── */
@@ -628,4 +645,80 @@ body {
     animation: none;
     opacity: 0.4;
   }
+}
+
+
+/* ─── Auth screens: swypejobs landing theme (.lp) ────────────────────
+   Scoped to the auth layout so the rest of the dashboard keeps its own theme. */
+.lp {
+  color-scheme: light;
+  --background: #f7f6ff;
+  --foreground: #14102e;
+  --card: #ffffff;
+  --card-foreground: #14102e;
+  --popover: #ffffff;
+  --popover-foreground: #14102e;
+  --primary: #5a48ff;
+  --primary-foreground: #ffffff;
+  --secondary: #ecebff;
+  --secondary-foreground: #14102e;
+  --muted-var: #ecebff;
+  --muted-foreground: #55506b;
+  --accent: #e9e6ff;
+  --accent-foreground: #251c4d;
+  --destructive: #c2371a;
+  --border: rgba(20, 16, 46, 0.14);
+  --input: rgba(20, 16, 46, 0.28);
+  --ring: #5a48ff;
+  --clearpath-navy: #5a48ff;
+  --clearpath-navy-hover: #4a39e0;
+  --lp-accent: #4a39e0;
+  --lp-mint: #3ee0a8;
+  --lp-mint-ink: #0a7a56;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Logo font: Bagoss Condensed is commercial. Add licensed files to public/fonts/ to enable it;
+   until then the stack falls back to Outfit. */
+@font-face {
+  font-family: "BagossCondensedFont";
+  src:
+    url("/fonts/BagossCondensed-Bold.woff2") format("woff2"),
+    url("/fonts/BagossCondensed-Bold.woff") format("woff"),
+    url("/fonts/BagossCondensed-Bold.otf") format("opentype"),
+    url("/fonts/BagossCondensed-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "BagossCondensedFont Fallback";
+  src: local("Arial");
+  size-adjust: 92%;
+  ascent-override: 92%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+.lp-logo-font {
+  font-family: "BagossCondensedFont", var(--font-outfit), "BagossCondensedFont Fallback", Arial, Helvetica, sans-serif;
+}
+
+.lp-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 78%);
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 78%);
+}
+
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.lp-float { animation: lp-float 6s ease-in-out infinite; }
+.lp-float-slow { animation: lp-float 8s ease-in-out infinite; animation-delay: -3s; }
+@media (prefers-reduced-motion: reduce) {
+  .lp-float, .lp-float-slow { animation: none !important; }
 }

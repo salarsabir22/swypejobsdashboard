@@ -11,13 +11,13 @@ type DashboardPanelProps = {
 export function DashboardPanel({ title, description, badge, children }: DashboardPanelProps) {
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-3 space-y-0 border-b border-border bg-muted/30 sm:flex-row sm:items-center sm:justify-between">
+      <CardHeader className="flex flex-col gap-3 space-y-0 border-b border-border sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-1">
-          <CardTitle className="font-heading text-base">{title}</CardTitle>
+          <CardTitle className="font-heading text-lg">{title}</CardTitle>
           {description ? <CardDescription>{description}</CardDescription> : null}
         </div>
         {badge ? (
-          <Badge variant="outline" className="w-fit uppercase tracking-widest">
+          <Badge variant="secondary" className="w-fit px-3 py-1 text-[13px] text-primary">
             {badge}
           </Badge>
         ) : null}

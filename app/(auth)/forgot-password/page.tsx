@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client"
 import { Loader2, CheckCircle2, RefreshCw, ArrowLeft } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -60,15 +59,14 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <Card>
-        <CardHeader className="text-center">
-          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Email sent</p>
-          <CardTitle>Check your inbox</CardTitle>
-          <CardDescription>
+      <div>
+        <div className="mb-6">
+          <h1 className="text-[clamp(2rem,4vw,2.6rem)] font-semibold leading-[1.02] tracking-[-0.045em]">Check your inbox</h1>
+          <p className="mt-2 text-[15px] text-muted-foreground">
             We sent a reset link to <span className="font-medium text-foreground">{email}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div>
           <div className="mb-5 space-y-3 rounded-xl border border-border bg-muted/40 p-4">
             {[
               { n: "1", text: "Open the email from swypejobs" },
@@ -77,9 +75,9 @@ export default function ForgotPasswordPage() {
             ].map(({ n, text }) => (
               <div key={n} className="flex items-center gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
-                  <span className="font-data text-[10px] font-bold text-foreground">{n}</span>
+                  <span className="text-[10px] font-bold text-foreground">{n}</span>
                 </div>
-                <p className="font-body text-sm text-muted-foreground">{text}</p>
+                <p className="text-sm text-muted-foreground">{text}</p>
               </div>
             ))}
           </div>
@@ -93,7 +91,7 @@ export default function ForgotPasswordPage() {
           <Button
             type="button"
             variant="outline"
-            className="mb-4 w-full"
+            className="mb-4 h-12 w-full border border-[#14102e]/30 bg-white font-semibold hover:bg-secondary"
             onClick={() => sendReset(true)}
             disabled={resending || resent}
           >
@@ -121,19 +119,18 @@ export default function ForgotPasswordPage() {
               </Link>
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
-        <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Password</p>
-        <CardTitle>Reset password</CardTitle>
-        <CardDescription>We&apos;ll email you a secure link</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-[clamp(2rem,4vw,2.6rem)] font-semibold leading-[1.02] tracking-[-0.045em]">Reset password</h1>
+        <p className="mt-2 text-[15px] text-muted-foreground">We&apos;ll email you a secure link</p>
+      </div>
+      <div>
         {error && (
           <Alert variant="destructive" className="mb-5">
             <AlertDescription>{error}</AlertDescription>
@@ -162,10 +159,10 @@ export default function ForgotPasswordPage() {
               autoComplete="email"
               autoFocus
             />
-            <p className="font-body text-[11px] text-muted-foreground">Only sent if an account exists</p>
+            <p className="text-[11px] text-muted-foreground">Only sent if an account exists</p>
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="h-12 w-full text-[15px] font-semibold" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" /> Sending…
@@ -184,7 +181,7 @@ export default function ForgotPasswordPage() {
             </Link>
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

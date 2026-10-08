@@ -28,6 +28,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ProfilePosts } from "@/components/feed/ProfilePosts"
 import { profileSharePath } from "@/lib/share/profile-path"
 import { signedStorageUrl } from "@/lib/storage/signed-url"
+import { RecruiterIntegrationsCard } from "@/components/hiring/RecruiterIntegrationsCard"
 import type { UserRole } from "@/types"
 
 export default async function ProfilePage() {
@@ -224,6 +225,8 @@ export default async function ProfilePage() {
               </CardContent>
             </Card>
           ) : null}
+
+          {isRecruiter ? <RecruiterIntegrationsCard calendlyUrl={rp?.calendly_url} /> : null}
 
           <Card className="shadow-sm">
             <CardContent className="p-5">

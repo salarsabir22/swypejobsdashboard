@@ -8,6 +8,8 @@ import { Bookmark, X, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { applyHref, jobHasMandatoryQuestions } from "@/lib/jobs/screening"
+import { useRouter } from "next/navigation"
 
 type Direction = "right" | "left" | "saved"
 
@@ -15,12 +17,16 @@ export function StudentJobActions({
   userId,
   jobId,
   jobTitle,
+  screeningQuestions,
 }: {
   userId: string
   jobId: string
   jobTitle: string
+  screeningQuestions?: unknown
 }) {
+  const router = useRouter()
   const { toast } = useToast()
+  const needsApplyForm = jobHasMandatoryQuestions({ screening_questions: screeningQuestions })
   const [direction, setDirection] = useState<Direction | null>(null)
   const [loadingState, setLoadingState] = useState<"idle" | "fetch" | "act">("fetch")
 
@@ -43,6 +49,10 @@ export function StudentJobActions({
   }, [loadSwipe])
 
   const act = async (next: Direction) => {
+    if (next === "right" && needsApplyForm) {
+      router.push(applyHref(jobId))
+      return
+    }
     setLoadingState("act")
     const supabase = createClient()
     const { error } = await supabase.from("job_swipes").insert({

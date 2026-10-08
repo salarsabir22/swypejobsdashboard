@@ -80,7 +80,7 @@ export function ChatInboxClient({ currentUserId }: { currentUserId: string }) {
       >
         <div className="shrink-0 px-4 pb-3 pt-5">
           <div className="flex items-end justify-between gap-3">
-            <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">Messages</h1>
+            <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-[2.25rem]">Messages</h1>
             {unreadTotal > 0 ? (
               <Badge variant="secondary">{unreadTotal} unread</Badge>
             ) : null}

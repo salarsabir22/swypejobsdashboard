@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/button"
 import { undoCandidateSwipe } from "@/lib/swipe/undo"
 import { getBlockedPeerIds } from "@/lib/moderation/blocks"
 import { useToast } from "@/lib/hooks/use-toast"
+import { InterviewInviteDialog, type InterviewInviteTarget } from "@/components/hiring/InterviewInviteDialog"
+import { studentEligibleForJob } from "@/lib/jobs/screening"
 
 interface Candidate {
   profile: Profile
@@ -39,6 +41,7 @@ interface Job {
   id: string
   title: string
   required_skills?: string[] | null
+  required_semesters?: number[] | null
 }
 
 type SwipeRow = { student_id: string }
@@ -58,10 +61,16 @@ export function RecruiterDiscoverView({
   userId,
   selfImageUrl,
   selfName = "You",
+  recruiterName = "A recruiter",
+  companyName = "their company",
+  calendlyUrl,
 }: {
   userId: string
   selfImageUrl?: string | null
   selfName?: string
+  recruiterName?: string
+  companyName?: string
+  calendlyUrl?: string | null
 }) {
   const router = useRouter()
   const { toast } = useToast()
@@ -84,6 +93,8 @@ export function RecruiterDiscoverView({
   const [matchName, setMatchName] = useState("")
   const [matchHref, setMatchHref] = useState<string | null>(null)
   const [matchImage, setMatchImage] = useState<string | null>(null)
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteTarget, setInviteTarget] = useState<InterviewInviteTarget | null>(null)
 
   const loadCandidates = useCallback(
     async (jobId: string, jobList?: Job[]) => {
@@ -165,7 +176,7 @@ export function RecruiterDiscoverView({
     const supabase = createClient()
     const { data: jobsData } = await supabase
       .from("jobs")
-      .select("id, title, required_skills")
+      .select("id, title, required_skills, required_semesters")
       .eq("recruiter_id", userId)
       .eq("is_active", true)
     const list = (jobsData as Job[]) || []
@@ -185,6 +196,8 @@ export function RecruiterDiscoverView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const selectedJob = jobs.find((j) => j.id === selectedJobId)
+
   const candidates = useMemo(() => {
     const uni = university.trim().toLowerCase()
     const year = gradYear.trim()
@@ -193,9 +206,19 @@ export function RecruiterDiscoverView({
       if (uni && !(c.studentProfile.university || "").toLowerCase().includes(uni)) return false
       if (year && String(c.studentProfile.graduation_year || "") !== year) return false
       if (skill && !(c.studentProfile.skills || []).some((s) => s.toLowerCase().includes(skill))) return false
+      if (
+        !c.applied &&
+        !studentEligibleForJob({
+          requiredSemesters: selectedJob?.required_semesters,
+          stillEnrolled: c.studentProfile.still_enrolled,
+          currentSemester: c.studentProfile.current_semester,
+        })
+      ) {
+        return false
+      }
       return true
     })
-  }, [allCandidates, university, gradYear, skillQuery])
+  }, [allCandidates, university, gradYear, skillQuery, selectedJob?.required_semesters])
 
   useEffect(() => {
     setCurrentIndex(0)
@@ -204,7 +227,6 @@ export function RecruiterDiscoverView({
   const currentCandidate = candidates[currentIndex]
   const nextCandidate = candidates[currentIndex + 1]
   const remaining = Math.max(candidates.length - currentIndex, 0)
-  const selectedJob = jobs.find((j) => j.id === selectedJobId)
   const selectedTitle = selectedJob?.title
   const sessionSeen = sessionShortlisted + sessionPassed
 
@@ -255,13 +277,19 @@ export function RecruiterDiscoverView({
           setMatchOpen(true)
           setCelebrate(true)
           setTimeout(() => setCelebrate(false), 1200)
+          setInviteTarget({
+            matchId: match.id,
+            conversationId: conv?.id ?? null,
+            peerId: candidate.profile.id,
+            roleTitle: selectedTitle || "this role",
+          })
         }
       } else {
         setSessionPassed((n) => n + 1)
       }
       setTimeout(() => setSwiping(false), 100)
     },
-    [userId, selectedJobId, swiping, currentCandidate, toast]
+    [userId, selectedJobId, selectedTitle, swiping, currentCandidate, toast]
   )
 
   const handleUndo = useCallback(async () => {
@@ -483,7 +511,10 @@ export function RecruiterDiscoverView({
         <DiscoverHowItWorks audience="recruiter" />
         <MatchModal
           open={matchOpen}
-          onOpenChange={setMatchOpen}
+          onOpenChange={(open) => {
+            setMatchOpen(open)
+            if (!open && inviteTarget) setInviteOpen(true)
+          }}
           audience="recruiter"
           name={matchName}
           chatHref={matchHref}
@@ -491,6 +522,14 @@ export function RecruiterDiscoverView({
           selfImageUrl={selfImageUrl}
           selfName={selfName}
           selfContain
+        />
+        <InterviewInviteDialog
+          open={inviteOpen}
+          onOpenChange={setInviteOpen}
+          target={inviteTarget}
+          recruiterName={recruiterName}
+          companyName={companyName}
+          calendlyUrl={calendlyUrl}
         />
       </div>
     )
@@ -595,7 +634,10 @@ export function RecruiterDiscoverView({
       />
       <MatchModal
         open={matchOpen}
-        onOpenChange={setMatchOpen}
+        onOpenChange={(open) => {
+          setMatchOpen(open)
+          if (!open && inviteTarget) setInviteOpen(true)
+        }}
         audience="recruiter"
         name={matchName}
         chatHref={matchHref}
@@ -603,6 +645,14 @@ export function RecruiterDiscoverView({
         selfImageUrl={selfImageUrl}
         selfName={selfName}
         selfContain
+      />
+      <InterviewInviteDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        target={inviteTarget}
+        recruiterName={recruiterName}
+        companyName={companyName}
+        calendlyUrl={calendlyUrl}
       />
     </>
   )

@@ -51,8 +51,7 @@ export default function FeedbackPage() {
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <div>
-        <p className="font-data text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Product</p>
-        <h1 className="mt-1 font-heading text-2xl font-semibold tracking-tight">Feedback</h1>
+        <h1 className="font-heading text-3xl sm:text-[2.25rem] font-semibold">Feedback</h1>
         <p className="mt-2 font-body text-sm text-muted-foreground">
           Tell us what works, what doesn’t, and what to build next.
         </p>

@@ -13,6 +13,8 @@ import Link from "next/link"
 import { ShowMoreButton, ShowMoreList } from "@/components/ui/show-more-list"
 import { CredentialLink } from "@/components/storage/SignedFileLink"
 import { ApplicantListSkeleton } from "@/components/skeletons"
+import { ApplicationAnswersList } from "@/components/jobs/ApplicationAnswersList"
+import { InterviewInviteDialog, type InterviewInviteTarget } from "@/components/hiring/InterviewInviteDialog"
 
 interface CandidateItem {
   id: string
@@ -60,12 +62,30 @@ interface DecisionRow {
   direction: "right" | "left"
 }
 
-export function InterestedCandidatesPanel({ recruiterId, jobId }: { recruiterId: string; jobId: string }) {
+export function InterestedCandidatesPanel({
+  recruiterId,
+  jobId,
+  jobTitle,
+  screeningQuestions,
+  recruiterName,
+  companyName,
+  calendlyUrl,
+}: {
+  recruiterId: string
+  jobId: string
+  jobTitle: string
+  screeningQuestions?: unknown
+  recruiterName: string
+  companyName: string
+  calendlyUrl?: string | null
+}) {
   const supabase = useMemo(() => createClient(), [])
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [items, setItems] = useState<CandidateItem[]>([])
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteTarget, setInviteTarget] = useState<InterviewInviteTarget | null>(null)
 
   useEffect(() => {
     const run = async () => {
@@ -159,6 +179,25 @@ export function InterestedCandidatesPanel({ recruiterId, jobId }: { recruiterId:
           ? "Your interest in this candidate has been saved."
           : "Your decision has been saved.",
     })
+    if (direction === "right") {
+      const { data: match } = await supabase
+        .from("matches")
+        .select("id, conversations(id)")
+        .eq("recruiter_id", recruiterId)
+        .eq("student_id", studentId)
+        .eq("job_id", jobId)
+        .maybeSingle()
+      if (match?.id) {
+        const conv = Array.isArray(match.conversations) ? match.conversations[0] : match.conversations
+        setInviteTarget({
+          matchId: match.id,
+          conversationId: conv?.id ?? null,
+          peerId: studentId,
+          roleTitle: jobTitle,
+        })
+        setInviteOpen(true)
+      }
+    }
     setBusyId(null)
   }
 
@@ -232,6 +271,12 @@ export function InterestedCandidatesPanel({ recruiterId, jobId }: { recruiterId:
                             </div>
                           ) : null}
 
+                          <ApplicationAnswersList
+                            jobId={jobId}
+                            studentId={item.id}
+                            screeningQuestions={screeningQuestions}
+                          />
+
                           {links.length > 0 ? (
                             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
                               {links.map(({ href, label }) => (
@@ -297,6 +342,14 @@ export function InterestedCandidatesPanel({ recruiterId, jobId }: { recruiterId:
           </ul>
         )}
       </CardContent>
+      <InterviewInviteDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        target={inviteTarget}
+        recruiterName={recruiterName}
+        companyName={companyName}
+        calendlyUrl={calendlyUrl}
+      />
     </Card>
   )
 }

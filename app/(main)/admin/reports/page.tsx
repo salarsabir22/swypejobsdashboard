@@ -49,7 +49,7 @@ export default async function AdminReportsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-3xl font-bold text-foreground">Reports</h1>
+        <h1 className="font-heading text-3xl font-semibold text-foreground sm:text-[2.25rem]">Reports</h1>
         <p className="mt-0.5 font-body text-sm text-muted-foreground">User-submitted safety reports</p>
       </div>
 

@@ -11,6 +11,7 @@ import {
 import { CompanyPicker } from "@/components/profile/CompanyPicker"
 import { UniversityPicker } from "@/components/profile/UniversityPicker"
 import { COMPANY_INDUSTRIES, EMPLOYEE_RANGES } from "@/lib/company-options"
+import { normalizeCalendlyUrl } from "@/lib/hiring/interview-invite"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { UserRole } from "@/types"
@@ -1102,6 +1103,9 @@ export default function OnboardingPage() {
   const [university, setUniversity] = useState("")
   const [degree, setDegree] = useState("")
   const [graduationYear, setGraduationYear] = useState("")
+  const [institutionType, setInstitutionType] = useState<"university" | "college">("university")
+  const [stillEnrolled, setStillEnrolled] = useState(false)
+  const [currentSemester, setCurrentSemester] = useState("")
   const [skills, setSkills] = useState<string[]>([])
   const [skillInput, setSkillInput] = useState("")
   const [preferredCategories, setPreferredCategories] = useState<string[]>([])
@@ -1121,6 +1125,7 @@ export default function OnboardingPage() {
   const [websiteUrl, setWebsiteUrl] = useState("")
   const [employeeCount, setEmployeeCount] = useState("")
   const [industry, setIndustry] = useState("")
+  const [calendlyUrl, setCalendlyUrl] = useState("")
 
   useEffect(() => {
     const supabase = createClient()
@@ -1156,13 +1161,18 @@ export default function OnboardingPage() {
 
       const { data: student } = await supabase
         .from("student_profiles")
-        .select("university, degree, graduation_year, skills, preferred_job_categories, linkedin_url, github_url, portfolio_url, resume_url")
+        .select("university, degree, graduation_year, institution_type, still_enrolled, current_semester, skills, preferred_job_categories, linkedin_url, github_url, portfolio_url, resume_url")
         .eq("id", user.id)
         .maybeSingle()
       if (student) {
         if (student.university) setUniversity(student.university)
         if (student.degree) setDegree(student.degree)
         if (student.graduation_year) setGraduationYear(String(student.graduation_year))
+        if (student.institution_type === "college" || student.institution_type === "university") {
+          setInstitutionType(student.institution_type)
+        }
+        if (typeof student.still_enrolled === "boolean") setStillEnrolled(student.still_enrolled)
+        if (student.current_semester) setCurrentSemester(String(student.current_semester))
         if (student.skills?.length) setSkills(student.skills)
         if (student.preferred_job_categories?.length) setPreferredCategories(student.preferred_job_categories)
         if (student.linkedin_url) setLinkedinUrl(student.linkedin_url)
@@ -1173,7 +1183,7 @@ export default function OnboardingPage() {
 
       const { data: recruiter } = await supabase
         .from("recruiter_profiles")
-        .select("company_name, description, hiring_focus, website_url, employee_count, industry")
+        .select("company_name, description, hiring_focus, website_url, employee_count, industry, calendly_url")
         .eq("id", user.id)
         .maybeSingle()
       if (recruiter) {
@@ -1183,6 +1193,7 @@ export default function OnboardingPage() {
         if (recruiter.website_url) setWebsiteUrl(recruiter.website_url)
         if (recruiter.employee_count) setEmployeeCount(recruiter.employee_count)
         if (recruiter.industry) setIndustry(recruiter.industry)
+        if (recruiter.calendly_url) setCalendlyUrl(recruiter.calendly_url)
       }
     })
   }, [])
@@ -1343,28 +1354,54 @@ export default function OnboardingPage() {
         let resumeUrl: string | undefined
         if (resumeFile) resumeUrl = await uploadFile(resumeFile, "resumes", `${user.id}/${crypto.randomUUID()}.pdf`)
         else if (existingResumeUrl) resumeUrl = existingResumeUrl
-        const studentData = {
+        const studentData: Record<string, unknown> = {
           id: user.id, university, degree,
           graduation_year: graduationYear ? parseInt(graduationYear) : null,
+          institution_type: institutionType,
+          still_enrolled: stillEnrolled,
+          current_semester: stillEnrolled && currentSemester ? parseInt(currentSemester) : null,
           skills, preferred_job_categories: preferredCategories,
           linkedin_url: linkedinUrl || null, github_url: githubUrl || null,
           portfolio_url: portfolioUrl || null, resume_url: resumeUrl || null,
         }
-        const { data: updated } = await supabase.from("student_profiles").update(studentData).eq("id", user.id).select()
-        if (!updated || updated.length === 0) await supabase.from("student_profiles").insert(studentData)
+        let { data: updated, error: studentErr } = await supabase.from("student_profiles").update(studentData).eq("id", user.id).select()
+        if (studentErr) {
+          delete studentData.institution_type
+          delete studentData.still_enrolled
+          delete studentData.current_semester
+          const retry = await supabase.from("student_profiles").update(studentData).eq("id", user.id).select()
+          updated = retry.data
+          studentErr = retry.error
+        }
+        if (!updated || updated.length === 0) {
+          const insert = await supabase.from("student_profiles").insert(studentData)
+          if (insert.error && (studentData.institution_type || studentData.still_enrolled || studentData.current_semester)) {
+            delete studentData.institution_type
+            delete studentData.still_enrolled
+            delete studentData.current_semester
+            await supabase.from("student_profiles").insert(studentData)
+          }
+        }
         window.location.href = "/dashboard"
       } else if (role === "recruiter") {
         const recruiterData: Record<string, unknown> = {
           id: user.id, company_name: companyName, description: companyDescription,
           hiring_focus: hiringFocus, website_url: websiteUrl || null,
           employee_count: employeeCount || null, industry: industry || null,
+          calendly_url: normalizeCalendlyUrl(calendlyUrl) || null,
         }
-        const { data: updated } = await supabase.from("recruiter_profiles").update(recruiterData).eq("id", user.id).select()
+        let { data: updated, error: recErr } = await supabase.from("recruiter_profiles").update(recruiterData).eq("id", user.id).select()
+        if (recErr && recruiterData.calendly_url) {
+          delete recruiterData.calendly_url
+          const retry = await supabase.from("recruiter_profiles").update(recruiterData).eq("id", user.id).select()
+          updated = retry.data
+        }
         if (!updated || updated.length === 0) {
           const insert = await supabase.from("recruiter_profiles").insert(recruiterData)
-          if (insert.error && (employeeCount || industry)) {
+          if (insert.error && (employeeCount || industry || recruiterData.calendly_url)) {
             delete recruiterData.employee_count
             delete recruiterData.industry
+            delete recruiterData.calendly_url
             await supabase.from("recruiter_profiles").insert(recruiterData)
           }
         }
@@ -1569,6 +1606,45 @@ export default function OnboardingPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div>
+                    <Label className={labelClass}>This is a</Label>
+                    <Select value={institutionType} onValueChange={(v) => setInstitutionType(v as "university" | "college")}>
+                      <SelectTrigger className={cn(inputFieldClass, "w-full justify-between pr-3")}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="university">University</SelectItem>
+                        <SelectItem value="college">College</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/40 p-4 text-sm">
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-4 accent-[var(--primary)]"
+                      checked={stillEnrolled}
+                      onChange={(e) => setStillEnrolled(e.target.checked)}
+                    />
+                    <span>I am still in {institutionType === "college" ? "college" : "university"}</span>
+                  </label>
+                  {stillEnrolled ? (
+                    <div>
+                      <Label className={labelClass}>Current semester</Label>
+                      <Select value={currentSemester || undefined} onValueChange={setCurrentSemester}>
+                        <SelectTrigger className={cn(inputFieldClass, "w-full justify-between pr-3")}>
+                          <SelectValue placeholder="Select semester…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                            <SelectItem key={n} value={String(n)}>
+                              Semester {n}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <HelpText>Some internships are only shown to 7th and 8th semester students.</HelpText>
+                    </div>
+                  ) : null}
                 </div>
               )}
 
@@ -1773,6 +1849,16 @@ export default function OnboardingPage() {
                       />
                       <ExternalLink className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     </div>
+                  </div>
+                  <div>
+                    <Label className={labelClass}>Calendly link</Label>
+                    <Input
+                      className={inputFieldClass}
+                      placeholder="https://calendly.com/your-company/30min"
+                      value={calendlyUrl}
+                      onChange={(e) => setCalendlyUrl(e.target.value)}
+                    />
+                    <HelpText>Sent to candidates when you shortlist them, so they can book a 30-minute interview.</HelpText>
                   </div>
                   <div>
                     <Label className={labelClass}>Industry</Label>

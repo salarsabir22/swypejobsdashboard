@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { JOB_CATEGORIES } from "@/lib/company-options"
 import { notifyNewJobsInCategory } from "@/lib/engagement"
+import { parseRequiredSemesters, parseScreeningQuestions, type ScreeningQuestion } from "@/lib/jobs/screening"
+import { ScreeningQuestionsEditor } from "@/components/jobs/ScreeningQuestionsEditor"
 import type { Job } from "@/types"
 
 const SKILL_SUGGESTIONS = [
@@ -51,6 +53,8 @@ export function JobEditor({ job }: { job?: Job }) {
   const [salaryMin, setSalaryMin] = useState(job?.salary_min ? String(job.salary_min) : "")
   const [salaryMax, setSalaryMax] = useState(job?.salary_max ? String(job.salary_max) : "")
   const [salaryNote, setSalaryNote] = useState(job?.compensation_note ?? "")
+  const [questions, setQuestions] = useState<ScreeningQuestion[]>(() => parseScreeningQuestions(job?.screening_questions))
+  const [requiredSemesters, setRequiredSemesters] = useState<number[]>(() => parseRequiredSemesters(job?.required_semesters))
 
   const addSkill = (skill: string, list: string[], setList: (v: string[]) => void, clear: () => void) => {
     const s = skill.trim()
@@ -88,17 +92,21 @@ export function JobEditor({ job }: { job?: Job }) {
     else if (editing) payload.salary_max = null
     payload.compensation_note = salaryNote.trim() || null
     payload.salary_currency = "PKR"
+    payload.screening_questions = questions.filter((q) => q.prompt.trim())
+    payload.required_semesters = requiredSemesters
 
     const query = editing
       ? supabase.from("jobs").update(payload).eq("id", job!.id)
       : supabase.from("jobs").insert(payload)
     const { error } = await query
-    if (error && (category || min || max || salaryNote.trim())) {
+    if (error && (category || min || max || salaryNote.trim() || questions.length || requiredSemesters.length)) {
       delete payload.category
       delete payload.salary_min
       delete payload.salary_max
       delete payload.compensation_note
       delete payload.salary_currency
+      delete payload.screening_questions
+      delete payload.required_semesters
       const retry = editing
         ? await supabase.from("jobs").update(payload).eq("id", job!.id)
         : await supabase.from("jobs").insert(payload)
@@ -140,10 +148,7 @@ export function JobEditor({ job }: { job?: Job }) {
           </Link>
         </Button>
         <div className="min-w-0">
-          <p className="font-data text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            {editing ? "Edit listing" : "New listing"}
-          </p>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]">
+          <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-[2.25rem]">
             {editing ? "Update job" : "Post a job"}
           </h1>
         </div>
@@ -379,6 +384,15 @@ export function JobEditor({ job }: { job?: Job }) {
                 ))}
               </div>
             </div>
+
+            <Separator />
+
+            <ScreeningQuestionsEditor
+              questions={questions}
+              onChange={setQuestions}
+              requiredSemesters={requiredSemesters}
+              onSemestersChange={setRequiredSemesters}
+            />
 
             <Button type="submit" className="h-12 w-full rounded-xl" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : editing ? "Save changes" : "Publish listing"}

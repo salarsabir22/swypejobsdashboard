@@ -216,7 +216,16 @@ export async function RecruiterDashboardView({ userId, fullName }: { userId: str
     <div className="space-y-8">
       <DashboardPageHeader
         eyebrow="Insights"
-        title={firstName ? `${firstName}, here’s hiring` : "Hiring overview"}
+        title={
+          firstName ? (
+            <>
+              <span className="text-primary">{firstName}</span>
+              , here’s hiring
+            </>
+          ) : (
+            "Hiring overview"
+          )
+        }
         description="Inbound interest, pipeline stages, and role performance from your live postings."
         action={
           <Button asChild variant="outline" className="rounded-full">

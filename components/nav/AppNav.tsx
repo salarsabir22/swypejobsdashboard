@@ -6,12 +6,15 @@ import { usePathname } from "next/navigation"
 import { LogOut, Menu, MessageSquareText, LayoutDashboard, Share2, Users, UserRound } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
+import { Logo } from "@/components/brand/Logo"
 import type { UserRole } from "@/types"
 import { NotificationBell } from "@/components/nav/NotificationBell"
 import { ShareProfileMenuItem } from "@/components/share/ShareButton"
 import { shareOrCopyLink } from "@/lib/share/share-link"
 import { useToast } from "@/lib/hooks/use-toast"
 import { recruiterMoreLinks, studentMoreLinks } from "@/components/nav/app-nav-config"
+import { useChatUnread } from "@/lib/hooks/use-chat-unread"
+import { NavUnreadBadge } from "@/components/nav/NavUnreadBadge"
 import { profileSharePath } from "@/lib/share/profile-path"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -63,11 +66,7 @@ const adminLinks: NavLink[] = [
 ]
 
 function BrandMark({ className }: { className?: string }) {
-  return (
-    <span className={cn("font-heading text-[17px] font-semibold tracking-[-0.03em] text-foreground", className)}>
-      swypejobs<span className="text-muted-foreground">.</span>
-    </span>
-  )
+  return <Logo size={26} className={className} />
 }
 
 function navItemClass(active: boolean) {
@@ -75,8 +74,8 @@ function navItemClass(active: boolean) {
     "inline-flex h-8 items-center justify-center rounded-full px-3 text-[13px] font-medium tracking-[-0.01em] transition-colors duration-150",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
     active
-      ? "bg-foreground/[0.06] text-foreground"
-      : "text-muted-foreground hover:bg-foreground/[0.04] hover:text-foreground"
+      ? "bg-secondary font-semibold text-primary"
+      : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
   )
 }
 
@@ -92,6 +91,7 @@ interface AppNavProps {
 export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }: AppNavProps) {
   const pathname = usePathname()
   const { toast } = useToast()
+  const chatUnread = useChatUnread()
   const [mobileOpen, setMobileOpen] = useState(false)
   const signedIn = Boolean(userId)
   const sharePath = userId && role !== "admin" ? profileSharePath(role, userId) : null
@@ -139,8 +139,8 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
               </SheetTrigger>
               <SheetContent side="left" className="flex w-[min(20rem,88vw)] flex-col overflow-y-auto p-0">
                 <SheetHeader className="border-b border-border px-5 py-5 text-left">
-                  <SheetTitle className="font-heading text-[17px] font-semibold tracking-[-0.03em]">
-                    swypejobs<span className="text-muted-foreground">.</span>
+                  <SheetTitle>
+                    <Logo size={26} />
                   </SheetTitle>
                   <SheetDescription className="text-[13px] text-muted-foreground">
                     {displayName} · {roleLabel}
@@ -156,8 +156,8 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
                             className={cn(
                               "rounded-xl px-3 py-2.5 text-[15px] font-medium tracking-[-0.01em] transition-colors",
                               isActive(link.href)
-                                ? "bg-foreground/[0.06] text-foreground"
-                                : "text-foreground/80 hover:bg-foreground/[0.04] hover:text-foreground"
+                                ? "bg-secondary font-semibold text-primary"
+                                : "text-foreground/80 hover:bg-secondary/70 hover:text-foreground"
                             )}
                           >
                             {link.label}
@@ -176,8 +176,8 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
                               className={cn(
                                 "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium tracking-[-0.01em] transition-colors",
                                 active
-                                  ? "bg-foreground/[0.06] text-foreground"
-                                  : "text-foreground/80 hover:bg-foreground/[0.04] hover:text-foreground"
+                                  ? "bg-secondary font-semibold text-primary"
+                                  : "text-foreground/80 hover:bg-secondary/70 hover:text-foreground"
                               )}
                             >
                               <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
@@ -190,7 +190,7 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
                     <SheetClose asChild>
                       <button
                         type="button"
-                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] font-medium tracking-[-0.01em] text-foreground/80 transition-colors hover:bg-foreground/[0.04] hover:text-foreground"
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] font-medium tracking-[-0.01em] text-foreground/80 transition-colors hover:bg-secondary/70 hover:text-foreground"
                         onClick={() => {
                           void shareOrCopyLink({ path: sharePath, title: resolvedShareTitle }).then((result) => {
                             if (result === "copied") {
@@ -239,9 +239,10 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
                   key={link.href}
                   href={link.href}
                   aria-current={isActive(link.href) ? "page" : undefined}
-                  className={navItemClass(isActive(link.href))}
+                  className={cn(navItemClass(isActive(link.href)), "relative")}
                 >
                   {link.label}
+                  {link.href === "/chat" ? <NavUnreadBadge count={chatUnread} className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-white" /> : null}
                 </Link>
               ))}
             </nav>

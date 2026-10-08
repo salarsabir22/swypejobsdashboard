@@ -21,37 +21,9 @@ export function SavedJobActions({ swipeId, jobId, jobTitle, userId, isActive }: 
   const { toast } = useToast()
   const [busy, setBusy] = useState<"apply" | "unsave" | null>(null)
 
-  const apply = async () => {
+  const apply = () => {
     if (!isActive) return
-    setBusy("apply")
-    const supabase = createClient()
-
-    const { error: delErr } = await supabase.from("job_swipes").delete().eq("id", swipeId).eq("student_id", userId)
-    if (delErr) {
-      toast({ variant: "destructive", title: "Could not apply", description: delErr.message })
-      setBusy(null)
-      return
-    }
-
-    const { error: insErr } = await supabase.from("job_swipes").insert({
-      student_id: userId,
-      job_id: jobId,
-      direction: "right",
-    })
-    if (insErr) {
-      toast({
-        variant: "destructive",
-        title: "Could not finish apply",
-        description: insErr.message,
-      })
-      setBusy(null)
-      void router.refresh()
-      return
-    }
-
-    toast({ title: "Applied", description: jobTitle })
-    setBusy(null)
-    router.refresh()
+    router.push(`/jobs/${jobId}/apply`)
   }
 
   const unsave = async () => {
