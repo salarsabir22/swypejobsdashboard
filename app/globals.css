@@ -713,6 +713,25 @@ body {
   mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 78%);
 }
 
+.tiptap {
+  outline: none;
+}
+.tiptap ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.tiptap ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  color: var(--muted-foreground);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
 @keyframes lp-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }

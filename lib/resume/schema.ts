@@ -56,6 +56,26 @@ export type ResumeSkill = {
   keywords?: string[]
 }
 
+export type ResumeLanguage = {
+  id: string
+  language: string
+  fluency?: string
+}
+
+export type ResumeCertificate = {
+  id: string
+  name: string
+  issuer?: string
+  date?: string
+}
+
+export type ResumeAward = {
+  id: string
+  title: string
+  date?: string
+  summary?: string
+}
+
 export type JsonResume = {
   $schema?: string
   basics: ResumeBasics
@@ -63,6 +83,9 @@ export type JsonResume = {
   education: ResumeEducation[]
   skills: ResumeSkill[]
   projects: ResumeProject[]
+  languages: ResumeLanguage[]
+  certificates: ResumeCertificate[]
+  awards: ResumeAward[]
 }
 
 export type CoverLetter = {
@@ -72,6 +95,14 @@ export type CoverLetter = {
   role: string
   body: string
   updatedAt: string
+}
+
+export type ResumeRecord = {
+  id: string
+  title: string
+  updatedAt: string
+  isProfile: boolean
+  resume: JsonResume
 }
 
 export function newId() {
@@ -87,7 +118,20 @@ export function emptyResume(): JsonResume {
     education: [],
     skills: [],
     projects: [],
+    languages: [],
+    certificates: [],
+    awards: [],
   }
+}
+
+export function moveById<T extends { id: string }>(items: T[], id: string, direction: -1 | 1): T[] {
+  const index = items.findIndex((item) => item.id === id)
+  const nextIndex = index + direction
+  if (index < 0 || nextIndex < 0 || nextIndex >= items.length) return items
+  const next = [...items]
+  const [row] = next.splice(index, 1)
+  next.splice(nextIndex, 0, row)
+  return next
 }
 
 function asString(value: unknown) {
@@ -172,6 +216,113 @@ export function parseResume(raw: unknown): JsonResume {
         highlights: asList(row.highlights).map(asString).filter(Boolean),
       }
     }),
+    languages: asList(data.languages).map((item, index) => {
+      const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {}
+      return {
+        id: asString(row.id) || `lang-${index}`,
+        language: asString(row.language),
+        fluency: asString(row.fluency) || undefined,
+      }
+    }),
+    certificates: asList(data.certificates).map((item, index) => {
+      const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {}
+      return {
+        id: asString(row.id) || `cert-${index}`,
+        name: asString(row.name),
+        issuer: asString(row.issuer) || undefined,
+        date: asString(row.date) || undefined,
+      }
+    }),
+    awards: asList(data.awards).map((item, index) => {
+      const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {}
+      return {
+        id: asString(row.id) || `award-${index}`,
+        title: asString(row.title),
+        date: asString(row.date) || undefined,
+        summary: asString(row.summary) || undefined,
+      }
+    }),
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null
+}
+
+export function newResumeRecord(resume: JsonResume, partial?: Partial<Pick<ResumeRecord, "id" | "title" | "isProfile">>): ResumeRecord {
+  const title =
+    partial?.title?.trim() ||
+    resume.basics.label?.trim() ||
+    (resume.basics.name?.trim() ? `${resume.basics.name.trim()} resume` : "Resume")
+  return {
+    id: partial?.id || newId(),
+    title,
+    updatedAt: new Date().toISOString(),
+    isProfile: Boolean(partial?.isProfile),
+    resume,
+  }
+}
+
+function parseResumeRecord(item: unknown, index: number): ResumeRecord | null {
+  const row = asRecord(item)
+  if (!row) return null
+  const nested = row.resume
+  const resume = parseResume(nested && typeof nested === "object" ? nested : row.basics ? row : null)
+  const empty =
+    !resume.basics.name &&
+    !resume.work.length &&
+    !resume.education.length &&
+    !resume.skills.length &&
+    !resume.projects.length &&
+    !resume.languages.length &&
+    !resume.certificates.length &&
+    !resume.awards.length &&
+    !resume.basics.summary
+  if (empty && !asString(row.title) && !asString(row.id)) return null
+  return {
+    id: asString(row.id) || `resume-${index}`,
+    title: asString(row.title) || resume.basics.label || resume.basics.name || "Resume",
+    updatedAt: asString(row.updatedAt) || new Date().toISOString(),
+    isProfile: row.isProfile === true,
+    resume,
+  }
+}
+
+/** Accepts a single JSON Resume, `{ documents: [...] }`, or an array of records. */
+export function parseResumeLibrary(raw: unknown): ResumeRecord[] {
+  if (!raw) return []
+  if (Array.isArray(raw)) {
+    return raw.map(parseResumeRecord).filter(Boolean) as ResumeRecord[]
+  }
+  const row = asRecord(raw)
+  if (!row) return []
+  if (Array.isArray(row.documents)) {
+    return row.documents.map(parseResumeRecord).filter(Boolean) as ResumeRecord[]
+  }
+  if (row.basics) {
+    const resume = parseResume(row)
+    return [
+      {
+        id: "primary",
+        title: resume.basics.label || resume.basics.name || "Resume",
+        updatedAt: new Date().toISOString(),
+        isProfile: true,
+        resume,
+      },
+    ]
+  }
+  return []
+}
+
+export function serializeResumeLibrary(documents: ResumeRecord[]) {
+  return {
+    documents: documents.map((doc) => ({
+      id: doc.id,
+      title: doc.title,
+      updatedAt: doc.updatedAt,
+      isProfile: doc.isProfile,
+      resume: doc.resume,
+    })),
   }
 }
 
@@ -215,5 +366,14 @@ export function toJsonResumeFile(doc: JsonResume) {
     education: doc.education.map(({ id: _id, ...rest }) => rest),
     skills: doc.skills.map((s) => ({ name: s.name, keywords: s.keywords?.length ? s.keywords : undefined })),
     projects: doc.projects.map(({ id: _id, ...rest }) => rest),
+    languages: doc.languages
+      .filter((row) => row.language)
+      .map(({ id: _id, ...rest }) => rest),
+    certificates: doc.certificates
+      .filter((row) => row.name)
+      .map(({ id: _id, ...rest }) => rest),
+    awards: doc.awards
+      .filter((row) => row.title)
+      .map(({ id: _id, ...rest }) => rest),
   }
 }

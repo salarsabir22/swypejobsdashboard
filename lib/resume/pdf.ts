@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib"
+import { htmlToPlain } from "@/lib/resume/html"
 import type { CoverLetter, JsonResume } from "@/lib/resume/schema"
 
 const PAGE_W = 612
@@ -75,7 +76,7 @@ class Writer {
   heading(label: string) {
     this.ensure(36)
     this.gap(10)
-    this.page.drawText(latin(label).toUpperCase(), {
+    this.page.drawText(latin(label), {
       x: MARGIN,
       y: this.y - 10,
       size: 9,
@@ -115,9 +116,9 @@ export async function renderResumePdf(resume: JsonResume) {
   if (meta) w.text(meta, { size: 9, color: MUTED })
   w.gap(6)
 
-  if (b.summary?.trim()) {
+  if (htmlToPlain(b.summary || "")) {
     w.heading("Summary")
-    w.text(b.summary, { size: 10 })
+    w.text(htmlToPlain(b.summary || ""), { size: 10 })
   }
 
   if (resume.education.some((e) => e.institution || e.studyType || e.area)) {
@@ -138,9 +139,10 @@ export async function renderResumePdf(resume: JsonResume) {
       if (title) w.text(title, { size: 11, font: bold })
       const dates = [job.startDate, job.endDate || "Present"].filter(Boolean).join(" – ")
       if (dates) w.text(dates, { size: 9, color: MUTED })
-      if (job.summary) w.text(job.summary, { size: 10 })
+      if (htmlToPlain(job.summary || "")) w.text(htmlToPlain(job.summary || ""), { size: 10 })
       for (const h of job.highlights || []) {
-        if (h.trim()) w.text(`• ${h}`, { size: 10 })
+        const line = htmlToPlain(h)
+        if (line) w.text(`• ${line}`, { size: 10 })
       }
       w.gap(8)
     }
@@ -151,7 +153,7 @@ export async function renderResumePdf(resume: JsonResume) {
     for (const project of resume.projects) {
       w.text(project.name, { size: 11, font: bold })
       if (project.url) w.text(project.url, { size: 9, color: MUTED })
-      if (project.description) w.text(project.description, { size: 10 })
+      if (htmlToPlain(project.description || "")) w.text(htmlToPlain(project.description || ""), { size: 10 })
       for (const h of project.highlights || []) {
         if (h.trim()) w.text(`• ${h}`, { size: 10 })
       }
@@ -163,6 +165,34 @@ export async function renderResumePdf(resume: JsonResume) {
   if (skills.length) {
     w.heading("Skills")
     w.text(skills.join("  ·  "), { size: 10 })
+  }
+
+  if (resume.languages?.some((row) => row.language)) {
+    w.heading("Languages")
+    w.text(
+      resume.languages
+        .filter((row) => row.language)
+        .map((row) => [row.language, row.fluency].filter(Boolean).join(" — "))
+        .join("  ·  "),
+      { size: 10 }
+    )
+  }
+
+  if (resume.certificates?.some((row) => row.name)) {
+    w.heading("Certificates")
+    for (const row of resume.certificates) {
+      if (!row.name) continue
+      w.text([row.name, row.issuer, row.date].filter(Boolean).join(" · "), { size: 10 })
+    }
+  }
+
+  if (resume.awards?.some((row) => row.title)) {
+    w.heading("Awards")
+    for (const row of resume.awards) {
+      if (!row.title) continue
+      w.text([row.title, row.date].filter(Boolean).join(" · "), { size: 11, font: bold })
+      if (htmlToPlain(row.summary || "")) w.text(htmlToPlain(row.summary || ""), { size: 10 })
+    }
   }
 
   return pdf.save()
@@ -178,12 +208,12 @@ export async function renderCoverLetterPdf(letter: CoverLetter, name?: string) {
   w.text(name || letter.title, { size: 16, font: bold })
   w.text(heading, { size: 11, color: MUTED })
   w.gap(16)
-  for (const para of letter.body.split(/\n+/)) {
+  for (const para of htmlToPlain(letter.body).split(/\n+/)) {
     if (!para.trim()) {
       w.gap(8)
       continue
     }
-    w.text(para, { size: 11 })
+    w.text(para.replace(/^•\s*/, "• "), { size: 11 })
     w.gap(8)
   }
   return pdf.save()

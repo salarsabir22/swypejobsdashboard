@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { JobApplyForm } from "@/components/jobs/JobApplyForm"
-import { parseCoverLetters } from "@/lib/resume/schema"
+import { parseCoverLetters, parseResumeLibrary } from "@/lib/resume/schema"
 import { parseScreeningQuestions, studentEligibleForJob } from "@/lib/jobs/screening"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -30,7 +30,7 @@ export default async function JobApplyPage({ params }: { params: Promise<{ jobId
 
   const studentQuery = await supabase
     .from("student_profiles")
-    .select("still_enrolled, current_semester, cover_letters")
+    .select("still_enrolled, current_semester, cover_letters, resume_document")
     .eq("id", user.id)
     .maybeSingle()
   const student = studentQuery.error
@@ -94,6 +94,7 @@ export default async function JobApplyPage({ params }: { params: Promise<{ jobId
             companyName={company?.company_name || ""}
             questions={questions}
             savedLetters={parseCoverLetters((student as { cover_letters?: unknown } | null)?.cover_letters)}
+            savedResumes={parseResumeLibrary((student as { resume_document?: unknown } | null)?.resume_document)}
           />
         </CardContent>
       </Card>

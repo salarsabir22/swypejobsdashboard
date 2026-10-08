@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LogOut, Menu, MessageSquareText, LayoutDashboard, Share2, Users, UserRound } from "lucide-react"
+import { FileText, LogOut, Menu, MessageSquareText, LayoutDashboard, Share2, Users, UserRound } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { Logo } from "@/components/brand/Logo"
@@ -42,6 +42,7 @@ const studentLinks: NavLink[] = [
   { href: "/discover", label: "Discover" },
   { href: "/feed", label: "Feed" },
   { href: "/matches", label: "Applications" },
+  { href: "/resume", label: "Resume" },
   { href: "/chat", label: "Messages" },
   { href: "/dashboard", label: "Insights" },
   { href: "/community", label: "Community" },
@@ -301,6 +302,14 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
                           Profile
                         </Link>
                       </DropdownMenuItem>
+                      {role === "student" ? (
+                        <DropdownMenuItem asChild>
+                          <Link href="/resume">
+                            <FileText />
+                            Resume
+                          </Link>
+                        </DropdownMenuItem>
+                      ) : null}
                       <DropdownMenuItem asChild>
                         <Link href="/dashboard">
                           <LayoutDashboard />

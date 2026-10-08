@@ -127,6 +127,7 @@ function columnsFor(role: UserRole | "admin"): { cols: FooterCol[]; cta: FooterL
         links: [
           { href: "/discover", label: "Roles for you" },
           { href: "/matches", label: "Applications" },
+          { href: "/resume", label: "Resume builder" },
           { href: "/chat", label: "Messages" },
           { href: "/profile", label: "Your profile" },
         ],

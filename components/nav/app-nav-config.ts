@@ -20,6 +20,7 @@ export const studentTabs: TabItem[] = [
   { href: "/discover", icon: Layers, label: "Discover" },
   { href: "/feed", icon: Newspaper, label: "Feed" },
   { href: "/matches", icon: Briefcase, label: "Apps" },
+  { href: "/resume", icon: FileText, label: "Resume" },
   { href: "/chat", icon: MessageCircle, label: "Chat" },
 ]
 

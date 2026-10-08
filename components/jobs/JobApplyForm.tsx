@@ -12,7 +12,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { isUniqueViolation } from "@/lib/swipe/errors"
 import { COVER_LETTER_QUESTION_ID } from "@/lib/resume/cover-letter"
-import type { CoverLetter } from "@/lib/resume/schema"
+import { renderResumePdf } from "@/lib/resume/pdf"
+import { saveResumeDocuments, uploadResumePdf } from "@/lib/resume/persist"
+import type { CoverLetter, ResumeRecord } from "@/lib/resume/schema"
 
 const MAX_VIDEO_SECONDS = 90
 const MAX_VIDEO_MB = 40
@@ -25,6 +27,7 @@ export function JobApplyForm({
   companyName,
   questions,
   savedLetters = [],
+  savedResumes = [],
 }: {
   userId: string
   jobId: string
@@ -33,12 +36,14 @@ export function JobApplyForm({
   companyName: string
   questions: ScreeningQuestion[]
   savedLetters?: CoverLetter[]
+  savedResumes?: ResumeRecord[]
 }) {
   const router = useRouter()
   const { toast } = useToast()
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [files, setFiles] = useState<Record<string, File | null>>({})
   const [coverLetter, setCoverLetter] = useState(savedLetters[0]?.body || "")
+  const [resumeId, setResumeId] = useState(savedResumes.find((doc) => doc.isProfile)?.id || savedResumes[0]?.id || "")
   const [busy, setBusy] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
@@ -57,6 +62,23 @@ export function JobApplyForm({
 
     setBusy(true)
     const supabase = createClient()
+    const chosen = savedResumes.find((doc) => doc.id === resumeId)
+    if (chosen) {
+      try {
+        const bytes = await renderResumePdf(chosen.resume)
+        const path = await uploadResumePdf(supabase, userId, bytes)
+        const nextDocuments = savedResumes.map((doc) => ({ ...doc, isProfile: doc.id === chosen.id }))
+        await saveResumeDocuments(supabase, userId, nextDocuments, savedLetters, path)
+      } catch (err) {
+        toast({
+          variant: "destructive",
+          title: "Could not attach that resume",
+          description: err instanceof Error ? err.message : "Try publishing it from the builder first.",
+        })
+        setBusy(false)
+        return
+      }
+    }
 
     for (const q of questions) {
       let mediaUrl: string | null = null
@@ -151,17 +173,50 @@ export function JobApplyForm({
 
   return (
     <form onSubmit={submit} className="space-y-6">
+      {savedResumes.length ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label>Resume to send</Label>
+            <Link
+              href={`/resume?role=${encodeURIComponent(jobTitle)}&company=${encodeURIComponent(companyName)}`}
+              className="text-[13px] font-medium text-primary hover:underline"
+            >
+              Tailor in builder
+            </Link>
+          </div>
+          <select
+            className="h-11 w-full rounded-full border border-input bg-white px-4 text-sm"
+            value={resumeId}
+            onChange={(e) => setResumeId(e.target.value)}
+          >
+            {savedResumes.map((doc) => (
+              <option key={doc.id} value={doc.id}>
+                {doc.title}
+                {doc.isProfile ? " (profile)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <p className="text-[13px] text-muted-foreground">
+          No builder resume yet.{" "}
+          <Link href="/resume" className="font-medium text-primary hover:underline">
+            Create one
+          </Link>{" "}
+          so this team gets a PDF with your application.
+        </p>
+      )}
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <Label>Cover letter (optional)</Label>
           <Link
             href={`/resume?tab=letter&role=${encodeURIComponent(jobTitle)}&company=${encodeURIComponent(companyName)}`}
-            className="text-[12px] font-medium text-primary hover:underline"
+            className="text-[13px] font-medium text-primary hover:underline"
           >
             Open builder
           </Link>
         </div>
-        {savedLetters.length > 1 ? (
+        {savedLetters.length ? (
           <select
             className="h-11 w-full rounded-full border border-input bg-white px-4 text-sm"
             defaultValue={savedLetters[0]?.id}

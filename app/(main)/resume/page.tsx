@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { ResumeStudio } from "@/components/resume/ResumeStudio"
-import { parseCoverLetters, parseResume } from "@/lib/resume/schema"
+import { parseCoverLetters, parseResumeLibrary } from "@/lib/resume/schema"
+import type { ResumeTargetJob } from "@/lib/resume/insights"
 
 export default async function ResumePage({
   searchParams,
@@ -37,19 +38,42 @@ export default async function ResumePage({
       ).data
     : studentQuery.data
 
+  const { data: swipes } = await supabase
+    .from("job_swipes")
+    .select("job_id")
+    .eq("student_id", user.id)
+    .in("direction", ["saved", "right"])
+    .limit(20)
+  const jobIds = [...new Set((swipes || []).map((row) => row.job_id).filter(Boolean))]
+  const jobsQuery = jobIds.length
+    ? await supabase
+        .from("jobs")
+        .select("id, title, description, required_skills, recruiter_profiles(company_name)")
+        .in("id", jobIds)
+        .limit(20)
+    : { data: [] as { id: string; title: string; description: string | null; required_skills: string[] | null; recruiter_profiles: { company_name: string } | { company_name: string }[] | null }[] }
+  const targetJobs: ResumeTargetJob[] = (jobsQuery.data || []).map((job) => {
+    const company = Array.isArray(job.recruiter_profiles) ? job.recruiter_profiles[0] : job.recruiter_profiles
+    return {
+      id: job.id,
+      title: job.title,
+      company: company?.company_name || "",
+      description: job.description,
+      skills: job.required_skills || [],
+    }
+  })
+
   return (
-    <div className="mx-auto max-w-[1200px] space-y-6">
-      <header className="space-y-1">
-        <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-[2.4rem] sm:leading-[1.02]">
-          Resume & letters
-        </h1>
-        <p className="max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
-          Build an ATS-friendly CV from your profile, export a PDF, or import a{" "}
-          <a href="https://jsonresume.org/schema/" className="font-medium text-primary hover:underline" target="_blank" rel="noreferrer">
-            JSON Resume
-          </a>
-          . Cover letters can be drafted for a specific role and attached when you apply.
-        </p>
+    <div className="mx-auto max-w-[1400px] space-y-5">
+      <header className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-[2.1rem] sm:leading-[1.05]">
+            Resume
+          </h1>
+          <p className="mt-1 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
+            Edit versions for different roles. Autosaves to your account. Attach a letter when you apply.
+          </p>
+        </div>
       </header>
       <ResumeStudio
         userId={user.id}
@@ -65,11 +89,12 @@ export default async function ResumePage({
           githubUrl: student?.github_url,
           portfolioUrl: student?.portfolio_url,
         }}
-        initialResume={parseResume((student as { resume_document?: unknown } | null)?.resume_document)}
+        initialDocuments={parseResumeLibrary((student as { resume_document?: unknown } | null)?.resume_document)}
         initialLetters={parseCoverLetters((student as { cover_letters?: unknown } | null)?.cover_letters)}
         initialTab={query.tab === "letter" ? "letter" : "resume"}
         prefillRole={query.role}
         prefillCompany={query.company}
+        targetJobs={targetJobs}
       />
     </div>
   )
