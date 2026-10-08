@@ -34,5 +34,6 @@ export default async function DashboardPage() {
     if (!isRecruiterOnboardingComplete(recruiter)) redirect("/onboarding")
     return <RecruiterDashboardView userId={user.id} fullName={profile.full_name} />
   }
+  if (profile.role === "university") redirect("/campus")
   redirect("/admin")
 }

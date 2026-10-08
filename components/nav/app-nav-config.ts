@@ -2,6 +2,7 @@ import {
   Bookmark,
   Briefcase,
   Columns3,
+  FileText,
   LayoutDashboard,
   Layers,
   MessageCircle,
@@ -32,6 +33,7 @@ export const recruiterTabs: TabItem[] = [
 export const studentMoreLinks: MoreLink[] = [
   { href: "/dashboard", label: "Insights", icon: LayoutDashboard },
   { href: "/community", label: "Community", icon: Users },
+  { href: "/resume", label: "Resume", icon: FileText },
   { href: "/profile", label: "Profile", icon: User },
   { href: "/profile#saved", label: "Saved roles", icon: Bookmark },
   { href: "/feedback", label: "Feedback", icon: MessageSquareText },

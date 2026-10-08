@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { JobApplyForm } from "@/components/jobs/JobApplyForm"
+import { parseCoverLetters } from "@/lib/resume/schema"
 import { parseScreeningQuestions, studentEligibleForJob } from "@/lib/jobs/screening"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -27,11 +28,20 @@ export default async function JobApplyPage({ params }: { params: Promise<{ jobId
   const company = Array.isArray(job.recruiter_profiles) ? job.recruiter_profiles[0] : job.recruiter_profiles
   if (!job.is_active || company?.is_approved !== true) notFound()
 
-  const { data: student } = await supabase
+  const studentQuery = await supabase
     .from("student_profiles")
-    .select("still_enrolled, current_semester")
+    .select("still_enrolled, current_semester, cover_letters")
     .eq("id", user.id)
     .maybeSingle()
+  const student = studentQuery.error
+    ? (
+        await supabase
+          .from("student_profiles")
+          .select("still_enrolled, current_semester")
+          .eq("id", user.id)
+          .maybeSingle()
+      ).data
+    : studentQuery.data
 
   if (
     !studentEligibleForJob({
@@ -81,7 +91,9 @@ export default async function JobApplyPage({ params }: { params: Promise<{ jobId
             jobId={job.id}
             jobTitle={job.title}
             recruiterId={job.recruiter_id}
+            companyName={company?.company_name || ""}
             questions={questions}
+            savedLetters={parseCoverLetters((student as { cover_letters?: unknown } | null)?.cover_letters)}
           />
         </CardContent>
       </Card>

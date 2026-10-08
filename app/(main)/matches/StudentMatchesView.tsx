@@ -166,10 +166,13 @@ export async function StudentMatchesView({ userId }: { userId: string }) {
           <CardContent>
             <ol className="mx-auto max-w-md list-inside list-decimal space-y-2 text-left font-body text-sm text-muted-foreground">
               <li>Finish your profile - bio, skills, and education.</li>
-              <li>Add a resume or portfolio link if you have one.</li>
+              <li>Build a resume (or add a portfolio link) so recruiters can download your CV.</li>
               <li>Apply to roles that fit; quality beats volume.</li>
             </ol>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Button asChild variant="outline">
+                <Link href="/resume">Build resume</Link>
+              </Button>
               <Button asChild variant="outline">
                 <Link href="/onboarding">Complete profile</Link>
               </Button>

@@ -59,10 +59,20 @@ const recruiterLinks: NavLink[] = [
 
 const adminLinks: NavLink[] = [
   { href: "/admin", label: "Overview" },
+  { href: "/campus", label: "Campus" },
+  { href: "/admin/employers", label: "Employers" },
+  { href: "/admin/jobs", label: "Jobs" },
   { href: "/admin/users", label: "Users" },
-  { href: "/admin/recruiters", label: "Recruiters" },
-  { href: "/admin/channels", label: "Channels" },
-  { href: "/admin/reports", label: "Reports" },
+  { href: "/admin/safety", label: "Safety" },
+]
+
+const universityLinks: NavLink[] = [
+  { href: "/campus", label: "Home" },
+  { href: "/campus/outcomes", label: "Outcomes" },
+  { href: "/campus/engagement", label: "Students" },
+  { href: "/campus/market", label: "Market" },
+  { href: "/campus/actions", label: "Actions" },
+  { href: "/campus/reports", label: "Reports" },
 ]
 
 function BrandMark({ className }: { className?: string }) {
@@ -94,7 +104,7 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
   const chatUnread = useChatUnread()
   const [mobileOpen, setMobileOpen] = useState(false)
   const signedIn = Boolean(userId)
-  const sharePath = userId && role !== "admin" ? profileSharePath(role, userId) : null
+  const sharePath = userId && role !== "admin" && role !== "university" ? profileSharePath(role, userId) : null
   const resolvedShareTitle = shareTitle || fullName || (role === "recruiter" ? "Company profile" : "Profile")
   const links = !signedIn
     ? []
@@ -102,9 +112,11 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
       ? studentLinks
       : role === "recruiter"
         ? recruiterLinks
-        : adminLinks
+        : role === "university"
+          ? universityLinks
+          : adminLinks
   const moreLinks = role === "recruiter" ? recruiterMoreLinks : studentMoreLinks
-  const homeHref = !signedIn ? "/" : role === "admin" ? "/admin" : "/discover"
+  const homeHref = !signedIn ? "/" : role === "admin" ? "/admin" : role === "university" ? "/campus" : "/discover"
 
   const handleSignOut = async () => {
     const supabase = createClient()
@@ -114,12 +126,17 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
 
   const isActive = (href: string) => {
     if (href === "/admin") return pathname === "/admin"
+    if (href === "/campus") {
+      if (role === "admin") return pathname === "/campus" || pathname.startsWith("/campus/")
+      return pathname === "/campus"
+    }
     return pathname === href || pathname.startsWith(`${href}/`)
   }
 
   const displayName = fullName ?? email?.split("@")[0] ?? "User"
   const initials = displayName.charAt(0).toUpperCase()
-  const roleLabel = role === "admin" ? "Admin" : role === "recruiter" ? "Recruiter" : "Student"
+  const roleLabel =
+    role === "admin" ? "Admin" : role === "university" ? "Career office" : role === "recruiter" ? "Recruiter" : "Student"
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-border/80 bg-background/75 backdrop-blur-2xl backdrop-saturate-150">
@@ -147,7 +164,7 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
                   </SheetDescription>
                 </SheetHeader>
                 <nav className="grid gap-0.5 p-3" aria-label="More">
-                  {role === "admin"
+                  {role === "admin" || role === "university"
                     ? links.map((link) => (
                         <SheetClose asChild key={link.href}>
                           <Link
@@ -276,7 +293,7 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
                     <p className="mt-1.5 text-[11px] font-medium text-muted-foreground">{roleLabel}</p>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {role !== "admin" ? (
+                  {role !== "admin" && role !== "university" ? (
                     <>
                       <DropdownMenuItem asChild>
                         <Link href="/profile">

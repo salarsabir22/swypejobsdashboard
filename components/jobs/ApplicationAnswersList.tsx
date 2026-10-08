@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { COVER_LETTER_QUESTION_ID } from "@/lib/resume/cover-letter"
 import { parseScreeningQuestions, type ScreeningQuestion } from "@/lib/jobs/screening"
 import { signedStorageUrl } from "@/lib/storage/signed-url"
+
+type AnswerRow = { q: ScreeningQuestion; text: string | null; video: string | null }
 
 export function ApplicationAnswersList({
   jobId,
@@ -15,11 +18,11 @@ export function ApplicationAnswersList({
   screeningQuestions: unknown
 }) {
   const questions = parseScreeningQuestions(screeningQuestions)
-  const [rows, setRows] = useState<{ q: ScreeningQuestion; text: string | null; video: string | null }[]>([])
+  const [rows, setRows] = useState<AnswerRow[]>([])
+  const [coverLetter, setCoverLetter] = useState<string | null>(null)
   const questionKey = questions.map((q) => q.id).join(",")
 
   useEffect(() => {
-    if (questions.length === 0) return
     const list = parseScreeningQuestions(screeningQuestions)
     const run = async () => {
       const supabase = createClient()
@@ -29,6 +32,8 @@ export function ApplicationAnswersList({
         .eq("job_id", jobId)
         .eq("student_id", studentId)
       const byId = new Map((data || []).map((row) => [row.question_id as string, row]))
+      const letter = byId.get(COVER_LETTER_QUESTION_ID)?.answer_text as string | null
+      setCoverLetter(letter?.trim() || null)
       const next = await Promise.all(
         list.map(async (q) => {
           const row = byId.get(q.id)
@@ -43,12 +48,19 @@ export function ApplicationAnswersList({
     void run()
   }, [jobId, studentId, questionKey, screeningQuestions])
 
-  if (questions.length === 0 || rows.every((item) => !item.text && !item.video)) return null
+  const visible = rows.filter((item) => item.text || item.video)
+  if (!coverLetter && visible.length === 0) return null
 
   return (
     <div className="mt-3 space-y-3 rounded-2xl bg-secondary/50 p-3">
       <p className="text-[13px] font-semibold">Application answers</p>
-      {rows.map(({ q, text, video }) => (
+      {coverLetter ? (
+        <div className="space-y-1">
+          <p className="text-[12px] font-medium text-muted-foreground">Cover letter</p>
+          <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{coverLetter}</p>
+        </div>
+      ) : null}
+      {visible.map(({ q, text, video }) => (
         <div key={q.id} className="space-y-1">
           <p className="text-[12px] font-medium text-muted-foreground">{q.prompt}</p>
           {video ? (

@@ -200,7 +200,15 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
   const firstName = fullName?.split(" ")[0]
 
   const focus =
-    completeness.percent < 80
+    !studentRes.data?.resume_url
+      ? {
+          kicker: "Next step",
+          title: "Build a resume recruiters can download",
+          description: "Start from your profile, export a PDF, or import a JSON Resume. You can also draft cover letters for each role.",
+          href: "/resume",
+          cta: "Open resume builder",
+        }
+    : completeness.percent < 80
       ? {
           kicker: "Next step",
           title: `Your profile is ${completeness.percent}% complete`,

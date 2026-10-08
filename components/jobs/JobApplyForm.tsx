@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { isUniqueViolation } from "@/lib/swipe/errors"
+import { COVER_LETTER_QUESTION_ID } from "@/lib/resume/cover-letter"
+import type { CoverLetter } from "@/lib/resume/schema"
 
 const MAX_VIDEO_SECONDS = 90
 const MAX_VIDEO_MB = 40
@@ -20,18 +22,23 @@ export function JobApplyForm({
   jobId,
   jobTitle,
   recruiterId,
+  companyName,
   questions,
+  savedLetters = [],
 }: {
   userId: string
   jobId: string
   jobTitle: string
   recruiterId: string
+  companyName: string
   questions: ScreeningQuestion[]
+  savedLetters?: CoverLetter[]
 }) {
   const router = useRouter()
   const { toast } = useToast()
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [files, setFiles] = useState<Record<string, File | null>>({})
+  const [coverLetter, setCoverLetter] = useState(savedLetters[0]?.body || "")
   const [busy, setBusy] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
@@ -109,6 +116,25 @@ export function JobApplyForm({
       }
     }
 
+    if (coverLetter.trim()) {
+      const letterSave = await supabase.from("job_application_answers").upsert(
+        {
+          job_id: jobId,
+          student_id: userId,
+          question_id: COVER_LETTER_QUESTION_ID,
+          answer_text: coverLetter.trim(),
+          media_url: null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "job_id,student_id,question_id" }
+      )
+      if (letterSave.error) {
+        toast({ variant: "destructive", title: "Could not save cover letter", description: letterSave.error.message })
+        setBusy(false)
+        return
+      }
+    }
+
     await supabase.from("job_swipes").delete().eq("student_id", userId).eq("job_id", jobId).eq("direction", "saved")
     const { error } = await supabase.from("job_swipes").insert({ student_id: userId, job_id: jobId, direction: "right" })
     if (error && !isUniqueViolation(error)) {
@@ -125,6 +151,39 @@ export function JobApplyForm({
 
   return (
     <form onSubmit={submit} className="space-y-6">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <Label>Cover letter (optional)</Label>
+          <Link
+            href={`/resume?tab=letter&role=${encodeURIComponent(jobTitle)}&company=${encodeURIComponent(companyName)}`}
+            className="text-[12px] font-medium text-primary hover:underline"
+          >
+            Open builder
+          </Link>
+        </div>
+        {savedLetters.length > 1 ? (
+          <select
+            className="h-11 w-full rounded-full border border-input bg-white px-4 text-sm"
+            defaultValue={savedLetters[0]?.id}
+            onChange={(e) => {
+              const next = savedLetters.find((item) => item.id === e.target.value)
+              if (next) setCoverLetter(next.body)
+            }}
+          >
+            {savedLetters.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.title}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        <Textarea
+          rows={6}
+          value={coverLetter}
+          onChange={(e) => setCoverLetter(e.target.value)}
+          placeholder={`A short note to ${companyName || "the hiring team"} for ${jobTitle}.`}
+        />
+      </div>
       {questions.map((q) => (
         <div key={q.id} className="space-y-2">
           <Label>

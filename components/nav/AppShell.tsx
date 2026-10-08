@@ -19,7 +19,7 @@ export function AppShell({ user, children }: { user: AppShellUser; children: Rea
         shareTitle={user.shareTitle}
       />
 
-      <main className={cn("min-w-0 pt-16", signedIn && user.role !== "admin" && "lg:pb-0")}>
+      <main className={cn("min-w-0 pt-16", signedIn && user.role !== "admin" && user.role !== "university" && "lg:pb-0")}>
         <AppMain>{children}</AppMain>
         {signedIn ? <AppFooter role={user.role} /> : null}
       </main>

@@ -139,6 +139,14 @@ export default async function ProfilePage() {
                 label="Share profile"
               />
             ) : null}
+            {isStudent ? (
+              <Button asChild variant="outline" size="sm" className="rounded-full">
+                <Link href="/resume">
+                  <FileText className="h-4 w-4" />
+                  Resume
+                </Link>
+              </Button>
+            ) : null}
             <Button asChild variant="outline" size="sm" className="rounded-full">
               <Link href="/onboarding">
                 <Edit className="h-4 w-4" />
@@ -310,6 +318,12 @@ export default async function ProfilePage() {
                       <FileText className="h-4 w-4" /> Resume
                     </a>
                   ) : null}
+                  <Button asChild variant="outline" size="sm" className="mt-2 rounded-full">
+                    <Link href="/resume">
+                      <FileText className="h-4 w-4" />
+                      {resumeHref ? "Edit resume" : "Build resume"}
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
 

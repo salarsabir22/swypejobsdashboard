@@ -88,6 +88,7 @@ export function postAuthRedirect(opts: {
   const next = appNext(safeInternalPath(opts.next))
 
   if (role === "admin") return next || "/admin/users"
+  if (role === "university") return next || "/campus"
   if (role === "recruiter") {
     if (!opts.recruiterReady) return "/onboarding"
     return next || "/jobs"
@@ -114,7 +115,7 @@ export function studentCompleteness(opts: {
     { id: "bio", label: "Bio", done: Boolean(opts.bio?.trim()), href: "/onboarding" },
     { id: "school", label: "Education", done: Boolean(opts.university), href: "/onboarding" },
     { id: "skills", label: "At least 3 skills", done: (opts.skills?.length ?? 0) >= 3, href: "/onboarding" },
-    { id: "resume", label: "Resume", done: Boolean(opts.resume), href: "/onboarding" },
+    { id: "resume", label: "Resume", done: Boolean(opts.resume), href: "/resume" },
     { id: "video", label: "Intro video", done: Boolean(opts.video), href: "/onboarding" },
     { id: "linkedin", label: "LinkedIn", done: Boolean(opts.linkedin), href: "/onboarding" },
   ]

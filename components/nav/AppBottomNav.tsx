@@ -12,7 +12,7 @@ import { NavUnreadBadge } from "@/components/nav/NavUnreadBadge"
 export function AppBottomNav({ role }: { role: UserRole | "admin" }) {
   const pathname = usePathname()
   const chatUnread = useChatUnread()
-  if (role === "admin") return null
+  if (role === "admin" || role === "university") return null
 
   const items = role === "recruiter" ? recruiterTabs : studentTabs
 

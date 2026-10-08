@@ -52,6 +52,37 @@ function columnsFor(role: UserRole | "admin"): { cols: FooterCol[]; cta: FooterL
     }
   }
 
+  if (role === "university") {
+    return {
+      blurb: "Career-office outcomes, engagement, and swipe-level demand for your students.",
+      cta: { href: "/campus", label: "Campus home" },
+      cols: [
+        {
+          title: "Insights",
+          links: [
+            { href: "/campus", label: "Home" },
+            { href: "/campus/outcomes", label: "Outcomes" },
+            { href: "/campus/engagement", label: "Engagement" },
+            { href: "/campus/equity", label: "Equity" },
+          ],
+        },
+        {
+          title: "Work",
+          links: [
+            { href: "/campus/actions", label: "Actions" },
+            { href: "/campus/market", label: "Market" },
+            { href: "/campus/operations", label: "Operations" },
+            { href: "/campus/reports", label: "Reports" },
+          ],
+        },
+        {
+          title: "Help",
+          links: [{ href: "/feedback", label: "Send feedback" }],
+        },
+      ],
+    }
+  }
+
   if (role === "admin") {
     return {
       blurb: "Moderation, approvals, and reports for the swypejobs campus network.",
@@ -62,8 +93,9 @@ function columnsFor(role: UserRole | "admin"): { cols: FooterCol[]; cta: FooterL
           links: [
             { href: "/admin", label: "Overview" },
             { href: "/admin/users", label: "Members" },
-            { href: "/admin/recruiters", label: "Approvals" },
-            { href: "/admin/reports", label: "Reports" },
+            { href: "/admin/employers", label: "Employers" },
+            { href: "/admin/safety", label: "Safety" },
+            { href: "/campus", label: "Campus" },
           ],
         },
         {

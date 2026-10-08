@@ -1,6 +1,6 @@
 import type { ScreeningQuestion } from "@/lib/jobs/screening"
 
-export type UserRole = "student" | "recruiter" | "admin"
+export type UserRole = "student" | "recruiter" | "admin" | "university"
 export type JobType = "internship" | "full_time" | "part_time" | "contract"
 export type SwipeDirection = "right" | "left" | "saved"
 
@@ -27,6 +27,8 @@ export interface StudentProfile {
   skills: string[]
   interests: string[]
   resume_url: string | null
+  resume_document?: unknown | null
+  cover_letters?: unknown | null
   linkedin_url: string | null
   github_url: string | null
   portfolio_url: string | null

@@ -1785,7 +1785,9 @@ export default function OnboardingPage() {
                         : <div><p className="font-body text-sm text-muted-foreground">Upload CV (PDF)</p><p className="font-body text-xs text-muted-foreground">Max 10MB</p></div>}
                       <input type="file" accept=".pdf" className="hidden" onChange={(e) => setResumeFile(e.target.files?.[0] || null)} />
                     </label>
-                    <HelpText>Recruiters can download your CV when you apply to a role.</HelpText>
+                    <HelpText>
+                      Recruiters can download your CV when you apply. After setup, you can also build one in Resume.
+                    </HelpText>
                   </div>
                   <div>
                     <Label className={labelClass}>Profile video (optional)</Label>

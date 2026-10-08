@@ -722,3 +722,12 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .lp-float, .lp-float-slow { animation: none !important; }
 }
+
+@media print {
+  header, nav, footer, [aria-label="Primary"] {
+    display: none !important;
+  }
+  .resume-sheet {
+    box-shadow: none !important;
+  }
+}
