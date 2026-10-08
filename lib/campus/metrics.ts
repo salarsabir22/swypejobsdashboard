@@ -433,17 +433,25 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
       }),
       salariesByDegree: salaryGroup((o) => degreeLevel(studentMap.get(String(o.student_id))?.degree)),
       timeToFirstOfferDays: sourced(average(offerTimes), offerTimes.length, "platform"),
-      industries: countBy(hired.map((m) => recruiterMap.get(m.recruiter_id)?.industry).concat(outcomes.map((o) => (o as { industry?: string }).industry))),
-      roles: countBy(hired.map((m) => jobMap.get(m.job_id)?.title).concat(outcomes.map((o) => (o as { job_title?: string }).job_title))),
-      geos: countBy(hired.map((m) => jobMap.get(m.job_id)?.location).concat(outcomes.map((o) => (o as { location?: string }).location))),
-      employerTypes: countBy(
-        hired
-          .map((m) => {
-            const r = recruiterMap.get(m.recruiter_id)
-            return employerType({ employeeCount: r?.employee_count, industry: r?.industry })
-          })
-          .concat(outcomes.map((o) => (o as { employer_type?: string }).employer_type))
-      ),
+      industries: countBy([
+        ...hired.map((m) => recruiterMap.get(m.recruiter_id)?.industry),
+        ...outcomes.map((o) => (o as { industry?: string }).industry),
+      ]),
+      roles: countBy([
+        ...hired.map((m) => jobMap.get(m.job_id)?.title),
+        ...outcomes.map((o) => (o as { job_title?: string }).job_title),
+      ]),
+      geos: countBy([
+        ...hired.map((m) => jobMap.get(m.job_id)?.location),
+        ...outcomes.map((o) => (o as { location?: string }).location),
+      ]),
+      employerTypes: countBy([
+        ...hired.map((m) => {
+          const r = recruiterMap.get(m.recruiter_id)
+          return employerType({ employeeCount: r?.employee_count, industry: r?.industry })
+        }),
+        ...outcomes.map((o) => (o as { employer_type?: string }).employer_type),
+      ]),
       underemployed: sourced(outcomes.length ? pct(underemployed, outcomes.filter((o) => (o as { status?: string }).status === "employed").length) : null, underemployed, "survey"),
     },
     engagement: {
