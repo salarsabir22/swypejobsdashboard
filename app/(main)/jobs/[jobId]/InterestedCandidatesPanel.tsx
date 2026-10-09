@@ -15,6 +15,8 @@ import { CredentialLink } from "@/components/storage/SignedFileLink"
 import { ApplicantListSkeleton } from "@/components/skeletons"
 import { ApplicationAnswersList } from "@/components/jobs/ApplicationAnswersList"
 import { InterviewInviteDialog, type InterviewInviteTarget } from "@/components/hiring/InterviewInviteDialog"
+import { undoCandidateSwipe } from "@/lib/swipe/undo"
+import { isUniqueViolation } from "@/lib/swipe/errors"
 
 interface CandidateItem {
   id: string
@@ -157,13 +159,47 @@ export function InterestedCandidatesPanel({
   }, [jobId, recruiterId, supabase])
 
   const setDecision = async (studentId: string, direction: "right" | "left") => {
+    const current = items.find((i) => i.id === studentId)
+    if (current?.decision === direction) {
+      toast({
+        title: direction === "right" ? "Shortlisted" : "Passed",
+        description: "That decision is already saved.",
+      })
+      return
+    }
+
     setBusyId(studentId)
-    const { error } = await supabase
-      .from("candidate_swipes")
-      .upsert(
-        { recruiter_id: recruiterId, student_id: studentId, job_id: jobId, direction },
-        { onConflict: "recruiter_id,student_id,job_id" }
-      )
+    if (current?.decision) {
+      const removed = await undoCandidateSwipe(supabase, { studentId, recruiterId, jobId })
+      if (!removed.ok) {
+        toast({ title: "Could not update candidate", description: removed.message || "Try again." })
+        setBusyId(null)
+        return
+      }
+    }
+
+    let { error } = await supabase.from("candidate_swipes").insert({
+      recruiter_id: recruiterId,
+      student_id: studentId,
+      job_id: jobId,
+      direction,
+    })
+
+    if (error && isUniqueViolation(error)) {
+      const removed = await undoCandidateSwipe(supabase, { studentId, recruiterId, jobId })
+      if (!removed.ok) {
+        toast({ title: "Could not update candidate", description: removed.message || "Try again." })
+        setBusyId(null)
+        return
+      }
+      const retry = await supabase.from("candidate_swipes").insert({
+        recruiter_id: recruiterId,
+        student_id: studentId,
+        job_id: jobId,
+        direction,
+      })
+      error = retry.error
+    }
 
     if (error) {
       toast({ title: "Could not update candidate", description: error.message })

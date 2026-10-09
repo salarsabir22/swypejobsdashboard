@@ -37,10 +37,11 @@ export function ApplicationAnswersList({
       const next = await Promise.all(
         list.map(async (q) => {
           const row = byId.get(q.id)
-          const video = q.type === "video" ? await signedStorageUrl(supabase, "application-media", row?.media_url) : null
-          const fallback =
-            !video && row?.media_url ? await signedStorageUrl(supabase, "profile-videos", row.media_url) : null
-          return { q, text: (row?.answer_text as string | null) ?? null, video: video || fallback }
+          const stored = (row?.media_url as string | null) ?? null
+          const video = q.type === "video" ? await signedStorageUrl(supabase, "application-media", stored) : null
+          const fallback = !video && stored ? await signedStorageUrl(supabase, "profile-videos", stored) : null
+          const publicUrl = !video && !fallback && stored?.startsWith("http") ? stored : null
+          return { q, text: (row?.answer_text as string | null) ?? null, video: video || fallback || publicUrl }
         })
       )
       setRows(next)

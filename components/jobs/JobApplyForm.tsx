@@ -101,15 +101,12 @@ export function JobApplyForm({
           return
         }
         const ext = file.name.split(".").pop()?.toLowerCase() || "webm"
-        const path = `${userId}/${jobId}/${q.id}.${ext}`
-        let bucket = "application-media"
-        let storedPath = path
-        let uploaded = await supabase.storage.from(bucket).upload(storedPath, file, { upsert: true })
-        if (uploaded.error) {
-          bucket = "profile-videos"
-          storedPath = `applications/${path}`
-          uploaded = await supabase.storage.from(bucket).upload(storedPath, file, { upsert: true })
-        }
+        const bucket = "profile-videos"
+        const storedPath = `${userId}/applications/${jobId}/${q.id}.${ext}`
+        const uploaded = await supabase.storage.from(bucket).upload(storedPath, file, {
+          upsert: true,
+          contentType: file.type || "video/mp4",
+        })
         if (uploaded.error) {
           toast({ variant: "destructive", title: "Could not upload video", description: uploaded.error.message })
           setBusy(false)
