@@ -65,6 +65,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -540,23 +541,30 @@ export function ResumeStudio({
                     <p className="text-[15px] font-semibold tracking-[-0.02em]">Fit to a role</p>
                     {targetJobs.length ? (
                       <Field label="Saved or applied role">
-                        <select
-                          className="h-11 w-full rounded-full border border-input bg-background px-4 text-sm"
-                          value={jobId}
-                          onChange={(e) => {
-                            const id = e.target.value
+                        <Select
+                          value={jobId || "none"}
+                          onValueChange={(id) => {
+                            if (id === "none") {
+                              setJobId("")
+                              return
+                            }
                             setJobId(id)
                             const job = targetJobs.find((item) => item.id === id)
                             if (job) setJobText([job.title, job.company, job.description].filter(Boolean).join("\n"))
                           }}
                         >
-                          <option value="">Paste a description instead</option>
-                          {targetJobs.map((job) => (
-                            <option key={job.id} value={job.id}>
-                              {[job.title, job.company].filter(Boolean).join(" · ")}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Paste a description instead</SelectItem>
+                            {targetJobs.map((job) => (
+                              <SelectItem key={job.id} value={job.id}>
+                                {[job.title, job.company].filter(Boolean).join(" · ")}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </Field>
                     ) : null}
                     <Field label="Job description">

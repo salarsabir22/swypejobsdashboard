@@ -14,9 +14,8 @@ import {
 
 let started = false
 
-function fail(message: string, portal?: string | null) {
-  const path = portal === "university" ? "/university/login" : "/login"
-  window.location.replace(`${path}?error=${encodeURIComponent(message)}`)
+function fail(message: string, _portal?: string | null) {
+  window.location.replace(`/login?error=${encodeURIComponent(message)}`)
 }
 
 export default function AuthCallbackPage() {

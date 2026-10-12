@@ -1,15 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { googleStartUrl, usesLocalGoogle } from "@/lib/auth-sites"
+import { provisionUniversityAccount } from "@/lib/campus/provision"
+import { UniversityPicker } from "@/components/profile/UniversityPicker"
 import { cn } from "@/lib/utils"
 import { Loader2, Eye, EyeOff } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 
 const GoogleIcon = () => (
@@ -40,7 +43,13 @@ function getPasswordStrength(pw: string): PasswordStrength {
   return map[score as keyof typeof map]
 }
 
-type SignupRole = "student" | "recruiter"
+type SignupRole = "student" | "recruiter" | "university"
+
+const STAFF_ROLES = [
+  { id: "director", label: "Career services director" },
+  { id: "advisor", label: "Advisor" },
+  { id: "dean", label: "Dean" },
+] as const
 
 const ROLE_INFO: Record<SignupRole, { label: string; description: string }> = {
   student: {
@@ -51,6 +60,10 @@ const ROLE_INFO: Record<SignupRole, { label: string; description: string }> = {
     label: "Recruiter",
     description: "Post jobs and shortlist candidates. Account review may apply.",
   },
+  university: {
+    label: "University",
+    description: "Career office outcomes, students, and employers.",
+  },
 }
 
 export default function SignupPage() {
@@ -59,6 +72,8 @@ export default function SignupPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState<SignupRole>("student")
+  const [university, setUniversity] = useState("")
+  const [staffRole, setStaffRole] = useState<(typeof STAFF_ROLES)[number]["id"]>("advisor")
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -67,10 +82,18 @@ export default function SignupPage() {
 
   const strength = getPasswordStrength(password)
 
+  useEffect(() => {
+    const picked = new URLSearchParams(window.location.search).get("role")
+    if (picked === "student" || picked === "recruiter" || picked === "university") setRole(picked)
+  }, [])
+
   const validate = () => {
     const errs: Record<string, string> = {}
     if (!fullName.trim()) errs.fullName = "Full name is required"
     else if (fullName.trim().length < 2) errs.fullName = "Name must be at least 2 characters"
+    if (role === "university" && (!university.trim() || university === "Other (type your own)")) {
+      errs.university = "Choose your university"
+    }
     if (!email) errs.email = "Email is required"
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = "Enter a valid email address"
     if (!password) errs.password = "Password is required"
@@ -93,7 +116,13 @@ export default function SignupPage() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName.trim(), role } },
+      options: {
+        data: {
+          full_name: fullName.trim(),
+          role,
+          ...(role === "university" ? { university: university.trim(), staff_role: staffRole } : {}),
+        },
+      },
     })
     if (error) {
       setLoading(false)
@@ -105,6 +134,20 @@ export default function SignupPage() {
       return
     }
     if (data.session) {
+      if (role === "university") {
+        const saved = await provisionUniversityAccount({
+          university: university.trim(),
+          staffRole,
+          fullName: fullName.trim(),
+        })
+        if (!saved.ok) {
+          setError(saved.message)
+          setLoading(false)
+          return
+        }
+        window.location.href = "/campus"
+        return
+      }
       const supabase2 = createClient()
       await supabase2.from("profiles").update({ role }).eq("id", data.user!.id)
       window.location.href = "/onboarding"
@@ -117,15 +160,33 @@ export default function SignupPage() {
   const handleGoogleSignup = async () => {
     setError(null)
     setGoogleLoading(true)
+    if (role === "university" && (!university.trim() || university === "Other (type your own)")) {
+      setFieldErrors((prev) => ({ ...prev, university: "Choose your university" }))
+      setGoogleLoading(false)
+      return
+    }
     localStorage.setItem("pending_role", role)
+    if (role === "university") {
+      localStorage.setItem("pending_university", university.trim())
+      localStorage.setItem("pending_staff_role", staffRole)
+    }
     if (!usesLocalGoogle(window.location.origin)) {
-      window.location.href = googleStartUrl(window.location.origin, { role })
+      window.location.href = googleStartUrl(window.location.origin, {
+        role,
+        next: role === "university" ? "/campus" : undefined,
+      })
       return
     }
     const supabase = createClient()
+    const callback = new URL("/auth/callback", window.location.origin)
+    callback.searchParams.set("role", role)
+    if (role === "university") {
+      callback.searchParams.set("portal", "university")
+      callback.searchParams.set("next", "/campus")
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?role=${role}` },
+      options: { redirectTo: callback.toString() },
     })
     if (error) {
       localStorage.removeItem("pending_role")
@@ -149,7 +210,9 @@ export default function SignupPage() {
             <ol className="list-inside list-decimal space-y-1">
               <li className="text-xs text-muted-foreground">Open the email from swypejobs</li>
               <li className="text-xs text-muted-foreground">Click &quot;Confirm your email&quot;</li>
-              <li className="text-xs text-muted-foreground">Complete your profile</li>
+              <li className="text-xs text-muted-foreground">
+                {role === "university" ? "Sign in to open your career office" : "Complete your profile"}
+              </li>
             </ol>
           </div>
           <p className="text-center text-xs text-muted-foreground">
@@ -167,13 +230,15 @@ export default function SignupPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-[clamp(2rem,4vw,2.6rem)] font-semibold leading-[1.02] tracking-[-0.045em]">Create your account</h1>
-        <p className="mt-2 text-[15px] text-muted-foreground">Free - under a minute</p>
+        <p className="mt-2 text-[15px] text-muted-foreground">
+          {role === "university" ? "Same signup, for a university career office." : "Free - under a minute"}
+        </p>
       </div>
       <div>
         <div className="mb-5">
           <p className="mb-2 text-sm font-medium text-foreground">I am joining as…</p>
-          <div className="grid grid-cols-2 gap-3">
-            {(["student", "recruiter"] as SignupRole[]).map((r) => {
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {(["student", "recruiter", "university"] as SignupRole[]).map((r) => {
               const { label, description } = ROLE_INFO[r]
               const active = role === r
               return (
@@ -222,7 +287,7 @@ export default function SignupPage() {
           disabled={googleLoading || loading}
         >
           {googleLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
-          Google - {role === "student" ? "Student" : "Recruiter"}
+          Google - {ROLE_INFO[role].label}
         </Button>
 
         <div className="relative mb-4 flex items-center gap-3">
@@ -246,6 +311,31 @@ export default function SignupPage() {
               <p className="pl-0.5 text-xs text-destructive">{fieldErrors.fullName}</p>
             )}
           </div>
+
+          {role === "university" ? (
+            <>
+              <div className="space-y-1.5">
+                <Label>University</Label>
+                <UniversityPicker value={university} onChange={setUniversity} />
+                {fieldErrors.university ? <p className="text-xs text-destructive">{fieldErrors.university}</p> : null}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="signup-staff-role">Role at the office</Label>
+                <Select value={staffRole} onValueChange={(value) => setStaffRole(value as (typeof STAFF_ROLES)[number]["id"])}>
+                  <SelectTrigger id="signup-staff-role" className="h-12 px-5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STAFF_ROLES.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          ) : null}
 
           <div className="space-y-1.5">
             <Label htmlFor="signup-email">Email address</Label>
@@ -325,13 +415,6 @@ export default function SignupPage() {
             Sign in
           </Link>
         </p>
-        <p className="mt-3 text-center text-sm text-muted-foreground">
-          University career office?{" "}
-          <Link href="/university/signup" className="font-medium text-primary hover:underline">
-            Create that account
-          </Link>
-        </p>
-
         <p className="mt-4 text-center text-[10px] text-muted-foreground">
           By signing up you agree to our{" "}
           <a href="#" className="text-muted-foreground underline underline-offset-2 hover:text-foreground">

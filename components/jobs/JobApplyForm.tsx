@@ -8,7 +8,9 @@ import { useToast } from "@/lib/hooks/use-toast"
 import { notifyApplicationMilestone } from "@/lib/engagement"
 import type { ScreeningQuestion } from "@/lib/jobs/screening"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { isUniqueViolation } from "@/lib/swipe/errors"
 import { COVER_LETTER_QUESTION_ID } from "@/lib/resume/cover-letter"
@@ -181,18 +183,19 @@ export function JobApplyForm({
               Tailor in builder
             </Link>
           </div>
-          <select
-            className="h-11 w-full rounded-full border border-input bg-white px-4 text-sm"
-            value={resumeId}
-            onChange={(e) => setResumeId(e.target.value)}
-          >
-            {savedResumes.map((doc) => (
-              <option key={doc.id} value={doc.id}>
-                {doc.title}
-                {doc.isProfile ? " (profile)" : ""}
-              </option>
-            ))}
-          </select>
+          <Select value={resumeId || savedResumes[0].id} onValueChange={setResumeId}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {savedResumes.map((doc) => (
+                <SelectItem key={doc.id} value={doc.id}>
+                  {doc.title}
+                  {doc.isProfile ? " (profile)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       ) : (
         <p className="text-[13px] text-muted-foreground">
@@ -214,20 +217,24 @@ export function JobApplyForm({
           </Link>
         </div>
         {savedLetters.length ? (
-          <select
-            className="h-11 w-full rounded-full border border-input bg-white px-4 text-sm"
+          <Select
             defaultValue={savedLetters[0]?.id}
-            onChange={(e) => {
-              const next = savedLetters.find((item) => item.id === e.target.value)
+            onValueChange={(id) => {
+              const next = savedLetters.find((item) => item.id === id)
               if (next) setCoverLetter(next.body)
             }}
           >
-            {savedLetters.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.title}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {savedLetters.map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : null}
         <Textarea
           rows={6}
@@ -244,10 +251,9 @@ export function JobApplyForm({
           </Label>
           {q.type === "video" ? (
             <div className="space-y-2">
-              <input
+              <Input
                 type="file"
                 accept="video/*"
-                className="block w-full text-[13px]"
                 onChange={(e) => setFiles((prev) => ({ ...prev, [q.id]: e.target.files?.[0] ?? null }))}
               />
               <p className="text-[12px] text-muted-foreground">Up to 90 seconds. MP4 or WebM.</p>

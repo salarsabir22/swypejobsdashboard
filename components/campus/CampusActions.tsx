@@ -8,6 +8,7 @@ import type { AttentionStudent } from "@/lib/campus/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
 export function NudgeForm({
@@ -112,16 +113,17 @@ export function EventForm({ university }: { university: string }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>Type</Label>
-          <select
-            className="h-11 w-full rounded-full border border-input bg-white px-4 text-sm"
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-          >
-            <option value="career_fair">Career fair</option>
-            <option value="workshop">Workshop</option>
-            <option value="info_session">Info session</option>
-            <option value="other">Other</option>
-          </select>
+          <Select value={kind} onValueChange={setKind}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="career_fair">Career fair</SelectItem>
+              <SelectItem value="workshop">Workshop</SelectItem>
+              <SelectItem value="info_session">Info session</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label>Starts</Label>

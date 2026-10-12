@@ -1,6 +1,8 @@
 "use client"
 
 import { usePathname, useSearchParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 export function CampusFilter({ current }: { current: string | null }) {
   const pathname = usePathname()
@@ -9,15 +11,13 @@ export function CampusFilter({ current }: { current: string | null }) {
 
   return (
     <form className="flex max-w-md flex-wrap gap-2" action={pathname} method="get">
-      <input
+      <Input
         name="campus"
         defaultValue={value}
         placeholder="Filter by university name"
-        className="h-11 min-w-0 flex-1 rounded-full border border-input bg-white px-4 text-sm"
+        className="min-w-0 flex-1"
       />
-      <button type="submit" className="h-11 rounded-full bg-primary px-4 text-[13px] font-semibold text-white">
-        Apply
-      </button>
+      <Button type="submit">Apply</Button>
     </form>
   )
 }

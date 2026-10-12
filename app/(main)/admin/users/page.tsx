@@ -6,6 +6,7 @@ import { formatDate, getInitials } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import Link from "next/link"
 
@@ -34,12 +35,7 @@ export default async function AdminUsersPage({
       staffRole={admin.staffRole}
     >
       <form className="flex max-w-md gap-2" action="/admin/users">
-        <input
-          name="q"
-          defaultValue={q || ""}
-          placeholder="Search name"
-          className="h-11 flex-1 rounded-full border border-input bg-white px-4 text-sm"
-        />
+        <Input name="q" defaultValue={q || ""} placeholder="Search name" className="flex-1" />
         <Button type="submit" className="rounded-full">
           Search
         </Button>

@@ -7,6 +7,7 @@ import { useToast } from "@/lib/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
 async function audit(action: string, entity: string, entityId: string, meta?: Record<string, unknown>) {
@@ -43,17 +44,18 @@ export function EmployerDecision({ recruiterId }: { recruiterId: string }) {
   }
   return (
     <div className="space-y-2">
-      <select
-        className="h-10 w-full rounded-full border border-input bg-white px-3 text-sm"
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-      >
-        <option value="verified">Verified domain / site</option>
-        <option value="incomplete_verification">Incomplete verification</option>
-        <option value="free_email">Free email / risk</option>
-        <option value="scam_reports">Scam reports</option>
-        <option value="mismatch">Mismatched details</option>
-      </select>
+      <Select value={reason} onValueChange={setReason}>
+        <SelectTrigger className="h-10">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="verified">Verified domain / site</SelectItem>
+          <SelectItem value="incomplete_verification">Incomplete verification</SelectItem>
+          <SelectItem value="free_email">Free email / risk</SelectItem>
+          <SelectItem value="scam_reports">Scam reports</SelectItem>
+          <SelectItem value="mismatch">Mismatched details</SelectItem>
+        </SelectContent>
+      </Select>
       <Textarea rows={2} placeholder="Internal notes (and rejection email body)" value={notes} onChange={(e) => setNotes(e.target.value)} />
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" className="rounded-full" onClick={() => void run("approve")}>
@@ -183,11 +185,16 @@ export function BroadcastForm() {
   return (
     <form onSubmit={send} className="space-y-3">
       <Label>Segment</Label>
-      <select className="h-11 w-full rounded-full border border-input bg-white px-4 text-sm" value={segment} onChange={(e) => setSegment(e.target.value)}>
-        <option value="all_students">All students</option>
-        <option value="all_recruiters">All employers</option>
-        <option value="inactive">Inactive 14d</option>
-      </select>
+      <Select value={segment} onValueChange={setSegment}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all_students">All students</SelectItem>
+          <SelectItem value="all_recruiters">All employers</SelectItem>
+          <SelectItem value="inactive">Inactive 14d</SelectItem>
+        </SelectContent>
+      </Select>
       <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
       <Textarea rows={4} placeholder="Body" value={body} onChange={(e) => setBody(e.target.value)} required />
       <Button type="submit" className="rounded-full">
