@@ -3,6 +3,7 @@ import { writeCampusAudit } from "@/lib/campus/access"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
+import { fmtSourced } from "@/lib/campus/format"
 
 export default async function CampusEquityPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
@@ -30,7 +31,14 @@ export default async function CampusEquityPage({ searchParams }: { searchParams:
           <div className="grid gap-4 lg:grid-cols-2">
             <BreakdownList title="Gender" rows={snapshot.equity.byGender} />
             <BreakdownList title="Race / ethnicity" rows={snapshot.equity.byRace} />
+            <BreakdownList title="Disability disclosure" rows={snapshot.equity.byDisability} />
+            <BreakdownList title="Pell / low-income" rows={snapshot.equity.byIncome} />
           </div>
+          <DashboardPanel title="First-gen placement" badge={fmtSourced(snapshot.equity.firstGenPlacement, "pct")}>
+            <p className="text-[14px] text-muted-foreground">
+              {snapshot.equity.disability} disclosed a disability · {snapshot.equity.pell} Pell or low-income · graduation checkpoint only.
+            </p>
+          </DashboardPanel>
         </>
       )}
       <div className="grid gap-4 lg:grid-cols-2">

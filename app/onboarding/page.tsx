@@ -1133,6 +1133,11 @@ export default function OnboardingPage() {
       if (!user) { window.location.href = "/login"; return }
 
       const pendingRole = localStorage.getItem("pending_role") as UserRole | null
+      const metaRole = user.user_metadata?.role as UserRole | undefined
+      if (pendingRole === "university" || metaRole === "university") {
+        window.location.href = "/campus"
+        return
+      }
       if (pendingRole === "recruiter" || pendingRole === "student") {
         setRole(pendingRole)
         await supabase.from("profiles").update({ role: pendingRole }).eq("id", user.id)
@@ -1143,6 +1148,10 @@ export default function OnboardingPage() {
           setRole(metaRole)
         } else {
           const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+          if (profile?.role === "university") {
+            window.location.href = "/campus"
+            return
+          }
           if (profile?.role === "recruiter" || profile?.role === "student") {
             setRole(profile.role as UserRole)
           } else {

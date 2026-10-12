@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { provisionUniversityAccount } from "@/lib/campus/provision"
 import {
   isRecruiterOnboardingComplete,
   isStudentOnboardingComplete,
@@ -34,7 +35,17 @@ export default async function HomePage({
   } = await supabase.auth.getUser()
 
   if (user) {
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+    let { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+    const meta = user.user_metadata || {}
+    if (meta.role === "university" && profile?.role !== "university" && typeof meta.university === "string") {
+      await provisionUniversityAccount({
+        university: meta.university,
+        staffRole: typeof meta.staff_role === "string" ? meta.staff_role : undefined,
+        fullName: typeof meta.full_name === "string" ? meta.full_name : undefined,
+      })
+      const again = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+      profile = again.data
+    }
     let studentReady = false
     let recruiterReady = false
     if (profile?.role === "student") {

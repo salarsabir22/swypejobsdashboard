@@ -87,6 +87,31 @@ export default async function CampusOutcomesPage({ searchParams }: { searchParam
         )}
       </DashboardPanel>
 
+      {snapshot.outcomes.salariesByCollege.length ? (
+        <DashboardPanel title="Starting salary by college">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>College</TableHead>
+                <TableHead>Average</TableHead>
+                <TableHead>Median</TableHead>
+                <TableHead>n</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {snapshot.outcomes.salariesByCollege.map((row) => (
+                <TableRow key={row.group}>
+                  <TableCell>{row.group}</TableCell>
+                  <TableCell className="tabular-nums">{fmtNum(row.average)}</TableCell>
+                  <TableCell className="tabular-nums">{fmtNum(row.median)}</TableCell>
+                  <TableCell className="tabular-nums">{row.n}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DashboardPanel>
+      ) : null}
+
       {snapshot.outcomes.salariesByDegree.length ? (
         <DashboardPanel title="Salary by degree level">
           <Table>

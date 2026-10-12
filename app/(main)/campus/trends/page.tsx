@@ -43,12 +43,21 @@ export default async function CampusTrendsPage({ searchParams }: { searchParams:
           }))}
         />
       </div>
-      <DashboardPanel title="Year-over-year">
-        <p className="text-[14px] text-muted-foreground">
-          YoY placement requires stored campus_outcomes for the prior cohort. Platform activity (swipes, apps, interviews)
-          can still be compared week-over-week from the engagement funnel.
-        </p>
-        <p className="mt-2 text-[13px] text-muted-foreground">Current funnel peak: {projected == null ? "not enough outcome data" : `${projected}% placed or in school`}.</p>
+      <DashboardPanel title="Year-over-year placement">
+        {snapshot.outcomes.cohorts.length ? (
+          <ul className="space-y-2 text-[14px]">
+            {snapshot.outcomes.cohorts.map((row) => (
+              <li key={row.year}>
+                Class of {row.year}: {row.n ? Math.round((row.placed / row.n) * 100) : 0}% placed or in school ({row.placed}/{row.n})
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[14px] text-muted-foreground">
+            Year-over-year placement needs first-destination rows with a cohort year. This year’s live rate is{" "}
+            {projected == null ? "not available yet" : `${projected}%`}.
+          </p>
+        )}
       </DashboardPanel>
     </CampusFrame>
   )

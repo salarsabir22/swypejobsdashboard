@@ -71,7 +71,9 @@ export type CampusSnapshot = {
     internshipParticipation: SourcedNumber
     internshipConversion: SourcedNumber
     salariesByMajor: SalaryRow[]
+    salariesByCollege: SalaryRow[]
     salariesByDegree: SalaryRow[]
+    cohorts: { year: number; placed: number; n: number }[]
     timeToFirstOfferDays: SourcedNumber
     industries: CountRow[]
     roles: CountRow[]
@@ -94,6 +96,9 @@ export type CampusSnapshot = {
     byYear: CountRow[]
     byMajor: CountRow[]
     byCollege: CountRow[]
+    activeByYear: CountRow[]
+    activeByMajor: CountRow[]
+    activeByCollege: CountRow[]
     funnel: { label: string; value: number }[]
     rsvps: number
     appointments: number
@@ -112,6 +117,7 @@ export type CampusSnapshot = {
     repeatEmployers: number
     responseRate: SourcedNumber
     timeToRespondHours: SourcedNumber
+    employerNps: SourcedNumber
     partners: { name: string; tier: string }[]
   }
   matchQuality: {
@@ -130,7 +136,11 @@ export type CampusSnapshot = {
     consented: number
     byGender: CountRow[]
     byRace: CountRow[]
+    byDisability: CountRow[]
+    byIncome: CountRow[]
     firstGenPlacement: SourcedNumber
+    disability: number
+    pell: number
     international: { n: number; cptOpt: number; sponsorshipJobs: number }
     veteran: number
     transfer: number
@@ -139,6 +149,8 @@ export type CampusSnapshot = {
   operations: {
     appointments: number
     noShowRate: SourcedNumber
+    waitHours: SourcedNumber
+    programRoi: SourcedNumber
     waitHint: string
     events: { id: string; title: string; kind: string; rsvps: number; hires: number }[]
     resumeReviews: number
@@ -154,4 +166,5 @@ export type CampusSnapshot = {
   }
   alerts: AlertItem[]
   attention: AttentionStudent[]
+  alumni: AttentionStudent[]
 }

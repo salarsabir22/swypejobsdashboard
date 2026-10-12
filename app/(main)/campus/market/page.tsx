@@ -87,9 +87,9 @@ export default async function CampusMarketPage({ searchParams }: { searchParams:
           <p className="text-[14px] text-muted-foreground">No partnership tiers recorded yet. Tag strategic employers from Actions.</p>
         )}
       </DashboardPanel>
-      <DashboardPanel title="Employer satisfaction">
+      <DashboardPanel title="Employer satisfaction" badge={fmtSourced(snapshot.market.employerNps)}>
         <p className="text-[14px] text-muted-foreground">
-          Collect NPS on the career office vs. the platform from the operations tab. Employer feedback from product_feedback still rolls to platform admin.
+          NPS from campus surveys tagged employer. Office and platform NPS stay on Operations.
         </p>
       </DashboardPanel>
     </CampusFrame>

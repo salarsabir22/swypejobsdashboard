@@ -224,6 +224,12 @@ export default function LoginPage() {
           Create one
         </Link>
       </p>
+      <p className="mt-3 text-center text-sm text-muted-foreground">
+        University career office?{" "}
+        <Link href="/university/login" className="font-semibold text-primary hover:underline">
+          Sign in here
+        </Link>
+      </p>
     </div>
   )
 }

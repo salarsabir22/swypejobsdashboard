@@ -57,10 +57,18 @@ export default async function CampusQualityPage({ searchParams }: { searchParams
           ))}
         </ul>
       </DashboardPanel>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <BreakdownList title="What students swipe right" description="Preference data, by job category." rows={snapshot.swipeSignals.rightByCategory} />
+        <BreakdownList title="What they pass on" rows={snapshot.swipeSignals.leftByCategory} />
+      </div>
       <DashboardPanel title="Reasons for declines">
-        <p className="text-[14px] text-muted-foreground">
-          Capture decline reasons on the offer step to populate this. Nothing structured is stored yet.
-        </p>
+        {snapshot.matchQuality.declineReasons.length ? (
+          <BreakdownList title="Decline reasons" rows={snapshot.matchQuality.declineReasons} />
+        ) : (
+          <p className="text-[14px] text-muted-foreground">
+            Offer declines are not stored as reasons yet. Acceptance rate above is hired divided by offers.
+          </p>
+        )}
       </DashboardPanel>
     </CampusFrame>
   )

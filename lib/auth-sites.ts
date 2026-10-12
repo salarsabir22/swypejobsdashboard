@@ -31,7 +31,9 @@ export function usesLocalGoogle(origin: string) {
 export function googleStartUrl(returnOrigin: string, opts?: { role?: string; next?: string | null }) {
   const url = new URL("/auth/google", LANDING_ORIGIN)
   url.searchParams.set("returnTo", returnOrigin)
-  if (opts?.role === "student" || opts?.role === "recruiter") url.searchParams.set("role", opts.role)
+  if (opts?.role === "student" || opts?.role === "recruiter" || opts?.role === "university") {
+    url.searchParams.set("role", opts.role)
+  }
   if (opts?.next) url.searchParams.set("next", opts.next)
   return url.toString()
 }

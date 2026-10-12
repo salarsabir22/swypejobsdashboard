@@ -68,7 +68,9 @@ function isMarketingPath(path: string) {
     p === "/privacy" ||
     p === "/terms" ||
     p === "/login" ||
-    p === "/signup"
+    p === "/signup" ||
+    p === "/university" ||
+    p.startsWith("/university/")
   )
 }
 

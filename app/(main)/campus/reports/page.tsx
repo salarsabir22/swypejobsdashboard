@@ -1,4 +1,5 @@
 import { campusPageData } from "@/lib/campus/page-data"
+import { createClient } from "@/lib/supabase/server"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { ExportCsvButton, SavedViewForm } from "@/components/campus/CampusActions"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
@@ -6,6 +7,11 @@ import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 export default async function CampusReportsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
   const snapshot = await campusPageData(campus)
+  const supabase = await createClient()
+  const [{ data: audits }, { data: views }] = await Promise.all([
+    supabase.from("campus_audit_log").select("action, entity, created_at").order("created_at", { ascending: false }).limit(12),
+    supabase.from("campus_saved_views").select("name, path").eq("user_id", snapshot.access.userId).order("created_at", { ascending: false }).limit(12),
+  ])
   const nace = snapshot.outcomes.slices.map((s) => ({
     checkpoint: s.checkpoint,
     employed: s.employed,
@@ -45,8 +51,30 @@ export default async function CampusReportsPage({ searchParams }: { searchParams
           </ul>
         </DashboardPanel>
         <DashboardPanel title="Saved views">
-          <p className="mb-3 text-[14px] text-muted-foreground">Directors, advisors, and deans can keep their own home filters.</p>
+          <p className="mb-3 text-[14px] text-muted-foreground">Directors, advisors, and deans keep their own views.</p>
+          {(views || []).length ? (
+            <ul className="mb-3 space-y-1 text-[14px]">
+              {views!.map((view) => (
+                <li key={`${view.name}-${view.path}`}>
+                  {view.name} · {view.path}
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <SavedViewForm path="/campus/reports" />
+        </DashboardPanel>
+        <DashboardPanel title="Audit log">
+          {(audits || []).length ? (
+            <ul className="space-y-1 text-[14px]">
+              {audits!.map((row, i) => (
+                <li key={`${row.created_at}-${i}`}>
+                  {row.action} · {row.entity || "record"} · {new Date(row.created_at).toLocaleString()}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[14px] text-muted-foreground">Equity views and staff actions show up here once the audit table is live.</p>
+          )}
         </DashboardPanel>
       </div>
     </CampusFrame>

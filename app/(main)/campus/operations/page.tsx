@@ -25,7 +25,7 @@ export default async function CampusOperationsPage({ searchParams }: { searchPar
       </div>
       <DashboardPanel title="Wait times & caseload">
         <p className="text-[14px] text-muted-foreground">{snapshot.operations.waitHint}</p>
-        <p className="mt-2 text-[14px]">Caseload signal: {fmtSourced(snapshot.operations.caseload)} students in view.</p>
+        <p className="mt-2 text-[14px]">Average wait: {fmtSourced(snapshot.operations.waitHours)} hours. Caseload: {fmtSourced(snapshot.operations.caseload)} students in view.</p>
       </DashboardPanel>
       <DashboardPanel title="Events and event-to-hire" description="Career fairs, workshops, info sessions.">
         {snapshot.operations.events.length ? (
@@ -43,10 +43,9 @@ export default async function CampusOperationsPage({ searchParams }: { searchPar
           <EventForm university={university} />
         </div>
       </DashboardPanel>
-      <DashboardPanel title="ROI per program">
+      <DashboardPanel title="ROI per program" badge={`${fmtSourced(snapshot.operations.programRoi)} hires / event`}>
         <p className="text-[14px] text-muted-foreground">
-          ROI is event-to-hire from RSVPs marked hired, divided by staff time once appointments are timestamped. Nothing
-          is invented when those fields are empty.
+          Attributed hires from RSVPs marked hired, divided by events. Staff-hour cost stays blank until appointments carry a duration.
         </p>
       </DashboardPanel>
     </CampusFrame>

@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { isAllowedReturn } from "@/lib/auth-sites"
+import { provisionUniversityAccount } from "@/lib/campus/provision"
 import {
   isRecruiterOnboardingComplete,
   isStudentOnboardingComplete,
@@ -13,8 +14,9 @@ import {
 
 let started = false
 
-function fail(message: string) {
-  window.location.replace(`/login?error=${encodeURIComponent(message)}`)
+function fail(message: string, portal?: string | null) {
+  const path = portal === "university" ? "/university/login" : "/login"
+  window.location.replace(`${path}?error=${encodeURIComponent(message)}`)
 }
 
 export default function AuthCallbackPage() {
@@ -24,6 +26,7 @@ export default function AuthCallbackPage() {
 
     async function run() {
       const params = new URLSearchParams(window.location.search)
+      const portal = params.get("portal")
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""))
       const oauthError =
         params.get("error_description") ||
@@ -31,7 +34,7 @@ export default function AuthCallbackPage() {
         params.get("error") ||
         hash.get("error")
       if (oauthError) {
-        fail(oauthError)
+        fail(oauthError, portal)
         return
       }
 
@@ -44,20 +47,20 @@ export default function AuthCallbackPage() {
           refresh_token: refreshToken,
         })
         if (error) {
-          fail(error.message)
+          fail(error.message, portal)
           return
         }
       } else {
         const code = params.get("code")
         if (!code) {
-          fail("Google sign-in did not complete. Try again.")
+          fail("Google sign-in did not complete. Try again.", portal)
           return
         }
         const exchanged = await supabase.auth.exchangeCodeForSession(code)
         if (exchanged.error) {
           const existing = await supabase.auth.getSession()
           if (!existing.data.session) {
-            fail(exchanged.error.message)
+            fail(exchanged.error.message, portal)
             return
           }
         }
@@ -66,7 +69,7 @@ export default function AuthCallbackPage() {
       const { data: sessionData } = await supabase.auth.getSession()
       const session = sessionData.session
       if (!session?.user) {
-        fail("Google sign-in did not complete. Try again.")
+        fail("Google sign-in did not complete. Try again.", portal)
         return
       }
 
@@ -76,6 +79,7 @@ export default function AuthCallbackPage() {
         const role = params.get("role")
         const next = params.get("next")
         if (role) dest.searchParams.set("role", role)
+        if (portal) dest.searchParams.set("portal", portal)
         if (next) dest.searchParams.set("next", next)
         const fragment = new URLSearchParams({
           access_token: session.access_token,
@@ -92,6 +96,37 @@ export default function AuthCallbackPage() {
       }
 
       const roleParam = params.get("role")
+      const pendingRole = localStorage.getItem("pending_role")
+      const pendingUniversity = localStorage.getItem("pending_university") || ""
+      const pendingStaff = localStorage.getItem("pending_staff_role") || ""
+      const meta = session.user.user_metadata || {}
+      const universityName = pendingUniversity || (typeof meta.university === "string" ? meta.university : "")
+      const openingUniversity = portal === "university" || roleParam === "university" || pendingRole === "university"
+      if (openingUniversity) {
+        if (universityName) {
+          const saved = await provisionUniversityAccount({
+            university: universityName,
+            staffRole: pendingStaff || (typeof meta.staff_role === "string" ? meta.staff_role : undefined),
+            fullName: typeof meta.full_name === "string" ? meta.full_name : undefined,
+          })
+          if (!saved.ok) {
+            await supabase.auth.signOut()
+            fail(saved.message, "university")
+            return
+          }
+        }
+        localStorage.removeItem("pending_role")
+        localStorage.removeItem("pending_university")
+        localStorage.removeItem("pending_staff_role")
+        const { data: office } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle()
+        if (office?.role !== "university") {
+          await supabase.auth.signOut()
+          fail("Use a career-office account, or create one.", "university")
+          return
+        }
+        window.location.replace("/campus")
+        return
+      }
       if (roleParam === "student" || roleParam === "recruiter") {
         await supabase.from("profiles").update({ role: roleParam }).eq("id", session.user.id)
       }

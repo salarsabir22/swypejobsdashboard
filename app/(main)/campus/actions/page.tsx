@@ -97,10 +97,20 @@ export default async function CampusActionsPage({
           <EventForm university={university} />
         </DashboardPanel>
         <DashboardPanel title="Alumni and mentorship">
-          <p className="text-[14px] leading-relaxed text-muted-foreground">
-            Mentorship matching uses employed alumni from first-destination outcomes (status = employed) who opted into
-            being contacted. Import that cohort, then pair seniors in the same major. No cold outreach to graduates
-            without consent.
+          {snapshot.alumni.length ? (
+            <ul className="mb-3 space-y-2 text-[14px]">
+              {snapshot.alumni.map((row) => (
+                <li key={row.id}>
+                  {row.name}
+                  <span className="text-muted-foreground"> · {row.major || "Major unknown"} · {row.reason}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[14px] text-muted-foreground">No hired alumni in this campus snapshot yet.</p>
+          )}
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            Pair seniors with graduates in the same major only after those graduates opt in to being contacted.
           </p>
         </DashboardPanel>
       </div>

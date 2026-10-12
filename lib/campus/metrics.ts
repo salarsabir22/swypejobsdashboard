@@ -384,6 +384,82 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
 
   const underemployed = outcomes.filter((o) => (o as { requires_degree?: boolean | null }).requires_degree === false && (o as { status?: string }).status === "employed").length
 
+  const activeStudents = students.filter((s) => inLastDays(lastActivity(s.id), 30))
+  const cohortMap = new Map<number, { placed: number; n: number }>()
+  for (const raw of outcomes) {
+    const o = raw as { cohort_year?: number | null; checkpoint?: string; status?: string }
+    if (o.checkpoint !== "graduation" || !o.cohort_year) continue
+    const row = cohortMap.get(o.cohort_year) || { placed: 0, n: 0 }
+    row.n += 1
+    if (o.status === "employed" || o.status === "grad_school") row.placed += 1
+    cohortMap.set(o.cohort_year, row)
+  }
+  const cohorts = [...cohortMap.entries()]
+    .map(([year, row]) => ({ year, placed: row.placed, n: row.n }))
+    .sort((a, b) => a.year - b.year)
+
+  const placedIds = new Set(
+    outcomes
+      .filter((o) => {
+        const row = o as { checkpoint?: string; status?: string }
+        return row.checkpoint === "graduation" && (row.status === "employed" || row.status === "grad_school")
+      })
+      .map((o) => String((o as { student_id?: string }).student_id || ""))
+  )
+  const demoOf = (d: (typeof consentedDemo)[number]) => d as {
+    student_id?: string
+    first_gen?: boolean
+    disability?: boolean
+    pell_or_low_income?: boolean
+    international?: boolean
+  }
+  const rateFor = (rows: typeof consentedDemo) => {
+    if (rows.length < 8) return null
+    const placed = rows.filter((d) => placedIds.has(String(demoOf(d).student_id || ""))).length
+    return pct(placed, rows.length)
+  }
+  const gapPairs = [
+    { label: "First-gen vs. continuing-gen placement", yes: consentedDemo.filter((d) => demoOf(d).first_gen), no: consentedDemo.filter((d) => demoOf(d).first_gen === false) },
+    { label: "Pell / low-income vs. others", yes: consentedDemo.filter((d) => demoOf(d).pell_or_low_income), no: consentedDemo.filter((d) => demoOf(d).pell_or_low_income === false) },
+    { label: "International vs. domestic placement", yes: consentedDemo.filter((d) => demoOf(d).international), no: consentedDemo.filter((d) => demoOf(d).international === false) },
+    { label: "Disability disclosure vs. others", yes: consentedDemo.filter((d) => demoOf(d).disability), no: consentedDemo.filter((d) => demoOf(d).disability === false) },
+  ]
+  const equityGaps = gapPairs
+    .map((pair) => {
+      const a = rateFor(pair.yes)
+      const b = rateFor(pair.no)
+      if (a == null || b == null || Math.abs(a - b) < 10) return null
+      return { label: pair.label, delta: `${a}% vs ${b}% (${a - b > 0 ? "+" : ""}${a - b} pts)` }
+    })
+    .filter(Boolean) as { label: string; delta: string }[]
+  const firstGenRows = consentedDemo.filter((d) => demoOf(d).first_gen)
+  const firstGenPlaced = firstGenRows.filter((d) => placedIds.has(String(demoOf(d).student_id || ""))).length
+
+  const waitHours = appointments
+    .map((a) => {
+      const row = a as { created_at?: string; starts_at?: string | null }
+      if (!row.created_at || !row.starts_at) return null
+      return hoursBetween(row.created_at, row.starts_at)
+    })
+    .filter((n): n is number => n != null)
+  const eventHires = eventRows.reduce((sum, ev) => sum + ev.hires, 0)
+  const employerNpsValues = surveys
+    .filter((s) => (s as { target?: string }).target === "employer")
+    .map((s) => Number((s as { nps?: number }).nps))
+    .filter((n) => Number.isFinite(n))
+  const alumni: AttentionStudent[] = hired.slice(0, 24).map((m) => {
+    const stu = studentMap.get(m.student_id)
+    const job = jobMap.get(m.job_id)
+    return {
+      id: m.student_id,
+      name: stu?.profiles?.full_name || "Graduate",
+      university: stu?.university ?? null,
+      major: stu?.degree ?? null,
+      year: stu?.graduation_year ?? null,
+      reason: job?.title || "Employed",
+    }
+  })
+
   const alerts = [
     quietSeniors.length
       ? { id: "seniors-no-apps", severity: "high" as const, title: "Seniors with no applications", detail: "Nudge this cohort before graduation.", href: "/campus/actions?segment=seniors", count: quietSeniors.length }
@@ -431,7 +507,12 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
         const stu = studentMap.get(String(o.student_id))
         return stu?.degree || "Unknown major"
       }),
+      salariesByCollege: salaryGroup((o) => {
+        const stu = studentMap.get(String(o.student_id))
+        return stu?.institution_type || stu?.university || "Unknown college"
+      }),
       salariesByDegree: salaryGroup((o) => degreeLevel(studentMap.get(String(o.student_id))?.degree)),
+      cohorts,
       timeToFirstOfferDays: sourced(average(offerTimes), offerTimes.length, "platform"),
       industries: countBy([
         ...hired.map((m) => recruiterMap.get(m.recruiter_id)?.industry),
@@ -469,6 +550,9 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
       byYear: countBy(students.map((s) => (s.graduation_year ? String(s.graduation_year) : null))),
       byMajor: studentsByMajor.slice(0, 12),
       byCollege: countBy(students.map((s) => s.institution_type || s.university)),
+      activeByYear: countBy(activeStudents.map((s) => (s.graduation_year ? String(s.graduation_year) : null))).slice(0, 12),
+      activeByMajor: countBy(activeStudents.map((s) => s.degree)).slice(0, 12),
+      activeByCollege: countBy(activeStudents.map((s) => s.institution_type || s.university)).slice(0, 12),
       funnel: [
         { label: "Signup", value: signup },
         { label: "Profile", value: profileDone },
@@ -494,6 +578,7 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
       repeatEmployers: [...hiresByRecruiter.values()].filter((n) => n > 1).length,
       responseRate: sourced(pct(responded, appCount), responded, "platform"),
       timeToRespondHours: sourced(average(recruiterFirstReply), recruiterFirstReply.length, "platform"),
+      employerNps: sourced(average(employerNpsValues), employerNpsValues.length, "survey"),
       partners: partners.map((p) => ({
         name: recruiterMap.get((p as { recruiter_id: string }).recruiter_id)?.company_name || "Partner",
         tier: (p as { tier: string }).tier,
@@ -511,14 +596,18 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
       appToInterview: sourced(pct(interviews.length, apps.length), interviews.length, "platform"),
       interviewToOffer: sourced(pct(offers.length, interviews.length), offers.length, "platform"),
       offerAccept: sourced(pct(hired.length, offers.length), hired.length, "platform"),
-      declineReasons: [{ label: "Not captured yet", value: 0 }],
+      declineReasons: [],
     },
     equity: {
       available: equityAvailable,
       consented: consentedDemo.length,
       byGender: countBy(consentedDemo.map((d) => (d as { gender?: string }).gender)),
       byRace: countBy(consentedDemo.map((d) => (d as { race_ethnicity?: string }).race_ethnicity)),
-      firstGenPlacement: sourced(null, consentedDemo.filter((d) => (d as { first_gen?: boolean }).first_gen).length, "self_reported", "Needs linked outcomes"),
+      byDisability: countBy(consentedDemo.map((d) => (demoOf(d).disability == null ? null : demoOf(d).disability ? "Disclosed" : "Not disclosed"))),
+      byIncome: countBy(consentedDemo.map((d) => (demoOf(d).pell_or_low_income == null ? null : demoOf(d).pell_or_low_income ? "Pell / low-income" : "Not flagged"))),
+      firstGenPlacement: sourced(pct(firstGenPlaced, firstGenRows.length), firstGenRows.length, "self_reported", "Graduation checkpoint, consented records only"),
+      disability: consentedDemo.filter((d) => demoOf(d).disability).length,
+      pell: consentedDemo.filter((d) => demoOf(d).pell_or_low_income).length,
       international: {
         n: consentedDemo.filter((d) => (d as { international?: boolean }).international).length,
         cptOpt: consentedDemo.filter((d) => /cpt|opt/i.test((d as { work_auth?: string }).work_auth || "")).length,
@@ -526,14 +615,22 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
       },
       veteran: consentedDemo.filter((d) => (d as { veteran?: boolean }).veteran).length,
       transfer: consentedDemo.filter((d) => (d as { transfer_student?: boolean }).transfer_student).length,
-      gaps: equityAvailable
-        ? [{ label: "Sample too small for disparity flags", delta: "Collect more consented records" }]
-        : [],
+      gaps: equityGaps.length
+        ? equityGaps
+        : equityAvailable
+          ? [{ label: "No disparity of 10+ points", delta: "Needs at least 8 consented students on each side of a comparison" }]
+          : [],
     },
     operations: {
       appointments: appointments.length,
       noShowRate: sourced(pct(noShows, appointments.length), noShows, "platform"),
-      waitHint: appointments.length ? "Wait time needs scheduled slots with timestamps." : "No advisor calendar connected yet.",
+      waitHours: sourced(average(waitHours), waitHours.length, "platform", "Hours from booking to the scheduled slot"),
+      programRoi: sourced(eventRows.length ? Math.round((eventHires / eventRows.length) * 100) / 100 : null, eventHires, "platform", "Attributed hires per event"),
+      waitHint: waitHours.length
+        ? `Average wait is ${average(waitHours)} hours from booking to the slot.`
+        : appointments.length
+          ? "Appointments exist, but they do not have both a booked time and a slot time yet."
+          : "No advisor calendar connected yet.",
       events: eventRows,
       resumeReviews: reviews.length,
       npsOffice: sourced(average(npsOffice), npsOffice.length, "survey"),
@@ -548,5 +645,6 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
     },
     alerts,
     attention,
+    alumni,
   }
 })

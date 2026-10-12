@@ -35,9 +35,14 @@ export default async function CampusEngagementPage({ searchParams }: { searchPar
       </div>
       <DashboardFunnel title="Drop-off: signup → offer" stages={snapshot.engagement.funnel} />
       <div className="grid gap-4 lg:grid-cols-3">
-        <BreakdownList title="By class year" rows={snapshot.engagement.byYear} />
-        <BreakdownList title="By major" rows={snapshot.engagement.byMajor} />
-        <BreakdownList title="By college / institution type" rows={snapshot.engagement.byCollege} />
+        <BreakdownList title="Registered by class year" rows={snapshot.engagement.byYear} />
+        <BreakdownList title="Registered by major" rows={snapshot.engagement.byMajor} />
+        <BreakdownList title="Registered by college" rows={snapshot.engagement.byCollege} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <BreakdownList title="Active this month by class year" rows={snapshot.engagement.activeByYear} />
+        <BreakdownList title="Active this month by major" rows={snapshot.engagement.activeByMajor} />
+        <BreakdownList title="Active this month by college" rows={snapshot.engagement.activeByCollege} />
       </div>
       <DashboardPanel title="Zero-activity outreach list" description="Registered students with no swipes.">
         {snapshot.engagement.zeroActivity.length === 0 ? (
