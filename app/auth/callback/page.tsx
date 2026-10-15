@@ -5,9 +5,11 @@ import { createClient } from "@/lib/supabase/client"
 import { isAllowedReturn } from "@/lib/auth-sites"
 import { provisionUniversityAccount } from "@/lib/campus/provision"
 import {
+  clearSignupIntent,
   isRecruiterOnboardingComplete,
   isStudentOnboardingComplete,
   postAuthRedirect,
+  resolveAppRole,
   RECRUITER_ONBOARDING_SELECT,
   STUDENT_ONBOARDING_SELECT,
 } from "@/lib/profile/completeness"
@@ -100,53 +102,84 @@ export default function AuthCallbackPage() {
       const pendingStaff = localStorage.getItem("pending_staff_role") || ""
       const meta = session.user.user_metadata || {}
       const universityName = pendingUniversity || (typeof meta.university === "string" ? meta.university : "")
-      const openingUniversity = portal === "university" || roleParam === "university" || pendingRole === "university"
-      if (openingUniversity) {
-        if (universityName) {
-          const saved = await provisionUniversityAccount({
-            university: universityName,
-            staffRole: pendingStaff || (typeof meta.staff_role === "string" ? meta.staff_role : undefined),
-            fullName: typeof meta.full_name === "string" ? meta.full_name : undefined,
-          })
-          if (!saved.ok) {
-            await supabase.auth.signOut()
-            fail(saved.message, "university")
-            return
-          }
-        }
-        localStorage.removeItem("pending_role")
-        localStorage.removeItem("pending_university")
-        localStorage.removeItem("pending_staff_role")
-        const { data: office } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle()
-        if (office?.role !== "university") {
-          await supabase.auth.signOut()
-          fail("Use a career-office account, or create one.", "university")
-          return
-        }
-        window.location.replace("/campus")
-        return
-      }
-      const signupRole =
-        roleParam === "student" || roleParam === "recruiter"
-          ? roleParam
-          : pendingRole === "student" || pendingRole === "recruiter"
-            ? pendingRole
-            : null
-      if (signupRole) {
-        await supabase.from("profiles").update({ role: signupRole }).eq("id", session.user.id)
-        localStorage.removeItem("pending_role")
-      }
+      const wantsUniversitySignup =
+        portal === "university" || roleParam === "university" || pendingRole === "university"
 
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", session.user.id)
         .maybeSingle()
-      const metaRole = session.user.user_metadata?.role
-      const role =
-        signupRole ||
-        profile?.role ||
-        (metaRole === "student" || metaRole === "recruiter" ? metaRole : null)
+      const establishedRole =
+        profile?.role === "admin" ||
+        profile?.role === "university" ||
+        profile?.role === "recruiter" ||
+        profile?.role === "student"
+          ? profile.role
+          : null
+
+      if (establishedRole === "admin") {
+        clearSignupIntent()
+        window.location.replace("/admin/users")
+        return
+      }
+
+      if (establishedRole === "university") {
+        clearSignupIntent()
+        window.location.replace("/campus")
+        return
+      }
+
+      if (wantsUniversitySignup) {
+        // Stale university signup intent must not kick out student/recruiter/admin logins.
+        if (establishedRole === "student" || establishedRole === "recruiter") {
+          clearSignupIntent()
+        } else {
+          if (universityName) {
+            const saved = await provisionUniversityAccount({
+              university: universityName,
+              staffRole: pendingStaff || (typeof meta.staff_role === "string" ? meta.staff_role : undefined),
+              fullName: typeof meta.full_name === "string" ? meta.full_name : undefined,
+            })
+            if (!saved.ok) {
+              await supabase.auth.signOut()
+              fail(saved.message, "university")
+              return
+            }
+          }
+          clearSignupIntent()
+          const { data: office } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle()
+          if (office?.role !== "university") {
+            await supabase.auth.signOut()
+            fail("Use a career-office account, or create one.", "university")
+            return
+          }
+          window.location.replace("/campus")
+          return
+        }
+      }
+
+      // Only apply signup role when the account has no role yet.
+      const signupRole =
+        !establishedRole &&
+        (roleParam === "student" ||
+          roleParam === "recruiter" ||
+          pendingRole === "student" ||
+          pendingRole === "recruiter")
+          ? roleParam === "student" || roleParam === "recruiter"
+            ? roleParam
+            : pendingRole
+          : null
+      if (signupRole) {
+        await supabase.from("profiles").update({ role: signupRole }).eq("id", session.user.id)
+      }
+      clearSignupIntent()
+
+      const role = await resolveAppRole(supabase, session.user.id, {
+        profileRole: establishedRole || signupRole,
+        metaRole: typeof meta.role === "string" ? meta.role : null,
+      })
+
       let studentReady = false
       let recruiterReady = false
       if (role === "student") {
@@ -165,7 +198,7 @@ export default function AuthCallbackPage() {
           .maybeSingle()
         recruiterReady = isRecruiterOnboardingComplete(data)
       }
-      if (!profile && !signupRole) {
+      if (!profile && !signupRole && role !== "university" && role !== "admin") {
         window.location.replace("/onboarding")
         return
       }

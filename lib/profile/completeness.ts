@@ -2,6 +2,39 @@ import { safeInternalPath } from "@/lib/utils"
 
 export type CompletenessItem = { id: string; label: string; done: boolean; href: string }
 
+export type AppRole = "student" | "recruiter" | "university" | "admin"
+
+/** Resolve the account role for redirects. Profile wins; heal from staff/recruiter rows. */
+export async function resolveAppRole(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: { from: (table: string) => any },
+  userId: string,
+  opts?: { profileRole?: string | null; metaRole?: string | null }
+): Promise<AppRole | null> {
+  let role = opts?.profileRole
+  if (role !== "student" && role !== "recruiter" && role !== "university" && role !== "admin") {
+    const meta = opts?.metaRole
+    role = meta === "student" || meta === "recruiter" || meta === "university" || meta === "admin" ? meta : undefined
+  }
+  if (role !== "university" && role !== "admin") {
+    const { data: staff } = await supabase.from("campus_staff").select("user_id").eq("user_id", userId).maybeSingle()
+    if (staff) role = "university"
+  }
+  if (role !== "recruiter" && role !== "university" && role !== "admin") {
+    const { data: recruiterRow } = await supabase.from("recruiter_profiles").select("id").eq("id", userId).maybeSingle()
+    if (recruiterRow) role = "recruiter"
+  }
+  if (role === "student" || role === "recruiter" || role === "university" || role === "admin") return role
+  return null
+}
+
+export function clearSignupIntent() {
+  if (typeof window === "undefined") return
+  localStorage.removeItem("pending_role")
+  localStorage.removeItem("pending_university")
+  localStorage.removeItem("pending_staff_role")
+}
+
 export const STUDENT_ONBOARDING_SELECT =
   "university, degree, graduation_year, skills, preferred_job_categories, linkedin_url, github_url, portfolio_url, resume_url"
 

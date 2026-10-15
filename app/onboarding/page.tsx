@@ -1136,8 +1136,29 @@ export default function OnboardingPage() {
       const pendingRole = localStorage.getItem("pending_role") as UserRole | null
       const metaRole = user.user_metadata?.role as UserRole | undefined
       const { data: existingProfile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
-      if (pendingRole === "university" || metaRole === "university" || existingProfile?.role === "university") {
+      if (existingProfile?.role === "admin") {
         localStorage.removeItem("pending_role")
+        localStorage.removeItem("pending_university")
+        localStorage.removeItem("pending_staff_role")
+        window.location.href = "/admin/users"
+        return
+      }
+      if (existingProfile?.role === "university") {
+        localStorage.removeItem("pending_role")
+        localStorage.removeItem("pending_university")
+        localStorage.removeItem("pending_staff_role")
+        window.location.href = "/campus"
+        return
+      }
+      // Stale university signup intent — ignore for established student/recruiter accounts.
+      if (
+        (pendingRole === "university" || metaRole === "university") &&
+        existingProfile?.role !== "student" &&
+        existingProfile?.role !== "recruiter"
+      ) {
+        localStorage.removeItem("pending_role")
+        localStorage.removeItem("pending_university")
+        localStorage.removeItem("pending_staff_role")
         window.location.href = "/campus"
         return
       }
@@ -1149,7 +1170,7 @@ export default function OnboardingPage() {
         .eq("id", user.id)
         .maybeSingle()
       let resolvedRole: UserRole | null = null
-      if (recruiterRow && existingProfile?.role !== "university" && existingProfile?.role !== "admin") {
+      if (recruiterRow) {
         resolvedRole = "recruiter"
         if (existingProfile?.role !== "recruiter") {
           await supabase.from("profiles").update({ role: "recruiter" }).eq("id", user.id)
@@ -1165,6 +1186,8 @@ export default function OnboardingPage() {
         resolvedRole = "student"
       }
       localStorage.removeItem("pending_role")
+      localStorage.removeItem("pending_university")
+      localStorage.removeItem("pending_staff_role")
       setRole(resolvedRole)
 
       const { data: profile } = await supabase

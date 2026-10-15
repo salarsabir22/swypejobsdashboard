@@ -5,6 +5,7 @@ import {
   isRecruiterOnboardingComplete,
   isStudentOnboardingComplete,
   postAuthRedirect,
+  resolveAppRole,
   RECRUITER_ONBOARDING_SELECT,
   STUDENT_ONBOARDING_SELECT,
 } from "@/lib/profile/completeness"
@@ -46,9 +47,13 @@ export default async function HomePage({
       const again = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
       profile = again.data
     }
+    const role = await resolveAppRole(supabase, user.id, {
+      profileRole: profile?.role,
+      metaRole: typeof meta.role === "string" ? meta.role : null,
+    })
     let studentReady = false
     let recruiterReady = false
-    if (profile?.role === "student") {
+    if (role === "student") {
       const { data } = await supabase
         .from("student_profiles")
         .select(STUDENT_ONBOARDING_SELECT)
@@ -56,7 +61,7 @@ export default async function HomePage({
         .maybeSingle()
       studentReady = isStudentOnboardingComplete(data)
     }
-    if (profile?.role === "recruiter") {
+    if (role === "recruiter") {
       const { data } = await supabase
         .from("recruiter_profiles")
         .select(RECRUITER_ONBOARDING_SELECT)
@@ -66,7 +71,7 @@ export default async function HomePage({
     }
     redirect(
       postAuthRedirect({
-        role: profile?.role,
+        role,
         studentReady,
         recruiterReady,
       })

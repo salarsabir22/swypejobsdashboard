@@ -7,9 +7,11 @@ import { googleStartUrl, usesLocalGoogle } from "@/lib/auth-sites"
 import { Loader2, Eye, EyeOff } from "lucide-react"
 import { safeInternalPath } from "@/lib/utils"
 import {
+  clearSignupIntent,
   isStudentOnboardingComplete,
   isRecruiterOnboardingComplete,
   postAuthRedirect,
+  resolveAppRole,
   STUDENT_ONBOARDING_SELECT,
   RECRUITER_ONBOARDING_SELECT,
 } from "@/lib/profile/completeness"
@@ -73,24 +75,13 @@ export default function LoginPage() {
       return
     }
     setSuccess(true)
-    // Stale Google signup intent must not force student steps on a recruiter login.
-    localStorage.removeItem("pending_role")
+    clearSignupIntent()
     const next = safeInternalPath(new URLSearchParams(window.location.search).get("next"))
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).maybeSingle()
-    const metaRole = data.user.user_metadata?.role
-    let role = profile?.role as string | undefined
-    if (role !== "student" && role !== "recruiter" && role !== "university" && role !== "admin") {
-      if (metaRole === "student" || metaRole === "recruiter" || metaRole === "university") {
-        role = metaRole
-      } else {
-        const { data: recruiterRow } = await supabase
-          .from("recruiter_profiles")
-          .select("id")
-          .eq("id", data.user.id)
-          .maybeSingle()
-        if (recruiterRow) role = "recruiter"
-      }
-    }
+    const role = await resolveAppRole(supabase, data.user.id, {
+      profileRole: profile?.role,
+      metaRole: typeof data.user.user_metadata?.role === "string" ? data.user.user_metadata.role : null,
+    })
     let studentReady = false
     let recruiterReady = false
     if (role === "student") {
@@ -120,6 +111,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setError(null)
     setGoogleLoading(true)
+    clearSignupIntent()
     const nextPath = safeInternalPath(new URLSearchParams(window.location.search).get("next"))
     if (!usesLocalGoogle(window.location.origin)) {
       window.location.href = googleStartUrl(window.location.origin, { next: nextPath })
