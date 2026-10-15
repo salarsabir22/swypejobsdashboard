@@ -2065,21 +2065,6 @@ export default function OnboardingPage() {
                 </div>
               </CardFooter>
             </Card>
-
-            {/* Skip all (students only) */}
-            {role === "student" && (
-              <div className="mt-6 text-center">
-                <Button
-                  type="button"
-                  variant="link"
-                  className="h-auto p-0 font-body text-sm text-muted-foreground"
-                  onClick={() => handleComplete()}
-                  disabled={loading}
-                >
-                  Finish later - go to Discover with what you have
-                </Button>
-              </div>
-            )}
           </div>
         </div>
 
