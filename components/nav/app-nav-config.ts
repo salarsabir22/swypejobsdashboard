@@ -44,7 +44,8 @@ export const recruiterMoreLinks: MoreLink[] = [
   { href: "/feed", label: "Feed", icon: Newspaper },
   { href: "/dashboard", label: "Insights", icon: LayoutDashboard },
   { href: "/community", label: "Community", icon: Users },
-  { href: "/profile", label: "Company page", icon: User },
+  { href: "/company", label: "Company", icon: User },
+  { href: "/profile", label: "Profile", icon: User },
   { href: "/jobs/new", label: "Post a job", icon: Briefcase },
   { href: "/feedback", label: "Feedback", icon: MessageSquareText },
 ]

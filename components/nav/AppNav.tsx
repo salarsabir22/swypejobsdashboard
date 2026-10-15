@@ -52,6 +52,7 @@ const recruiterLinks: NavLink[] = [
   { href: "/discover", label: "Discover" },
   { href: "/feed", label: "Feed" },
   { href: "/jobs", label: "Jobs" },
+  { href: "/company", label: "Company" },
   { href: "/matches", label: "Pipeline" },
   { href: "/chat", label: "Messages" },
   { href: "/dashboard", label: "Insights" },
@@ -127,6 +128,7 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
 
   const isActive = (href: string) => {
     if (href === "/admin") return pathname === "/admin"
+    if (href === "/company") return pathname === "/company"
     if (href === "/campus") {
       if (role === "admin") return pathname === "/campus" || pathname.startsWith("/campus/")
       return pathname === "/campus"

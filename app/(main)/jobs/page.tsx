@@ -193,7 +193,7 @@ export default async function JobsPage({
         </Card>
       ) : (
         <div className="space-y-4">
-          <p className="font-body text-sm text-muted-foreground">Open a job to edit details and review applicants.</p>
+          <p className="font-body text-sm text-muted-foreground">Open a job to review applicants and the top 10 picks.</p>
           <ul className="m-0 list-none space-y-3 p-0">
             {(jobs || []).map((job: Job) => {
               const stats = perJobStats[job.id] || { applications: 0, matches: 0, views: 0 }

@@ -40,6 +40,7 @@ export interface StudentProfile {
 
 export interface RecruiterProfile {
   id: string
+  company_id?: string | null
   company_name: string
   logo_url: string | null
   description: string | null

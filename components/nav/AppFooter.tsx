@@ -27,6 +27,7 @@ function columnsFor(role: UserRole | "admin"): { cols: FooterCol[]; cta: FooterL
           title: "Hiring",
           links: [
             { href: "/discover", label: "Shortlist talent" },
+            { href: "/company", label: "Company" },
             { href: "/jobs", label: "Your listings" },
             { href: "/matches", label: "Pipeline" },
             { href: "/chat", label: "Candidate messages" },
@@ -38,13 +39,13 @@ function columnsFor(role: UserRole | "admin"): { cols: FooterCol[]; cta: FooterL
             { href: "/feed", label: "Team updates" },
             { href: "/community", label: "Topic rooms" },
             { href: "/dashboard", label: "Hiring insights" },
-            { href: "/profile", label: "Company page" },
+            { href: "/profile", label: "Profile" },
           ],
         },
         {
           title: "Support",
           links: [
-            { href: "/onboarding", label: "Edit company" },
+            { href: "/company", label: "Edit company" },
             { href: "/feedback", label: "Send feedback" },
           ],
         },

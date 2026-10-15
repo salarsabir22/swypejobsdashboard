@@ -10,8 +10,11 @@ const PUBLIC_PREFIXES = [
   "/privacy",
   "/terms",
   "/candidates",
-  "/company",
 ]
+
+function isPublicCompanyProfile(pathname: string) {
+  return /^\/company\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathname)
+}
 
 function isPublicJobDetail(pathname: string) {
   return /^\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathname)
@@ -21,7 +24,8 @@ function isPublicPath(pathname: string) {
   return (
     pathname === "/" ||
     PUBLIC_PREFIXES.some((p) => pathname.startsWith(p)) ||
-    isPublicJobDetail(pathname)
+    isPublicJobDetail(pathname) ||
+    isPublicCompanyProfile(pathname)
   )
 }
 

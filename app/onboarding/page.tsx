@@ -9,6 +9,7 @@ import {
   ChevronRight, Send, Bell, Video, Lock, Globe
 } from "lucide-react"
 import { CompanyPicker } from "@/components/profile/CompanyPicker"
+import { isCompanySchemaMissing } from "@/lib/companies"
 import { UniversityPicker } from "@/components/profile/UniversityPicker"
 import { COMPANY_INDUSTRIES, EMPLOYEE_RANGES } from "@/lib/company-options"
 import { normalizeCalendlyUrl } from "@/lib/hiring/interview-invite"
@@ -1414,7 +1415,29 @@ export default function OnboardingPage() {
             await supabase.from("recruiter_profiles").insert(recruiterData)
           }
         }
-        window.location.href = "/jobs"
+        const joined = await supabase.rpc("accept_company_invite")
+        if (!isCompanySchemaMissing(joined.error)) {
+          if (joined.error) {
+            setStepError(joined.error.message)
+            return
+          }
+          const joinedId = typeof joined.data === "string" ? joined.data : null
+          if (!joinedId) {
+            const created = await supabase.rpc("create_company", {
+              p_name: companyName,
+              p_description: companyDescription,
+              p_website: websiteUrl || null,
+              p_industry: industry || null,
+              p_employee_count: employeeCount || null,
+              p_hiring_focus: hiringFocus || null,
+            })
+            if (created.error && !isCompanySchemaMissing(created.error) && !/already belong/i.test(created.error.message)) {
+              setStepError(created.error.message)
+              return
+            }
+          }
+        }
+        window.location.href = "/company"
       }
     } catch {
       setStepError("Something went wrong saving your profile. Please try again.")
