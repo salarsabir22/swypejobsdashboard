@@ -1135,31 +1135,37 @@ export default function OnboardingPage() {
 
       const pendingRole = localStorage.getItem("pending_role") as UserRole | null
       const metaRole = user.user_metadata?.role as UserRole | undefined
-      if (pendingRole === "university" || metaRole === "university") {
+      const { data: existingProfile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+      if (pendingRole === "university" || metaRole === "university" || existingProfile?.role === "university") {
+        localStorage.removeItem("pending_role")
         window.location.href = "/campus"
         return
       }
-      if (pendingRole === "recruiter" || pendingRole === "student") {
-        setRole(pendingRole)
-        await supabase.from("profiles").update({ role: pendingRole }).eq("id", user.id)
-        localStorage.removeItem("pending_role")
-      } else {
-        const metaRole = user.user_metadata?.role as UserRole | undefined
-        if (metaRole === "recruiter" || metaRole === "student") {
-          setRole(metaRole)
-        } else {
-          const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
-          if (profile?.role === "university") {
-            window.location.href = "/campus"
-            return
-          }
-          if (profile?.role === "recruiter" || profile?.role === "student") {
-            setRole(profile.role as UserRole)
-          } else {
-            setRole("student")
-          }
+      // profiles.role is source of truth for returning users. Only apply pending_role
+      // (Google signup) when the profile has no role yet — never overwrite recruiter→student.
+      const { data: recruiterRow } = await supabase
+        .from("recruiter_profiles")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle()
+      let resolvedRole: UserRole | null = null
+      if (recruiterRow && existingProfile?.role !== "university" && existingProfile?.role !== "admin") {
+        resolvedRole = "recruiter"
+        if (existingProfile?.role !== "recruiter") {
+          await supabase.from("profiles").update({ role: "recruiter" }).eq("id", user.id)
         }
+      } else if (existingProfile?.role === "recruiter" || existingProfile?.role === "student") {
+        resolvedRole = existingProfile.role as UserRole
+      } else if (pendingRole === "recruiter" || pendingRole === "student") {
+        resolvedRole = pendingRole
+        await supabase.from("profiles").update({ role: pendingRole }).eq("id", user.id)
+      } else if (metaRole === "recruiter" || metaRole === "student") {
+        resolvedRole = metaRole
+      } else {
+        resolvedRole = "student"
       }
+      localStorage.removeItem("pending_role")
+      setRole(resolvedRole)
 
       const { data: profile } = await supabase
         .from("profiles")

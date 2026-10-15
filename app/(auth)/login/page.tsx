@@ -73,11 +73,27 @@ export default function LoginPage() {
       return
     }
     setSuccess(true)
+    // Stale Google signup intent must not force student steps on a recruiter login.
+    localStorage.removeItem("pending_role")
     const next = safeInternalPath(new URLSearchParams(window.location.search).get("next"))
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", data.user.id).maybeSingle()
+    const metaRole = data.user.user_metadata?.role
+    let role = profile?.role as string | undefined
+    if (role !== "student" && role !== "recruiter" && role !== "university" && role !== "admin") {
+      if (metaRole === "student" || metaRole === "recruiter" || metaRole === "university") {
+        role = metaRole
+      } else {
+        const { data: recruiterRow } = await supabase
+          .from("recruiter_profiles")
+          .select("id")
+          .eq("id", data.user.id)
+          .maybeSingle()
+        if (recruiterRow) role = "recruiter"
+      }
+    }
     let studentReady = false
     let recruiterReady = false
-    if (profile?.role === "student") {
+    if (role === "student") {
       const { data: student } = await supabase
         .from("student_profiles")
         .select(STUDENT_ONBOARDING_SELECT)
@@ -85,7 +101,7 @@ export default function LoginPage() {
         .maybeSingle()
       studentReady = isStudentOnboardingComplete(student)
     }
-    if (profile?.role === "recruiter") {
+    if (role === "recruiter") {
       const { data: recruiter } = await supabase
         .from("recruiter_profiles")
         .select(RECRUITER_ONBOARDING_SELECT)
@@ -94,7 +110,7 @@ export default function LoginPage() {
       recruiterReady = isRecruiterOnboardingComplete(recruiter)
     }
     window.location.href = postAuthRedirect({
-      role: profile?.role,
+      role,
       studentReady,
       recruiterReady,
       next,

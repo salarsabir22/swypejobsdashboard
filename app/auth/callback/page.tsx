@@ -126,8 +126,15 @@ export default function AuthCallbackPage() {
         window.location.replace("/campus")
         return
       }
-      if (roleParam === "student" || roleParam === "recruiter") {
-        await supabase.from("profiles").update({ role: roleParam }).eq("id", session.user.id)
+      const signupRole =
+        roleParam === "student" || roleParam === "recruiter"
+          ? roleParam
+          : pendingRole === "student" || pendingRole === "recruiter"
+            ? pendingRole
+            : null
+      if (signupRole) {
+        await supabase.from("profiles").update({ role: signupRole }).eq("id", session.user.id)
+        localStorage.removeItem("pending_role")
       }
 
       const { data: profile } = await supabase
@@ -135,7 +142,11 @@ export default function AuthCallbackPage() {
         .select("role")
         .eq("id", session.user.id)
         .maybeSingle()
-      const role = roleParam === "student" || roleParam === "recruiter" ? roleParam : profile?.role
+      const metaRole = session.user.user_metadata?.role
+      const role =
+        signupRole ||
+        profile?.role ||
+        (metaRole === "student" || metaRole === "recruiter" ? metaRole : null)
       let studentReady = false
       let recruiterReady = false
       if (role === "student") {
@@ -154,7 +165,7 @@ export default function AuthCallbackPage() {
           .maybeSingle()
         recruiterReady = isRecruiterOnboardingComplete(data)
       }
-      if (!profile && roleParam !== "student" && roleParam !== "recruiter") {
+      if (!profile && !signupRole) {
         window.location.replace("/onboarding")
         return
       }
