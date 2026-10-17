@@ -5,6 +5,7 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { googleStartUrl, usesLocalGoogle } from "@/lib/auth-sites"
 import { provisionUniversityAccount } from "@/lib/campus/provision"
+import { applySignupRole } from "@/lib/profile/completeness"
 import { UniversityPicker } from "@/components/profile/UniversityPicker"
 import { cn } from "@/lib/utils"
 import { Loader2, Eye, EyeOff } from "lucide-react"
@@ -134,7 +135,11 @@ export default function SignupPage() {
       return
     }
     if (data.session) {
+      const userId = data.user!.id
       if (role === "university") {
+        await supabase.auth.updateUser({
+          data: { role: "university", university: university.trim(), staff_role: staffRole, full_name: fullName.trim() },
+        })
         const saved = await provisionUniversityAccount({
           university: university.trim(),
           staffRole,
@@ -148,10 +153,22 @@ export default function SignupPage() {
         window.location.href = "/campus"
         return
       }
-      const supabase2 = createClient()
-      await supabase2.from("profiles").update({ role }).eq("id", data.user!.id)
-      window.location.href = "/onboarding"
+      localStorage.setItem("pending_role", role)
+      const applied = await applySignupRole(supabase, userId, role, {
+        fullName: fullName.trim(),
+      })
+      const { data: check } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle()
+      if (check?.role !== applied) {
+        await supabase.from("profiles").update({ role: applied }).eq("id", userId)
+      }
+      window.location.href = applied === "recruiter" || applied === "student" ? "/onboarding" : "/campus"
     } else if (data.user) {
+      // Email confirm required — keep role in metadata (already set) and pending for after verify.
+      localStorage.setItem("pending_role", role)
+      if (role === "university") {
+        localStorage.setItem("pending_university", university.trim())
+        localStorage.setItem("pending_staff_role", staffRole)
+      }
       setVerifyMode(true)
       setLoading(false)
     }

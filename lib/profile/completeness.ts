@@ -35,6 +35,73 @@ export function clearSignupIntent() {
   localStorage.removeItem("pending_staff_role")
 }
 
+export type SignupIntentRole = "student" | "recruiter" | "university"
+
+/** Explicit signup choice from URL, localStorage, or auth metadata. */
+export function signupIntentRole(opts: {
+  roleParam?: string | null
+  pendingRole?: string | null
+  metaRole?: string | null
+}): SignupIntentRole | null {
+  for (const value of [opts.roleParam, opts.pendingRole, opts.metaRole]) {
+    if (value === "student" || value === "recruiter" || value === "university") return value
+  }
+  return null
+}
+
+async function studentHasProgress(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: { from: (table: string) => any },
+  userId: string
+) {
+  const { data } = await supabase
+    .from("student_profiles")
+    .select("degree, graduation_year, skills")
+    .eq("id", userId)
+    .maybeSingle()
+  const skills = (data?.skills as string[] | null) || []
+  return Boolean(data?.degree || data?.graduation_year || skills.length > 0)
+}
+
+/**
+ * Write the chosen signup role onto profiles.
+ * DB triggers often default new rows to "student" — overwrite that when signup intent is recruiter/university
+ * and the student profile is still empty.
+ */
+export async function applySignupRole(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: { from: (table: string) => any },
+  userId: string,
+  intent: SignupIntentRole,
+  opts?: { fullName?: string | null; existingRole?: string | null }
+): Promise<SignupIntentRole> {
+  const existing = opts?.existingRole
+  if (existing === "admin") return intent
+  if (existing === "recruiter" && intent === "student") return "recruiter"
+  if (existing === "university" && intent !== "university") return "university"
+
+  if (existing === "student" && intent !== "student") {
+    if (await studentHasProgress(supabase, userId)) return "student"
+  }
+
+  const row: Record<string, unknown> = { id: userId, role: intent }
+  if (opts?.fullName?.trim()) row.full_name = opts.fullName.trim()
+
+  const upserted = await supabase.from("profiles").upsert(row, { onConflict: "id" })
+  if (upserted.error) {
+    await supabase.from("profiles").update({ role: intent, ...(opts?.fullName?.trim() ? { full_name: opts.fullName.trim() } : {}) }).eq("id", userId)
+  }
+
+  if (intent === "recruiter") {
+    await supabase.from("recruiter_profiles").upsert(
+      { id: userId, company_name: "My company", description: "", hiring_focus: "" },
+      { onConflict: "id" }
+    )
+  }
+
+  return intent
+}
+
 export const STUDENT_ONBOARDING_SELECT =
   "university, degree, graduation_year, skills, preferred_job_categories, linkedin_url, github_url, portfolio_url, resume_url"
 

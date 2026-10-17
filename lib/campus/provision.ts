@@ -47,6 +47,7 @@ export async function provisionUniversityAccount(input: {
   if (profile?.role === "admin" || profile?.role === "recruiter") {
     return { ok: false, message: "This email is already registered as a different account type." }
   }
+  // Allow converting a fresh/default student row (common auth trigger) when metadata says university.
   if (profile?.role === "student" && user.user_metadata?.role !== "university") {
     return {
       ok: false,

@@ -1162,26 +1162,30 @@ export default function OnboardingPage() {
         window.location.href = "/campus"
         return
       }
-      // profiles.role is source of truth for returning users. Only apply pending_role
-      // (Google signup) when the profile has no role yet — never overwrite recruiter→student.
+      // Signup intent / metadata must beat a trigger-default student profile.
       const { data: recruiterRow } = await supabase
         .from("recruiter_profiles")
         .select("id")
         .eq("id", user.id)
         .maybeSingle()
       let resolvedRole: UserRole | null = null
-      if (recruiterRow) {
+      const intentRecruiter = pendingRole === "recruiter" || metaRole === "recruiter"
+      const intentStudent = pendingRole === "student" || metaRole === "student"
+
+      if (recruiterRow || intentRecruiter) {
         resolvedRole = "recruiter"
         if (existingProfile?.role !== "recruiter") {
-          await supabase.from("profiles").update({ role: "recruiter" }).eq("id", user.id)
+          await supabase.from("profiles").upsert({ id: user.id, role: "recruiter" }, { onConflict: "id" })
         }
-      } else if (existingProfile?.role === "recruiter" || existingProfile?.role === "student") {
-        resolvedRole = existingProfile.role as UserRole
-      } else if (pendingRole === "recruiter" || pendingRole === "student") {
-        resolvedRole = pendingRole
-        await supabase.from("profiles").update({ role: pendingRole }).eq("id", user.id)
-      } else if (metaRole === "recruiter" || metaRole === "student") {
-        resolvedRole = metaRole
+      } else if (existingProfile?.role === "recruiter") {
+        resolvedRole = "recruiter"
+      } else if (intentStudent) {
+        resolvedRole = "student"
+        if (existingProfile?.role !== "student") {
+          await supabase.from("profiles").upsert({ id: user.id, role: "student" }, { onConflict: "id" })
+        }
+      } else if (existingProfile?.role === "student") {
+        resolvedRole = "student"
       } else {
         resolvedRole = "student"
       }

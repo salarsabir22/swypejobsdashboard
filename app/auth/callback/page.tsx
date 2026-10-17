@@ -5,11 +5,13 @@ import { createClient } from "@/lib/supabase/client"
 import { isAllowedReturn } from "@/lib/auth-sites"
 import { provisionUniversityAccount } from "@/lib/campus/provision"
 import {
+  applySignupRole,
   clearSignupIntent,
   isRecruiterOnboardingComplete,
   isStudentOnboardingComplete,
   postAuthRedirect,
   resolveAppRole,
+  signupIntentRole,
   RECRUITER_ONBOARDING_SELECT,
   STUDENT_ONBOARDING_SELECT,
 } from "@/lib/profile/completeness"
@@ -101,9 +103,13 @@ export default function AuthCallbackPage() {
       const pendingUniversity = localStorage.getItem("pending_university") || ""
       const pendingStaff = localStorage.getItem("pending_staff_role") || ""
       const meta = session.user.user_metadata || {}
+      const metaRole = typeof meta.role === "string" ? meta.role : null
       const universityName = pendingUniversity || (typeof meta.university === "string" ? meta.university : "")
-      const wantsUniversitySignup =
-        portal === "university" || roleParam === "university" || pendingRole === "university"
+      const intent = signupIntentRole({
+        roleParam: portal === "university" ? "university" : roleParam,
+        pendingRole,
+        metaRole,
+      })
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -124,60 +130,65 @@ export default function AuthCallbackPage() {
         return
       }
 
-      if (establishedRole === "university") {
+      // University signup intent wins over a trigger-default student profile.
+      if (intent === "university" || establishedRole === "university") {
+        if (establishedRole === "recruiter") {
+          clearSignupIntent()
+          fail("This email is already a recruiter account.", "university")
+          return
+        }
+        if (establishedRole === "university") {
+          clearSignupIntent()
+          window.location.replace("/campus")
+          return
+        }
+        if (!universityName) {
+          clearSignupIntent()
+          fail("Choose your university and try again.", "university")
+          return
+        }
+        // Google OAuth often drops custom metadata — stamp university before provision.
+        await supabase.auth.updateUser({
+          data: {
+            role: "university",
+            university: universityName,
+            staff_role: pendingStaff || (typeof meta.staff_role === "string" ? meta.staff_role : "advisor"),
+            full_name: typeof meta.full_name === "string" ? meta.full_name : meta.name,
+          },
+        })
+        const saved = await provisionUniversityAccount({
+          university: universityName,
+          staffRole: pendingStaff || (typeof meta.staff_role === "string" ? meta.staff_role : undefined),
+          fullName: typeof meta.full_name === "string" ? meta.full_name : undefined,
+        })
         clearSignupIntent()
+        if (!saved.ok) {
+          await supabase.auth.signOut()
+          fail(saved.message, "university")
+          return
+        }
+        const { data: office } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle()
+        if (office?.role !== "university") {
+          await supabase.auth.signOut()
+          fail("Use a career-office account, or create one.", "university")
+          return
+        }
         window.location.replace("/campus")
         return
       }
 
-      if (wantsUniversitySignup) {
-        // Stale university signup intent must not kick out student/recruiter/admin logins.
-        if (establishedRole === "student" || establishedRole === "recruiter") {
-          clearSignupIntent()
-        } else {
-          if (universityName) {
-            const saved = await provisionUniversityAccount({
-              university: universityName,
-              staffRole: pendingStaff || (typeof meta.staff_role === "string" ? meta.staff_role : undefined),
-              fullName: typeof meta.full_name === "string" ? meta.full_name : undefined,
-            })
-            if (!saved.ok) {
-              await supabase.auth.signOut()
-              fail(saved.message, "university")
-              return
-            }
-          }
-          clearSignupIntent()
-          const { data: office } = await supabase.from("profiles").select("role").eq("id", session.user.id).maybeSingle()
-          if (office?.role !== "university") {
-            await supabase.auth.signOut()
-            fail("Use a career-office account, or create one.", "university")
-            return
-          }
-          window.location.replace("/campus")
-          return
-        }
-      }
-
-      // Only apply signup role when the account has no role yet.
-      const signupRole =
-        !establishedRole &&
-        (roleParam === "student" ||
-          roleParam === "recruiter" ||
-          pendingRole === "student" ||
-          pendingRole === "recruiter")
-          ? roleParam === "student" || roleParam === "recruiter"
-            ? roleParam
-            : pendingRole
-          : null
-      if (signupRole) {
-        await supabase.from("profiles").update({ role: signupRole }).eq("id", session.user.id)
+      let appliedRole = establishedRole
+      if (intent === "student" || intent === "recruiter") {
+        appliedRole = await applySignupRole(supabase, session.user.id, intent, {
+          existingRole: establishedRole,
+          fullName: typeof meta.full_name === "string" ? meta.full_name : null,
+        })
       }
       clearSignupIntent()
 
       const role = await resolveAppRole(supabase, session.user.id, {
-        profileRole: establishedRole || signupRole,
-        metaRole: typeof meta.role === "string" ? meta.role : null,
+        profileRole: appliedRole,
+        metaRole,
       })
 
       let studentReady = false
@@ -197,10 +208,6 @@ export default function AuthCallbackPage() {
           .eq("id", session.user.id)
           .maybeSingle()
         recruiterReady = isRecruiterOnboardingComplete(data)
-      }
-      if (!profile && !signupRole && role !== "university" && role !== "admin") {
-        window.location.replace("/onboarding")
-        return
       }
       window.location.replace(postAuthRedirect({ role, studentReady, recruiterReady, next }))
     }
