@@ -20,7 +20,13 @@ import {
 } from "@/components/discover"
 import { MatchModal } from "@/components/match/MatchModal"
 import { recordJobView, notifyApplicationMilestone } from "@/lib/engagement"
-import { jobFitScore, whyThisJob } from "@/lib/match/fit"
+import {
+  DEFAULT_RANKING_WEIGHTS,
+  jobFitScore,
+  normalizeRankingWeights,
+  whyThisJob,
+  type RankingWeights,
+} from "@/lib/match/fit"
 import { applyHref, jobHasMandatoryQuestions, studentEligibleForJob } from "@/lib/jobs/screening"
 import { JOB_CATEGORIES } from "@/lib/company-options"
 import { excludeInFilter, isUniqueViolation } from "@/lib/swipe/errors"
@@ -82,6 +88,7 @@ export function StudentDiscoverView({
   const [matchName, setMatchName] = useState("")
   const [matchHref, setMatchHref] = useState<string | null>(null)
   const [matchImage, setMatchImage] = useState<string | null>(null)
+  const [rankingWeights, setRankingWeights] = useState<RankingWeights>(DEFAULT_RANKING_WEIGHTS)
   const jobsRef = useRef<Job[]>([])
   const loadingMoreRef = useRef(false)
   const hasMoreRef = useRef(false)
@@ -108,29 +115,27 @@ export function StudentDiscoverView({
   }, [allJobs, jobType, remote, category, location, stillEnrolled, currentSemester])
 
   const rankJobs = useCallback(
-    (rows: Job[]) =>
+    (rows: Job[], weights: RankingWeights = rankingWeights) =>
       [...rows].sort((a, b) => {
-        const diff =
+        const score = (job: Job) =>
           jobFitScore({
             studentSkills: skills,
             preferredCategories,
-            jobSkills: b.required_skills,
-            jobCategory: b.category,
-            remote: b.is_remote,
-            createdAt: b.created_at,
-          }) -
-          jobFitScore({
-            studentSkills: skills,
-            preferredCategories,
-            jobSkills: a.required_skills,
-            jobCategory: a.category,
-            remote: a.is_remote,
-            createdAt: a.created_at,
+            jobSkills: job.required_skills,
+            jobCategory: job.category,
+            jobLocation: job.location,
+            studentLocationHint: location.trim() || null,
+            remote: job.is_remote,
+            createdAt: job.created_at,
+            employerApproved: job.recruiter_profiles?.is_approved,
+            employerHasWebsite: Boolean(job.recruiter_profiles?.website_url),
+            weights,
           })
+        const diff = score(b) - score(a)
         if (diff !== 0) return diff
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       }),
-    [skills, preferredCategories]
+    [skills, preferredCategories, rankingWeights, location]
   )
 
   const loadJobs = useCallback(
@@ -144,10 +149,16 @@ export function StudentDiscoverView({
       }
 
       const supabase = createClient()
-      const [{ data: swipeRows }, blocked] = await Promise.all([
+      const [{ data: swipeRows }, blocked, { data: weightRow }] = await Promise.all([
         supabase.from("job_swipes").select("job_id, direction").eq("student_id", userId),
         getBlockedPeerIds(supabase, userId),
+        mode === "replace"
+          ? supabase.from("ranking_weights").select("skills, location, recency, employer_tier").eq("id", 1).maybeSingle()
+          : Promise.resolve({ data: null }),
       ])
+      const activeWeights =
+        mode === "replace" && weightRow ? normalizeRankingWeights(weightRow) : rankingWeights
+      if (mode === "replace" && weightRow) setRankingWeights(activeWeights)
       const swipedJobIds = ((swipeRows || []) as JobSwipeRow[]).map((s) => s.job_id)
       const loadedIds = mode === "append" ? jobsRef.current.map((j) => j.id) : []
       const exclude = excludeInFilter([...new Set([...swipedJobIds, ...loadedIds])])
@@ -170,7 +181,8 @@ export function StudentDiscoverView({
 
       const fetched = (data || []) as Job[]
       const rows = rankJobs(
-        fetched.filter((j) => j.recruiter_profiles?.is_approved === true && !blocked.has(j.recruiter_id))
+        fetched.filter((j) => j.recruiter_profiles?.is_approved === true && !blocked.has(j.recruiter_id)),
+        activeWeights,
       )
       setHasMore(fetched.length >= DECK_PAGE && rows.length > 0)
       hasMoreRef.current = fetched.length >= DECK_PAGE && rows.length > 0
@@ -194,7 +206,7 @@ export function StudentDiscoverView({
       setLoadingMore(false)
       loadingMoreRef.current = false
     },
-    [userId, rankJobs, toast]
+    [userId, rankJobs, toast, rankingWeights]
   )
 
   useEffect(() => {

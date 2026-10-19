@@ -11,23 +11,76 @@ function daysSince(iso?: string | null) {
   return (Date.now() - t) / 86_400_000
 }
 
+export type RankingWeights = {
+  skills: number
+  location: number
+  recency: number
+  employer_tier: number
+}
+
+export const DEFAULT_RANKING_WEIGHTS: RankingWeights = {
+  skills: 0.4,
+  location: 0.2,
+  recency: 0.25,
+  employer_tier: 0.15,
+}
+
+export function normalizeRankingWeights(row?: Partial<RankingWeights> | null): RankingWeights {
+  const skills = Number(row?.skills ?? DEFAULT_RANKING_WEIGHTS.skills)
+  const location = Number(row?.location ?? DEFAULT_RANKING_WEIGHTS.location)
+  const recency = Number(row?.recency ?? DEFAULT_RANKING_WEIGHTS.recency)
+  const employer_tier = Number(row?.employer_tier ?? DEFAULT_RANKING_WEIGHTS.employer_tier)
+  const sum = skills + location + recency + employer_tier
+  if (!Number.isFinite(sum) || sum <= 0) return DEFAULT_RANKING_WEIGHTS
+  return {
+    skills: skills / sum,
+    location: location / sum,
+    recency: recency / sum,
+    employer_tier: employer_tier / sum,
+  }
+}
+
 export function jobFitScore(opts: {
   studentSkills?: string[] | null
   preferredCategories?: string[] | null
   jobSkills?: string[] | null
   jobCategory?: string | null
+  jobLocation?: string | null
+  studentLocationHint?: string | null
   remote?: boolean
   createdAt?: string | null
+  employerApproved?: boolean
+  employerHasWebsite?: boolean
+  weights?: RankingWeights | null
 }) {
+  const w = normalizeRankingWeights(opts.weights)
+
   const overlap = skillOverlap(opts.studentSkills, opts.jobSkills)
-  let n = overlap.length * 3
+  const skillDenom = Math.max(Math.min((opts.jobSkills || []).length || 1, 6), 1)
+  let skillsScore = Math.min(1, overlap.length / skillDenom)
   const cats = (opts.preferredCategories || []).map((c) => c.toLowerCase())
-  if (opts.jobCategory && cats.includes(opts.jobCategory.toLowerCase())) n += 5
-  if (opts.remote) n += 1
+  if (opts.jobCategory && cats.includes(opts.jobCategory.toLowerCase())) {
+    skillsScore = Math.min(1, skillsScore + 0.2)
+  }
+
+  let locationScore = opts.remote ? 0.7 : 0.35
+  const hint = opts.studentLocationHint?.trim().toLowerCase()
+  const jobLoc = (opts.jobLocation || "").toLowerCase()
+  if (hint && jobLoc.includes(hint)) locationScore = 1
+  else if (opts.remote && hint) locationScore = 0.85
+
   const age = daysSince(opts.createdAt)
-  if (age < 7) n += 2
-  else if (age < 30) n += 1
-  return n
+  const recencyScore = age < 7 ? 1 : age < 30 ? 0.65 : age < 90 ? 0.35 : 0.15
+
+  const employerScore = opts.employerApproved === false ? 0.15 : opts.employerHasWebsite ? 1 : 0.7
+
+  return (
+    (skillsScore * w.skills +
+      locationScore * w.location +
+      recencyScore * w.recency +
+      employerScore * w.employer_tier) *
+    100
+  )
 }
 
 export function whyThisJob(opts: {

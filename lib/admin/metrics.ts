@@ -4,11 +4,14 @@ import { countBy, inLastDays, pct } from "@/lib/campus/helpers"
 import type { AdminSnapshot } from "@/lib/admin/types"
 import type { AdminStaffRole } from "@/lib/admin/access"
 
-const LIMIT = 800
+/** Sample size for traffic / matching charts (not queue KPIs). */
+const SAMPLE = 2500
 
 export const loadAdminSnapshot = cache(async (staffRole: AdminStaffRole): Promise<AdminSnapshot> => {
   const supabase = await createClient()
   const missingTables: string[] = []
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
+  const dayAgo = new Date(Date.now() - 86400000).toISOString()
 
   const [
     profilesRes,
@@ -20,28 +23,50 @@ export const loadAdminSnapshot = cache(async (staffRole: AdminStaffRole): Promis
     reportsRes,
     billingRes,
     unisRes,
-    jobModRes,
+    pendingEmployersCountRes,
+    offlineJobsCountRes,
+    openReportsCountRes,
+    slaReportsCountRes,
+    pendingUnisCountRes,
+    newStudentsCountRes,
+    newEmployersCountRes,
   ] = await Promise.all([
-    supabase.from("profiles").select("id, role, created_at, updated_at").limit(LIMIT),
-    supabase.from("student_profiles").select("id, university, resume_url, skills, degree, created_at").limit(LIMIT),
-    supabase.from("recruiter_profiles").select("id, company_name, is_approved, website_url, created_at").limit(LIMIT),
-    // Skip heavy description / skills blobs for dashboard aggregates
-    supabase.from("jobs").select("id, recruiter_id, title, is_active, location, created_at, updated_at").limit(LIMIT),
-    supabase.from("job_swipes").select("student_id, job_id, direction, created_at").limit(LIMIT),
-    supabase.from("matches").select("student_id, pipeline_status, created_at").limit(LIMIT),
-    supabase.from("reports").select("id, status, created_at, reason").limit(LIMIT),
-    supabase.from("employer_billing").select("mrr").limit(200),
-    supabase.from("university_orgs").select("status").limit(200),
-    supabase.from("job_moderation").select("status").limit(LIMIT),
+    supabase.from("profiles").select("id, role, created_at, updated_at").limit(SAMPLE),
+    supabase.from("student_profiles").select("id, university, resume_url, skills, degree, created_at").limit(SAMPLE),
+    supabase.from("recruiter_profiles").select("id, company_name, is_approved, website_url, created_at").limit(SAMPLE),
+    supabase.from("jobs").select("id, recruiter_id, title, is_active, location, created_at, updated_at").limit(SAMPLE),
+    supabase.from("job_swipes").select("student_id, job_id, direction, created_at").limit(SAMPLE),
+    supabase.from("matches").select("student_id, pipeline_status, created_at").limit(SAMPLE),
+    supabase.from("reports").select("id, status, created_at, reason").limit(SAMPLE),
+    supabase.from("employer_billing").select("mrr").limit(500),
+    supabase.from("university_orgs").select("status").limit(500),
+    // Exact queue KPIs (not sample-capped)
+    supabase.from("recruiter_profiles").select("id", { count: "exact", head: true }).eq("is_approved", false),
+    supabase.from("jobs").select("id", { count: "exact", head: true }).eq("is_active", false),
+    supabase
+      .from("reports")
+      .select("id", { count: "exact", head: true })
+      .or("status.is.null,status.eq.open,status.eq.pending"),
+    supabase
+      .from("reports")
+      .select("id", { count: "exact", head: true })
+      .or("status.is.null,status.eq.open,status.eq.pending")
+      .lt("created_at", dayAgo),
+    supabase.from("university_orgs").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "student")
+      .gte("created_at", weekAgo),
+    supabase.from("recruiter_profiles").select("id", { count: "exact", head: true }).gte("created_at", weekAgo),
   ])
 
   if (billingRes.error) missingTables.push("employer_billing")
   if (unisRes.error) missingTables.push("university_orgs")
-  if (jobModRes.error) missingTables.push("job_moderation")
+  if (pendingUnisCountRes.error) missingTables.push("university_orgs")
 
   const billing = (!billingRes.error && billingRes.data) || []
   const unis = (!unisRes.error && unisRes.data) || []
-  const jobMod = (!jobModRes.error && jobModRes.data) || []
 
   const profiles = profilesRes.data || []
   const students = studentsRes.data || []
@@ -86,25 +111,35 @@ export const loadAdminSnapshot = cache(async (staffRole: AdminStaffRole): Promis
       swipes.some((s) => {
         if (s.student_id !== p.id) return false
         return new Date(s.created_at).getTime() >= new Date(p.created_at).getTime() + days * 86400000
-      })
+      }),
     ).length
     return pct(retained, signed.length)
   }
 
-  const openReports = reports.filter((r) => !r.status || r.status === "open" || r.status === "pending").length
-  const slaBreaches = reports.filter((r) => {
-    const open = !r.status || r.status === "open" || r.status === "pending"
-    return open && !inLastDays(r.created_at, 1)
-  }).length
-
-  const pendingJobs =
-    jobMod.filter((j) => j.status === "pending").length || jobs.filter((j) => j.is_active && inLastDays(j.created_at, 2)).length
-
   const right = swipes.filter((s) => s.direction === "right").length
   const interviews = matches.filter((m) => ["interview", "offer", "hired"].includes(m.pipeline_status || "")).length
   const hires = matches.filter((m) => m.pipeline_status === "hired").length
-
   const mrr = billing.length ? billing.reduce((s, b) => s + Number(b.mrr || 0), 0) : null
+
+  const pendingEmployers =
+    pendingEmployersCountRes.count ?? recruiters.filter((r) => !r.is_approved).length
+  const pendingJobs = offlineJobsCountRes.count ?? jobs.filter((j) => !j.is_active).length
+  const openReports =
+    openReportsCountRes.count ??
+    reports.filter((r) => !r.status || r.status === "open" || r.status === "pending").length
+  const slaBreaches =
+    slaReportsCountRes.count ??
+    reports.filter((r) => {
+      const open = !r.status || r.status === "open" || r.status === "pending"
+      return open && !inLastDays(r.created_at, 1)
+    }).length
+  const newUniversities =
+    pendingUnisCountRes.count ?? unis.filter((u) => u.status === "pending").length
+  const newStudents =
+    newStudentsCountRes.count ??
+    profiles.filter((p) => p.role === "student" && inLastDays(p.created_at, 7)).length
+  const newEmployers =
+    newEmployersCountRes.count ?? recruiters.filter((r) => inLastDays(r.created_at, 7)).length
 
   return {
     staffRole,
@@ -112,20 +147,21 @@ export const loadAdminSnapshot = cache(async (staffRole: AdminStaffRole): Promis
     health: {
       label: "Degraded instrumentation",
       ok: true,
-      detail: "App is serving. Uptime, API latency, and crash SDKs are not wired — this tile is process-alive, not a full SRE board.",
+      detail:
+        "App is serving. Uptime, API latency, and crash SDKs are not wired — this tile is process-alive, not a full SRE board.",
     },
     kpis: {
       liveUsers: uniqueOn(0.04) || dau,
       dau,
       wau,
       mau,
-      pendingEmployers: recruiters.filter((r) => !r.is_approved).length,
+      pendingEmployers,
       pendingJobs,
       openReports,
       slaBreaches,
-      newStudents: profiles.filter((p) => p.role === "student" && inLastDays(p.created_at, 7)).length,
-      newEmployers: recruiters.filter((r) => inLastDays(r.created_at, 7)).length,
-      newUniversities: unis.filter((u) => u.status === "pending").length,
+      newStudents,
+      newEmployers,
+      newUniversities,
       mrr,
     },
     traffic: {
@@ -133,7 +169,7 @@ export const loadAdminSnapshot = cache(async (staffRole: AdminStaffRole): Promis
       signups7: profiles.filter((p) => inLastDays(p.created_at, 7)).length,
       churnProxy: pct(
         profiles.filter((p) => p.role === "student" && !inLastDays(p.updated_at || p.created_at, 30)).length,
-        profiles.filter((p) => p.role === "student").length
+        profiles.filter((p) => p.role === "student").length,
       ),
       sources: [{ label: "Unattributed (no tracker yet)", value: profiles.length }],
       devices: [{ label: "Web", value: profiles.length }],

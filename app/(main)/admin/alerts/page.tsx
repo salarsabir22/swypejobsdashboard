@@ -1,11 +1,12 @@
-import { requireAdmin } from "@/lib/admin/access"
+import { requireAdminModule } from "@/lib/admin/access"
 import { loadAdminSnapshot } from "@/lib/admin/metrics"
 import { createClient } from "@/lib/supabase/server"
 import { AdminFrame } from "@/components/admin/AdminFrame"
+import { AlertMuteBar, RuleCreateForm, RuleToggle } from "@/components/admin/AlertControls"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 
 export default async function AdminAlertsPage() {
-  const admin = await requireAdmin()
+  const admin = await requireAdminModule("alerts")
   const snap = await loadAdminSnapshot(admin.staffRole)
   const supabase = await createClient()
   const { data: rules } = await supabase.from("automation_rules").select("*")
@@ -13,41 +14,41 @@ export default async function AdminAlertsPage() {
   const alerts = [
     snap.kpis.slaBreaches ? `${snap.kpis.slaBreaches} safety reports older than 24h` : null,
     snap.kpis.pendingEmployers ? `${snap.kpis.pendingEmployers} employers waiting` : null,
-    snap.matching.coldStartUsers > 50 ? `${snap.matching.coldStartUsers} users never swiped (possible bot or drop-off)` : null,
+    snap.matching.coldStartUsers > 50
+      ? `${snap.matching.coldStartUsers} users never swiped (possible bot or drop-off)`
+      : null,
     snap.kpis.dau === 0 ? "DAU is zero — traffic drop" : null,
-  ].filter(Boolean)
+  ].filter(Boolean) as string[]
 
   return (
     <AdminFrame
       title="Alerts and automation"
-      description="Fraud surges, downtime, failed jobs, and auto-suspend rules. Slack/email digest is a webhook on automation_rules."
+      description="Acknowledge or mute alerts, and create/edit automation rules. Cron still has to execute the actions."
       staffRole={admin.staffRole}
+      mode="settings"
     >
       <DashboardPanel title="Right now">
-        {alerts.length ? (
-          <ul className="list-disc space-y-1 pl-5 text-[14px]">
-            {alerts.map((a) => (
-              <li key={a}>{a}</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-[14px] text-muted-foreground">No active alerts on this snapshot.</p>
-        )}
+        <AlertMuteBar alerts={alerts} />
+      </DashboardPanel>
+      <DashboardPanel title="Add rule">
+        <RuleCreateForm />
       </DashboardPanel>
       <DashboardPanel title="Auto-rules">
         {(rules || []).length ? (
-          <ul className="space-y-2 text-[14px]">
+          <ul className="space-y-2">
             {rules!.map((r) => (
-              <li key={r.id}>
-                {r.name}: {r.trigger} → {r.action} ({r.is_active ? "on" : "off"})
-              </li>
+              <RuleToggle
+                key={r.id}
+                ruleId={r.id}
+                name={r.name}
+                trigger={r.trigger}
+                action={r.action}
+                initialActive={Boolean(r.is_active)}
+              />
             ))}
           </ul>
         ) : (
-          <p className="text-[14px] text-muted-foreground">
-            Example: insert a rule named “3 confirmed scam reports → suspend employer”. The safety queue already
-            counts repeat reports; wire the action in a cron before it auto-fires.
-          </p>
+          <p className="text-[14px] text-muted-foreground">No rules yet. Add one above (e.g. 3 scam reports → suspend employer).</p>
         )}
       </DashboardPanel>
     </AdminFrame>

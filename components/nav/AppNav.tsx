@@ -59,13 +59,10 @@ const recruiterLinks: NavLink[] = [
   { href: "/community", label: "Community" },
 ]
 
+/** Top shell only — queue links live in AdminNav inside /admin. */
 const adminLinks: NavLink[] = [
-  { href: "/admin", label: "Overview" },
+  { href: "/admin", label: "Admin" },
   { href: "/campus", label: "Campus" },
-  { href: "/admin/employers", label: "Employers" },
-  { href: "/admin/jobs", label: "Jobs" },
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/safety", label: "Safety" },
 ]
 
 const universityLinks: NavLink[] = [

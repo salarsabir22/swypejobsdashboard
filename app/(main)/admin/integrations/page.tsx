@@ -1,31 +1,31 @@
-import { requireAdmin } from "@/lib/admin/access"
+import { requireAdminModule } from "@/lib/admin/access"
 import { createClient } from "@/lib/supabase/server"
 import { AdminFrame } from "@/components/admin/AdminFrame"
+import { WebhookManager } from "@/components/admin/WebhookManager"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 
 export default async function AdminIntegrationsPage() {
-  const admin = await requireAdmin()
+  const admin = await requireAdminModule("integrations")
   const supabase = await createClient()
-  const { data: hooks } = await supabase.from("api_webhooks").select("*")
+  const { data: hooks } = await supabase.from("api_webhooks").select("id, name, url, is_active, last_error")
 
   return (
     <AdminFrame
       title="Integrations and developer tools"
-      description="Webhooks, ATS, SSO/SIS, and third-party health. Sandbox is an environment flag, not a user toggle on production data."
+      description="Register webhook callbacks and toggle them. Delivery health still depends on connector workers."
       staffRole={admin.staffRole}
+      mode="settings"
     >
       <DashboardPanel title="Webhooks">
-        {(hooks || []).length ? (
-          <ul className="space-y-2 text-[14px]">
-            {hooks!.map((h) => (
-              <li key={h.id}>
-                {h.name} · {h.is_active ? "live" : "off"} · {h.last_error || "no errors"}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-[14px] text-muted-foreground">No api_webhooks rows. Add Greenhouse/Lever/Workday callbacks here when those connectors ship.</p>
-        )}
+        <WebhookManager
+          hooks={(hooks || []).map((h) => ({
+            id: h.id,
+            name: h.name,
+            url: h.url,
+            is_active: Boolean(h.is_active),
+            last_error: h.last_error,
+          }))}
+        />
       </DashboardPanel>
       <DashboardPanel title="SSO / SIS / messaging / payments">
         <p className="text-[14px] text-muted-foreground">

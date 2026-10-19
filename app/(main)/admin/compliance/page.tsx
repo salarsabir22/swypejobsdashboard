@@ -1,20 +1,29 @@
-import { requireAdmin } from "@/lib/admin/access"
+import { requireAdminModule } from "@/lib/admin/access"
 import { createClient } from "@/lib/supabase/server"
 import { AdminFrame } from "@/components/admin/AdminFrame"
+import { IncidentCreateForm } from "@/components/admin/IncidentCreateForm"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 
 export default async function AdminCompliancePage() {
-  const admin = await requireAdmin()
+  const admin = await requireAdminModule("compliance")
   const supabase = await createClient()
   const { data: legal } = await supabase.from("legal_acceptances").select("document, version").limit(20)
-  const { data: incidents } = await supabase.from("incident_log").select("*").order("created_at", { ascending: false }).limit(20)
+  const { data: incidents } = await supabase
+    .from("incident_log")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(20)
 
   return (
     <AdminFrame
       title="Compliance and legal"
-      description="Policy versions, FERPA/GDPR/CCPA/EEOC controls, retention, incidents, and geo rules."
+      description="Log incidents, review policy acceptances, and keep retention / consent notes. Full legal workflows still live outside the app."
       staffRole={admin.staffRole}
+      mode="settings"
     >
+      <DashboardPanel title="Log incident">
+        <IncidentCreateForm />
+      </DashboardPanel>
       <DashboardPanel title="Terms and privacy acceptance">
         {(legal || []).length ? (
           <ul className="text-[14px]">
@@ -41,7 +50,8 @@ export default async function AdminCompliancePage() {
           </ul>
         ) : (
           <p className="text-[14px] text-muted-foreground">
-            Use incident_log for breaches. Checklist: contain, notify DPO, notify users if required, rotate keys, write the postmortem.
+            Use incident_log for breaches. Checklist: contain, notify DPO, notify users if required, rotate keys, write
+            the postmortem.
           </p>
         )}
       </DashboardPanel>

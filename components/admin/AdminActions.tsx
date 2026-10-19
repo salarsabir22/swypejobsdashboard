@@ -1,8 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/lib/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,217 +8,46 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
-async function audit(action: string, entity: string, entityId: string, meta?: Record<string, unknown>) {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  await supabase.from("platform_audit_log").insert({
-    actor_id: user?.id || null,
-    action,
-    entity,
-    entity_id: entityId,
-    meta: meta || null,
-  })
-}
-
-export function EmployerDecision({ recruiterId }: { recruiterId: string }) {
-  const { toast } = useToast()
-  const router = useRouter()
-  const [reason, setReason] = useState("incomplete_verification")
-  const [notes, setNotes] = useState("")
-  const [busy, setBusy] = useState<"approve" | "reject" | "suspend" | null>(null)
-  const run = async (action: "approve" | "reject" | "suspend") => {
-    setBusy(action)
-    try {
-      // Browser RLS on recruiter_profiles often blocks admin updates with no error
-      // (0 rows). Approve through a server route that verifies admin + uses service role.
-      const res = await fetch("/api/admin/employers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recruiterId, action, reason, notes }),
-      })
-      const data = (await res.json().catch(() => ({}))) as { error?: string }
-      if (!res.ok) {
-        toast({ variant: "destructive", title: data.error || "Could not update employer" })
-        return
-      }
-      toast({ title: action === "approve" ? "Approved" : action === "reject" ? "Rejected" : "Suspended" })
-      router.refresh()
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: error instanceof Error ? error.message : "Could not update employer",
-      })
-    } finally {
-      setBusy(null)
-    }
-  }
-  return (
-    <div className="space-y-2">
-      <Select value={reason} onValueChange={setReason}>
-        <SelectTrigger className="h-10">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="verified">Verified domain / site</SelectItem>
-          <SelectItem value="incomplete_verification">Incomplete verification</SelectItem>
-          <SelectItem value="free_email">Free email / risk</SelectItem>
-          <SelectItem value="scam_reports">Scam reports</SelectItem>
-          <SelectItem value="mismatch">Mismatched details</SelectItem>
-        </SelectContent>
-      </Select>
-      <Textarea rows={2} placeholder="Internal notes (and rejection email body)" value={notes} onChange={(e) => setNotes(e.target.value)} />
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          className="rounded-full"
-          disabled={busy !== null}
-          loading={busy === "approve"}
-          loadingText="Approving…"
-          onClick={() => void run("approve")}
-        >
-          Approve
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="rounded-full"
-          disabled={busy !== null}
-          loading={busy === "reject"}
-          loadingText="Rejecting…"
-          onClick={() => void run("reject")}
-        >
-          Reject
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="rounded-full"
-          disabled={busy !== null}
-          loading={busy === "suspend"}
-          loadingText="Suspending…"
-          onClick={() => void run("suspend")}
-        >
-          Suspend
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-export function JobModerationButtons({ jobId, flags }: { jobId: string; flags: string[] }) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const setStatus = async (status: "approved" | "rejected" | "removed" | "featured") => {
-    const supabase = createClient()
-    if (status === "removed" || status === "rejected") {
-      await supabase.from("jobs").update({ is_active: false }).eq("id", jobId)
-    }
-    if (status === "approved" || status === "featured") {
-      await supabase.from("jobs").update({ is_active: true }).eq("id", jobId)
-    }
-    const { error } = await supabase.from("job_moderation").upsert({
-      job_id: jobId,
-      status,
-      flags,
-      reviewed_at: new Date().toISOString(),
-    })
-    await audit(`job_${status}`, "job", jobId, { flags })
-    if (error && !/job_moderation/.test(error.message)) toast({ variant: "destructive", title: error.message })
-    else toast({ title: `Job ${status}` })
-    router.refresh()
-  }
-  return (
-    <div className="flex flex-wrap gap-2">
-      <Button size="sm" className="rounded-full" onClick={() => void setStatus("approved")}>
-        Approve
-      </Button>
-      <Button size="sm" variant="outline" className="rounded-full" onClick={() => void setStatus("featured")}>
-        Feature
-      </Button>
-      <Button size="sm" variant="outline" className="rounded-full" onClick={() => void setStatus("rejected")}>
-        Reject
-      </Button>
-      <Button size="sm" variant="outline" className="rounded-full" onClick={() => void setStatus("removed")}>
-        Remove
-      </Button>
-    </div>
-  )
-}
-
-export function UserModerationButtons({ userId }: { userId: string }) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const setStatus = async (status: "warned" | "suspended" | "banned" | "active") => {
-    const supabase = createClient()
-    const { error } = await supabase.from("user_moderation").upsert({
-      user_id: userId,
-      status,
-      updated_at: new Date().toISOString(),
-    })
-    await audit(`user_${status}`, "user", userId)
-    if (error) toast({ variant: "destructive", title: error.message })
-    else toast({ title: `User ${status}` })
-    router.refresh()
-  }
-  return (
-    <div className="flex flex-wrap gap-1">
-      <Button size="sm" variant="outline" className="rounded-full" onClick={() => void setStatus("warned")}>
-        Warn
-      </Button>
-      <Button size="sm" variant="outline" className="rounded-full" onClick={() => void setStatus("suspended")}>
-        Suspend
-      </Button>
-      <Button size="sm" variant="outline" className="rounded-full" onClick={() => void setStatus("banned")}>
-        Ban
-      </Button>
-    </div>
-  )
-}
+export { EmployerDecision } from "@/components/admin/EmployerDecision"
+export { JobModerationPanel as JobModerationButtons } from "@/components/admin/JobModerationPanel"
+export { UserModerationPanel as UserModerationButtons } from "@/components/admin/UserModerationPanel"
 
 export function BroadcastForm() {
   const { toast } = useToast()
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
   const [segment, setSegment] = useState("all_students")
+  const [busy, setBusy] = useState(false)
   const send = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    const { error } = await supabase.from("platform_broadcasts").insert({
-      channel: "in_app",
-      segment,
-      title,
-      body,
-      created_by: user?.id,
-    })
-    if (error) {
-      toast({ variant: "destructive", title: error.message })
-      return
-    }
-    if (segment === "all_students") {
-      const { data: students } = await supabase.from("profiles").select("id").eq("role", "student").limit(80)
-      if (students?.length) {
-        await supabase.from("notifications").insert(
-          students.map((s) => ({
-            user_id: s.id,
-            type: "broadcast",
-            title,
-            body,
-            data: { segment },
-          }))
-        )
+    setBusy(true)
+    try {
+      const res = await fetch("/api/admin/broadcasts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, body, segment }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        delivered?: number
+        recipients?: number
+        capped?: boolean
       }
+      if (!res.ok) {
+        toast({ variant: "destructive", title: data.error || "Broadcast failed" })
+        return
+      }
+      toast({
+        title: `Delivered to ${data.delivered ?? 0}`,
+        description: data.capped
+          ? `Capped at ${data.recipients} recipients for this send.`
+          : `${data.recipients ?? 0} in segment.`,
+      })
+      setTitle("")
+      setBody("")
+    } finally {
+      setBusy(false)
     }
-    toast({ title: "Broadcast queued" })
-    setTitle("")
-    setBody("")
   }
   return (
     <form onSubmit={send} className="space-y-3">
@@ -237,7 +64,7 @@ export function BroadcastForm() {
       </Select>
       <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
       <Textarea rows={4} placeholder="Body" value={body} onChange={(e) => setBody(e.target.value)} required />
-      <Button type="submit" className="rounded-full">
+      <Button type="submit" className="rounded-full" loading={busy} loadingText="Sending…">
         Send in-app
       </Button>
     </form>
@@ -251,12 +78,22 @@ export function RankingForm({
 }) {
   const { toast } = useToast()
   const [weights, setWeights] = useState(initial)
+  const [busy, setBusy] = useState(false)
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
-    const { error } = await supabase.from("ranking_weights").upsert({ id: 1, ...weights, updated_at: new Date().toISOString() })
-    if (error) toast({ variant: "destructive", title: error.message })
-    else toast({ title: "Ranking weights saved (staged — Discover still uses current match logic until wired)" })
+    setBusy(true)
+    try {
+      const res = await fetch("/api/admin/ranking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(weights),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) toast({ variant: "destructive", title: data.error || "Could not save weights" })
+      else toast({ title: "Ranking weights live in Discover" })
+    } finally {
+      setBusy(false)
+    }
   }
   return (
     <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
@@ -273,7 +110,7 @@ export function RankingForm({
           />
         </div>
       ))}
-      <Button type="submit" className="rounded-full sm:col-span-2">
+      <Button type="submit" className="rounded-full sm:col-span-2" loading={busy} loadingText="Saving…">
         Save weights
       </Button>
     </form>

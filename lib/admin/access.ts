@@ -2,8 +2,15 @@ import { cache } from "react"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getRequestUser } from "@/lib/nav/app-shell-user"
+import {
+  canAccessModule,
+  moduleForPath,
+  normalizeModules,
+  type AdminModule,
+  type AdminStaffRole,
+} from "@/lib/admin/modules"
 
-export type AdminStaffRole = "super_admin" | "moderator" | "support" | "analyst" | "finance" | "readonly"
+export type { AdminStaffRole, AdminModule }
 
 export const requireAdmin = cache(async () => {
   const { supabase, user } = await getRequestUser()
@@ -16,21 +23,40 @@ export const requireAdmin = cache(async () => {
 
   const profile = profileRes.data
   if (profile?.role !== "admin") redirect("/discover")
-  const staffRole = (!staffRes.error && (staffRes.data?.staff_role as AdminStaffRole)) || "super_admin"
+  // Table missing → bootstrap as super_admin. Row missing → least privilege (moderator), not full access.
+  const staffRole: AdminStaffRole = staffRes.error
+    ? "super_admin"
+    : (staffRes.data?.staff_role as AdminStaffRole) || "moderator"
+  const modules = normalizeModules(
+    staffRes.error ? ["all"] : (staffRes.data?.modules as string[] | null),
+    staffRole,
+  )
   return {
     userId: user.id,
     name: profile.full_name,
     staffRole,
-    modules: (!staffRes.error && staffRes.data?.modules) || ["all"],
+    modules,
   }
 })
+
+export async function requireAdminModule(module: AdminModule) {
+  const admin = await requireAdmin()
+  if (!canAccessModule(admin.modules, module)) {
+    redirect("/admin")
+  }
+  return admin
+}
+
+export async function requireAdminPath(pathname: string) {
+  return requireAdminModule(moduleForPath(pathname))
+}
 
 export async function writeAdminAudit(
   actorId: string,
   action: string,
   entity?: string,
   entityId?: string,
-  meta?: Record<string, unknown>
+  meta?: Record<string, unknown>,
 ) {
   const supabase = await createClient()
   await supabase.from("platform_audit_log").insert({

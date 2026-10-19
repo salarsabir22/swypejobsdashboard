@@ -1,15 +1,16 @@
-import { requireAdmin } from "@/lib/admin/access"
+import { requireAdminModule } from "@/lib/admin/access"
 import { loadAdminSnapshot } from "@/lib/admin/metrics"
 import { createClient } from "@/lib/supabase/server"
 import { AdminFrame } from "@/components/admin/AdminFrame"
 import { RankingForm } from "@/components/admin/AdminActions"
+import { FeatureFlagToggles } from "@/components/admin/FeatureFlagToggles"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { fmtPct } from "@/lib/campus/format"
 import { GitCompare, Sparkles, Users, Zap } from "lucide-react"
 
 export default async function AdminMatchingPage() {
-  const admin = await requireAdmin()
+  const admin = await requireAdminModule("matching")
   const snap = await loadAdminSnapshot(admin.staffRole)
   const supabase = await createClient()
   const { data: weights } = await supabase.from("ranking_weights").select("*").eq("id", 1).maybeSingle()
@@ -18,9 +19,10 @@ export default async function AdminMatchingPage() {
   return (
     <AdminFrame
       title="Matching and swipe controls"
-      description="Volume, conversion, ranking weights, and flags. Bias monitoring uses consented campus demographics only — never inferred."
+      description="Volume, conversion, and live Discover ranking weights. Bias monitoring uses consented campus demographics only — never inferred."
       staffRole={admin.staffRole}
       missingTables={snap.missingTables}
+      mode="settings"
     >
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardKpiCard icon={Zap} label="Swipes" value={snap.matching.swipes} />
@@ -28,7 +30,11 @@ export default async function AdminMatchingPage() {
         <DashboardKpiCard icon={Sparkles} label="Match → interview" value={fmtPct(snap.matching.interviewRate)} tone="teal" />
         <DashboardKpiCard icon={Users} label="Cold-start users" value={snap.matching.coldStartUsers} tone="amber" />
       </div>
-      <DashboardPanel title="Tunable ranking weights">
+      <DashboardPanel title="Live ranking weights">
+        <p className="mb-3 text-[13px] text-muted-foreground">
+          Saved weights re-rank the student Discover deck (skills, location, recency, employer tier). Changes apply on
+          the next deck load.
+        </p>
         <RankingForm
           initial={{
             skills: Number(weights?.skills ?? 0.4),
@@ -40,20 +46,16 @@ export default async function AdminMatchingPage() {
       </DashboardPanel>
       <DashboardPanel title="Feature flags, A/B, boost/suppress">
         <p className="text-[14px] text-muted-foreground">
-          Flags in feature_flags. A/B experiments need an assignment table before UI variants ship. Boost/suppress
-          rules can sit on job_moderation.status = featured. Staged rollout percent is stored on each flag.
+          Toggle flags and rollout percent here. A/B assignment tables still need to ship before UI variants flip. Boost
+          / suppress can sit on job_moderation.status = featured.
         </p>
-        {(flags || []).length ? (
-          <ul className="mt-3 space-y-1 text-[14px]">
-            {flags!.map((f) => (
-              <li key={f.key}>
-                {f.key}: {f.enabled ? "on" : "off"} · {f.rollout}%
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-2 text-[13px] text-muted-foreground">No flags inserted yet.</p>
-        )}
+        <FeatureFlagToggles
+          flags={(flags || []).map((f) => ({
+            key: f.key,
+            enabled: Boolean(f.enabled),
+            rollout: f.rollout,
+          }))}
+        />
       </DashboardPanel>
     </AdminFrame>
   )

@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/admin/access"
+import { requireAdminModule } from "@/lib/admin/access"
 import { createClient } from "@/lib/supabase/server"
 import { AdminFrame } from "@/components/admin/AdminFrame"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
@@ -8,7 +8,7 @@ import { CreditCard } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default async function AdminBillingPage() {
-  const admin = await requireAdmin()
+  const admin = await requireAdminModule("billing")
   const supabase = await createClient()
   const { data: rows } = await supabase.from("employer_billing").select("*, recruiter_profiles(company_name)")
   const list = rows || []
@@ -19,8 +19,14 @@ export default async function AdminBillingPage() {
       title="Revenue and billing"
       description="Plans and MRR from employer_billing. Stripe invoices, refunds, and promo codes attach here when the billing webhook is live."
       staffRole={admin.staffRole}
+      mode="observability"
     >
-      <DashboardKpiCard icon={CreditCard} label="MRR" value={list.length ? fmtNum(mrr) : "—"} hint="ARR is 12× when plans are annualized" />
+      <DashboardKpiCard
+        icon={CreditCard}
+        label="MRR"
+        value={list.length ? fmtNum(mrr) : "—"}
+        hint="ARR is 12× when plans are annualized"
+      />
       <DashboardPanel title="Subscriptions">
         {list.length ? (
           <Table>
@@ -34,7 +40,9 @@ export default async function AdminBillingPage() {
             </TableHeader>
             <TableBody>
               {list.map((row) => {
-                const company = Array.isArray(row.recruiter_profiles) ? row.recruiter_profiles[0] : row.recruiter_profiles
+                const company = Array.isArray(row.recruiter_profiles)
+                  ? row.recruiter_profiles[0]
+                  : row.recruiter_profiles
                 return (
                   <TableRow key={row.recruiter_id}>
                     <TableCell>{company?.company_name || row.recruiter_id}</TableCell>

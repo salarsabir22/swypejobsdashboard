@@ -1,45 +1,50 @@
-import { requireAdmin } from "@/lib/admin/access"
+import { requireAdminModule } from "@/lib/admin/access"
 import { createClient } from "@/lib/supabase/server"
 import { AdminFrame } from "@/components/admin/AdminFrame"
+import { AuditLogFilter, TeamInviteForm, TeamRoleSelect } from "@/components/admin/TeamAdminPanel"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 
 export default async function AdminTeamPage() {
-  const admin = await requireAdmin()
+  const admin = await requireAdminModule("team")
   const supabase = await createClient()
   const { data: admins } = await supabase.from("profiles").select("id, full_name, created_at").eq("role", "admin")
   const { data: staff } = await supabase.from("platform_staff").select("*")
-  const { data: audit } = await supabase.from("platform_audit_log").select("*").order("created_at", { ascending: false }).limit(30)
+  const { data: audit } = await supabase
+    .from("platform_audit_log")
+    .select("id, created_at, action, entity, entity_id")
+    .order("created_at", { ascending: false })
+    .limit(100)
 
   return (
     <AdminFrame
       title="Team, roles, and security"
-      description="RBAC: super admin, moderator, support, analyst, finance, read-only. Module permissions live on platform_staff.modules."
+      description="Invite admins, set staff roles (modules follow role defaults), and filter the audit log."
       staffRole={admin.staffRole}
+      mode="settings"
     >
-      <DashboardPanel title="Admins">
-        <ul className="space-y-2 text-[14px]">
-          {(admins || []).map((a) => {
-            const row = (staff || []).find((s) => s.user_id === a.id)
-            return (
-              <li key={a.id}>
-                {a.full_name || a.id} · {row?.staff_role || "super_admin"} · {(row?.modules || ["all"]).join(", ")}
-              </li>
-            )
-          })}
-        </ul>
-      </DashboardPanel>
-      <DashboardPanel title="Audit log">
-        {(audit || []).length ? (
-          <ul className="max-h-80 space-y-2 overflow-auto text-[13px]">
-            {audit!.map((row) => (
-              <li key={row.id}>
-                {row.created_at}: {row.action} {row.entity} {row.entity_id}
-              </li>
-            ))}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <DashboardPanel title="Invite admin">
+          <TeamInviteForm />
+        </DashboardPanel>
+        <DashboardPanel title="Admins">
+          <ul className="space-y-3 text-[14px]">
+            {(admins || []).map((a) => {
+              const row = (staff || []).find((s) => s.user_id === a.id)
+              return (
+                <li key={a.id} className="space-y-2 rounded-xl border border-border p-3">
+                  <p className="font-medium">{a.full_name || a.id}</p>
+                  <p className="text-[13px] text-muted-foreground">
+                    {(row?.modules || ["all"]).join(", ")}
+                  </p>
+                  <TeamRoleSelect userId={a.id} currentRole={row?.staff_role || "super_admin"} />
+                </li>
+              )
+            })}
           </ul>
-        ) : (
-          <p className="text-[14px] text-muted-foreground">Empty until staff take a queued action.</p>
-        )}
+        </DashboardPanel>
+      </div>
+      <DashboardPanel title="Audit log">
+        <AuditLogFilter rows={audit || []} />
       </DashboardPanel>
       <DashboardPanel title="2FA, SSO, IP allowlist, dual control">
         <p className="text-[14px] text-muted-foreground">
