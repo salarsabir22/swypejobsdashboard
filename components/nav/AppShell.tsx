@@ -17,6 +17,7 @@ export function AppShell({ user, children }: { user: AppShellUser; children: Rea
         email={user.email}
         avatarUrl={user.avatarUrl}
         shareTitle={user.shareTitle}
+        adminModules={user.adminModules}
       />
 
       <main className={cn("min-w-0 pt-16", signedIn && user.role !== "admin" && user.role !== "university" && "lg:pb-0")}>

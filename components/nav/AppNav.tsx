@@ -35,6 +35,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import { AdminNavDropdowns, AdminNavMobileLinks } from "@/components/admin/AdminNav"
 
 type NavLink = { href: string; label: string }
 
@@ -57,12 +58,6 @@ const recruiterLinks: NavLink[] = [
   { href: "/chat", label: "Messages" },
   { href: "/dashboard", label: "Insights" },
   { href: "/community", label: "Community" },
-]
-
-/** Top shell only — queue links live in AdminNav inside /admin. */
-const adminLinks: NavLink[] = [
-  { href: "/admin", label: "Admin" },
-  { href: "/campus", label: "Campus" },
 ]
 
 const universityLinks: NavLink[] = [
@@ -95,9 +90,10 @@ interface AppNavProps {
   email?: string | null
   avatarUrl?: string | null
   shareTitle?: string | null
+  adminModules?: string[]
 }
 
-export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }: AppNavProps) {
+export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle, adminModules }: AppNavProps) {
   const pathname = usePathname()
   const { toast } = useToast()
   const chatUnread = useChatUnread()
@@ -113,9 +109,10 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
         ? recruiterLinks
         : role === "university"
           ? universityLinks
-          : adminLinks
+          : []
   const moreLinks = role === "recruiter" ? recruiterMoreLinks : studentMoreLinks
   const homeHref = !signedIn ? "/" : role === "admin" ? "/admin" : role === "university" ? "/campus" : "/discover"
+  const modules = adminModules?.length ? adminModules : ["all"]
 
   const handleSignOut = async () => {
     const supabase = createClient()
@@ -164,8 +161,10 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
                   </SheetDescription>
                 </SheetHeader>
                 <nav className="grid gap-0.5 p-3" aria-label="More">
-                  {role === "admin" || role === "university"
-                    ? links.map((link) => (
+                  {role === "admin" ? (
+                    <AdminNavMobileLinks modules={modules} onNavigate={() => setMobileOpen(false)} />
+                  ) : role === "university" ? (
+                    links.map((link) => (
                         <SheetClose asChild key={link.href}>
                           <Link
                             href={link.href}
@@ -181,7 +180,7 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
                           </Link>
                         </SheetClose>
                       ))
-                    : moreLinks.map((link) => {
+                    ) : moreLinks.map((link) => {
                         const hrefPath = link.href.split("#")[0]
                         const active = link.href.includes("#") ? false : isActive(hrefPath)
                         const Icon = link.icon
@@ -251,17 +250,35 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle }:
           </Link>
           {signedIn ? (
             <nav className="hidden items-center justify-center gap-0.5 lg:flex" aria-label="Primary">
-              {links.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  aria-current={isActive(link.href) ? "page" : undefined}
-                  className={cn(navItemClass(isActive(link.href)), "relative")}
-                >
-                  {link.label}
-                  {link.href === "/chat" ? <NavUnreadBadge count={chatUnread} className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-white" /> : null}
-                </Link>
-              ))}
+              {role === "admin" ? (
+                <>
+                  <AdminNavDropdowns modules={modules} />
+                  <Link
+                    href="/campus"
+                    aria-current={isActive("/campus") ? "page" : undefined}
+                    className={navItemClass(isActive("/campus"))}
+                  >
+                    Campus
+                  </Link>
+                </>
+              ) : (
+                links.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    aria-current={isActive(link.href) ? "page" : undefined}
+                    className={cn(navItemClass(isActive(link.href)), "relative")}
+                  >
+                    {link.label}
+                    {link.href === "/chat" ? (
+                      <NavUnreadBadge
+                        count={chatUnread}
+                        className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-white"
+                      />
+                    ) : null}
+                  </Link>
+                ))
+              )}
             </nav>
           ) : null}
         </div>

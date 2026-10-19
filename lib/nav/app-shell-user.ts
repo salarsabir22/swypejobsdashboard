@@ -8,6 +8,7 @@ import {
   RECRUITER_ONBOARDING_SELECT,
   STUDENT_ONBOARDING_SELECT,
 } from "@/lib/profile/completeness"
+import { normalizeModules, type AdminStaffRole } from "@/lib/admin/modules"
 
 export type AppShellUser = {
   userId: string | null
@@ -16,6 +17,8 @@ export type AppShellUser = {
   fullName: string | null
   avatarUrl: string | null
   shareTitle: string | null
+  /** RBAC modules when role is admin */
+  adminModules?: string[]
 }
 
 /** One auth + profile round-trip per request (shared across layout/pages). */
@@ -37,6 +40,7 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
     fullName: null,
     avatarUrl: null,
     shareTitle: null,
+    adminModules: undefined,
   }
   if (!user) return empty
 
@@ -48,6 +52,7 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
 
   const role = (profile?.role as UserRole | "admin") || "student"
   let shareTitle = profile?.full_name ?? null
+  let adminModules: string[] | undefined
 
   if (role === "recruiter") {
     const { data: company } = await supabase
@@ -64,6 +69,16 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
       .eq("id", user.id)
       .maybeSingle()
     if (opts?.requireOnboarding && !isStudentOnboardingComplete(student)) redirect("/onboarding")
+  } else if (role === "admin") {
+    const { data: staff, error: staffError } = await supabase
+      .from("platform_staff")
+      .select("staff_role, modules")
+      .eq("user_id", user.id)
+      .maybeSingle()
+    const staffRole: AdminStaffRole = staffError
+      ? "super_admin"
+      : (staff?.staff_role as AdminStaffRole) || "moderator"
+    adminModules = normalizeModules(staffError ? ["all"] : (staff?.modules as string[] | null), staffRole)
   }
 
   return {
@@ -73,5 +88,6 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
     fullName: profile?.full_name ?? null,
     avatarUrl: profile?.avatar_url ?? null,
     shareTitle,
+    adminModules,
   }
 }
