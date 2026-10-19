@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/lib/hooks/use-toast"
-import { Loader2 } from "lucide-react"
-
 export function JobToggleButton({ jobId, isActive }: { jobId: string; isActive: boolean }) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -30,9 +28,10 @@ export function JobToggleButton({ jobId, isActive }: { jobId: string; isActive: 
       variant={isActive ? "outline" : "gradient"}
       className="h-12 w-full rounded-xl font-body font-medium"
       onClick={toggle}
-      disabled={loading}
+      loading={loading}
+      loadingText={isActive ? "Pausing…" : "Activating…"}
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : isActive ? "Pause listing" : "Activate listing"}
+      {isActive ? "Pause listing" : "Activate listing"}
     </Button>
   )
 }

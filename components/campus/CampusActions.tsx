@@ -67,8 +67,13 @@ export function NudgeForm({
       <Input value={title} onChange={(e) => setTitle(e.target.value)} />
       <Label>Message</Label>
       <Textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} />
-      <Button type="submit" disabled={busy} className="rounded-full">
-        {busy ? "Sending…" : `Message ${Math.min(students.length, 80)} students`}
+      <Button
+        type="submit"
+        loading={busy}
+        loadingText="Sending…"
+        className="rounded-full"
+      >
+        {`Message ${Math.min(students.length, 80)} students`}
       </Button>
     </form>
   )
@@ -130,8 +135,14 @@ export function EventForm({ university }: { university: string }) {
           <Input type="datetime-local" value={starts} onChange={(e) => setStarts(e.target.value)} />
         </div>
       </div>
-      <Button type="submit" disabled={busy || !title.trim()} className="rounded-full">
-        {busy ? "Saving…" : "Publish event"}
+      <Button
+        type="submit"
+        loading={busy}
+        loadingText="Saving…"
+        disabled={!title.trim()}
+        className="rounded-full"
+      >
+        Publish event
       </Button>
     </form>
   )
@@ -140,19 +151,25 @@ export function EventForm({ university }: { university: string }) {
 export function SavedViewForm({ path }: { path: string }) {
   const { toast } = useToast()
   const [name, setName] = useState("")
+  const [busy, setBusy] = useState(false)
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
+    setBusy(true)
     const supabase = createClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+      setBusy(false)
+      return
+    }
     const { error } = await supabase.from("campus_saved_views").insert({
       user_id: user.id,
       name: name.trim(),
       path,
       filters: {},
     })
+    setBusy(false)
     if (error) toast({ variant: "destructive", title: "Could not save view", description: error.message })
     else toast({ title: "Saved for your role" })
   }
@@ -164,7 +181,14 @@ export function SavedViewForm({ path }: { path: string }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
-      <Button type="submit" variant="outline" className="rounded-full" disabled={!name.trim()}>
+      <Button
+        type="submit"
+        variant="outline"
+        className="rounded-full"
+        disabled={!name.trim()}
+        loading={busy}
+        loadingText="Saving…"
+      >
         Save this view
       </Button>
     </form>
@@ -174,7 +198,9 @@ export function SavedViewForm({ path }: { path: string }) {
 export function JobReviewButtons({ jobId, university }: { jobId: string; university: string }) {
   const { toast } = useToast()
   const router = useRouter()
+  const [busy, setBusy] = useState<"approved" | "rejected" | null>(null)
   const setStatus = async (status: "approved" | "rejected") => {
+    setBusy(status)
     const supabase = createClient()
     const {
       data: { user },
@@ -186,6 +212,7 @@ export function JobReviewButtons({ jobId, university }: { jobId: string; univers
       reviewed_by: user?.id || null,
       reviewed_at: new Date().toISOString(),
     })
+    setBusy(null)
     if (error) toast({ variant: "destructive", title: "Could not update", description: error.message })
     else {
       toast({ title: status === "approved" ? "Job approved" : "Job held" })
@@ -194,10 +221,27 @@ export function JobReviewButtons({ jobId, university }: { jobId: string; univers
   }
   return (
     <div className="flex gap-2">
-      <Button type="button" size="sm" className="rounded-full" onClick={() => void setStatus("approved")}>
+      <Button
+        type="button"
+        size="sm"
+        className="rounded-full"
+        disabled={busy !== null}
+        loading={busy === "approved"}
+        loadingText="Approving…"
+        onClick={() => void setStatus("approved")}
+      >
         Approve
       </Button>
-      <Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => void setStatus("rejected")}>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="rounded-full"
+        disabled={busy !== null}
+        loading={busy === "rejected"}
+        loadingText="Holding…"
+        onClick={() => void setStatus("rejected")}
+      >
         Hold
       </Button>
     </div>

@@ -23,7 +23,8 @@ export function ReportStatusButton({
       variant="outline"
       size="sm"
       className="rounded-full"
-      disabled={busy}
+      loading={busy}
+      loadingText={`${label}…`}
       onClick={async () => {
         setBusy(true)
         const supabase = createClient()

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { googleStartUrl, usesLocalGoogle } from "@/lib/auth-sites"
-import { Loader2, Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { safeInternalPath } from "@/lib/utils"
 import {
   clearSignupIntent,
@@ -159,9 +159,11 @@ export default function LoginPage() {
         variant="outline"
         className="mt-8 h-12 w-full border border-[#14102e]/30 bg-white text-[15px] font-semibold text-foreground hover:bg-secondary"
         onClick={handleGoogleLogin}
-        disabled={googleLoading || loading}
+        disabled={loading}
+        loading={googleLoading}
+        loadingText="Connecting…"
       >
-        {googleLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
+        <GoogleIcon />
         Continue with Google
       </Button>
 
@@ -221,8 +223,14 @@ export default function LoginPage() {
           )}
         </div>
 
-        <Button type="submit" className="h-12 w-full text-[15px] font-semibold" disabled={loading || success}>
-          {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</> : "Sign in"}
+        <Button
+          type="submit"
+          className="h-12 w-full text-[15px] font-semibold"
+          loading={loading}
+          disabled={success}
+          loadingText="Signing in…"
+        >
+          Sign in
         </Button>
       </form>
 

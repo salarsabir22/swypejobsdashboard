@@ -26,24 +26,30 @@ type RecruiterRow = {
 export default async function AdminEmployersPage() {
   const admin = await requireAdmin()
   const supabase = await createClient()
-  const linked = await supabase
-    .from("recruiter_profiles")
-    .select(`${RECRUITER_FIELDS}, company_id, companies(name)`)
-    .order("created_at", { ascending: false })
-    .limit(80)
+
+  const [linked, reportsRes, jobsRes, matchesRes] = await Promise.all([
+    supabase
+      .from("recruiter_profiles")
+      .select(`${RECRUITER_FIELDS}, company_id, companies(name)`)
+      .order("created_at", { ascending: false })
+      .limit(80),
+    supabase.from("reports").select("reported_id").limit(500),
+    supabase.from("jobs").select("recruiter_id, is_active").limit(500),
+    supabase.from("matches").select("recruiter_id, pipeline_status").limit(500),
+  ])
+
   const recruitersResult = linked.error
     ? await supabase.from("recruiter_profiles").select(RECRUITER_FIELDS).order("created_at", { ascending: false }).limit(80)
     : linked
   const recruiters = (recruitersResult.data || []) as RecruiterRow[]
 
-  const { data: reports } = await supabase.from("reports").select("reported_id")
   const reportCounts = new Map<string, number>()
-  for (const r of reports || []) {
+  for (const r of reportsRes.data || []) {
     reportCounts.set(r.reported_id, (reportCounts.get(r.reported_id) || 0) + 1)
   }
 
-  const { data: jobs } = await supabase.from("jobs").select("recruiter_id, is_active")
-  const { data: matches } = await supabase.from("matches").select("recruiter_id, pipeline_status, created_at")
+  const jobs = jobsRes.data
+  const matches = matchesRes.data
 
   const groups = new Map<string, { name: string; recruiters: RecruiterRow[] }>()
   for (const row of recruiters) {

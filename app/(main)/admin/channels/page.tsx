@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/lib/hooks/use-toast"
-import { Hash, Plus, Trash2, Users, Loader2 } from "lucide-react"
+import { Hash, Plus, Trash2, Users } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -34,6 +34,7 @@ export default function AdminChannelsPage() {
   const [channels, setChannels] = useState<ChannelRow[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -79,6 +80,7 @@ export default function AdminChannelsPage() {
 
   const deleteChannel = async (id: string) => {
     if (!confirm("Delete this channel? All messages will be lost.")) return
+    setDeletingId(id)
     const supabase = createClient()
     const { error } = await supabase.from("community_channels").delete().eq("id", id)
     if (error) toast({ variant: "destructive", title: "Error", description: error.message })
@@ -86,6 +88,7 @@ export default function AdminChannelsPage() {
       toast({ title: "Channel deleted" })
       setChannels((prev) => prev.filter((c) => c.id !== id))
     }
+    setDeletingId(null)
   }
 
   return (
@@ -120,8 +123,8 @@ export default function AdminChannelsPage() {
                 <Label htmlFor="channel-cat">Category</Label>
                 <Input id="channel-cat" placeholder="e.g. tech, career, networking" value={category} onChange={(e) => setCategory(e.target.value)} />
               </div>
-              <Button type="submit" className="w-full" disabled={creating}>
-                {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Channel"}
+              <Button type="submit" className="w-full" loading={creating} loadingText="Creating…">
+                Create Channel
               </Button>
             </form>
           </DialogContent>
@@ -159,6 +162,7 @@ export default function AdminChannelsPage() {
                   type="button"
                   variant="outline"
                   size="icon"
+                  loading={deletingId === ch.id}
                   onClick={() => void deleteChannel(ch.id)}
                   aria-label={`Delete ${ch.name}`}
                 >

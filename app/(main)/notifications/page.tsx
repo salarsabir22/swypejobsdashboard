@@ -19,6 +19,7 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true)
   const [items, setItems] = useState<Notification[]>([])
   const [chatUnreadCount, setChatUnreadCount] = useState(0)
+  const [actingId, setActingId] = useState<string | null>(null)
 
   const unreadCount = useMemo(() => items.filter((n) => !n.is_read).length, [items])
 
@@ -52,12 +53,14 @@ export default function NotificationsPage() {
   }, [supabase])
 
   const actOnNotification = async (n: Notification) => {
+    setActingId(n.id)
     if (!n.is_read) {
       await supabase.from("notifications").update({ is_read: true }).eq("id", n.id)
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)))
     }
 
     router.push(await resolveNotificationPath(supabase, n))
+    setActingId(null)
   }
 
   return (
@@ -93,6 +96,7 @@ export default function NotificationsPage() {
                 key={n.id}
                 type="button"
                 variant="ghost"
+                loading={actingId === n.id}
                 onClick={() => void actOnNotification(n)}
                 className="h-auto w-full justify-between rounded-none px-5 py-4 text-left"
               >

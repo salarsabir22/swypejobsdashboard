@@ -4,40 +4,44 @@ import { countBy, inLastDays, pct } from "@/lib/campus/helpers"
 import type { AdminSnapshot } from "@/lib/admin/types"
 import type { AdminStaffRole } from "@/lib/admin/access"
 
-const LIMIT = 4000
+const LIMIT = 800
 
 export const loadAdminSnapshot = cache(async (staffRole: AdminStaffRole): Promise<AdminSnapshot> => {
   const supabase = await createClient()
   const missingTables: string[] = []
 
-  const [profilesRes, studentsRes, recruitersRes, jobsRes, swipesRes, matchesRes, reportsRes] = await Promise.all([
+  const [
+    profilesRes,
+    studentsRes,
+    recruitersRes,
+    jobsRes,
+    swipesRes,
+    matchesRes,
+    reportsRes,
+    billingRes,
+    unisRes,
+    jobModRes,
+  ] = await Promise.all([
     supabase.from("profiles").select("id, role, created_at, updated_at").limit(LIMIT),
     supabase.from("student_profiles").select("id, university, resume_url, skills, degree, created_at").limit(LIMIT),
     supabase.from("recruiter_profiles").select("id, company_name, is_approved, website_url, created_at").limit(LIMIT),
-    supabase.from("jobs").select("id, recruiter_id, title, description, is_active, location, required_skills, created_at, updated_at").limit(LIMIT),
+    // Skip heavy description / skills blobs for dashboard aggregates
+    supabase.from("jobs").select("id, recruiter_id, title, is_active, location, created_at, updated_at").limit(LIMIT),
     supabase.from("job_swipes").select("student_id, job_id, direction, created_at").limit(LIMIT),
     supabase.from("matches").select("student_id, pipeline_status, created_at").limit(LIMIT),
     supabase.from("reports").select("id, status, created_at, reason").limit(LIMIT),
+    supabase.from("employer_billing").select("mrr").limit(200),
+    supabase.from("university_orgs").select("status").limit(200),
+    supabase.from("job_moderation").select("status").limit(LIMIT),
   ])
 
-  async function optional<T>(table: string, run: () => PromiseLike<{ data: T[] | null; error: { message: string } | null }>) {
-    const { data, error } = await run()
-    if (error) {
-      missingTables.push(table)
-      return [] as T[]
-    }
-    return data || []
-  }
+  if (billingRes.error) missingTables.push("employer_billing")
+  if (unisRes.error) missingTables.push("university_orgs")
+  if (jobModRes.error) missingTables.push("job_moderation")
 
-  const billing = await optional<{ mrr: number | null }>("employer_billing", () =>
-    supabase.from("employer_billing").select("mrr").limit(500)
-  )
-  const unis = await optional<{ status: string }>("university_orgs", () =>
-    supabase.from("university_orgs").select("status").limit(200)
-  )
-  const jobMod = await optional<{ status: string }>("job_moderation", () =>
-    supabase.from("job_moderation").select("status").limit(LIMIT)
-  )
+  const billing = (!billingRes.error && billingRes.data) || []
+  const unis = (!unisRes.error && unisRes.data) || []
+  const jobMod = (!jobModRes.error && jobModRes.data) || []
 
   const profiles = profilesRes.data || []
   const students = studentsRes.data || []

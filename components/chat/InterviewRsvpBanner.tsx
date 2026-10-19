@@ -26,7 +26,7 @@ export function InterviewRsvpBanner({
 }) {
   const { toast } = useToast()
   const [proposal, setProposal] = useState<Proposal | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<"accepted" | "declined" | "cancelled" | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -56,12 +56,12 @@ export function InterviewRsvpBanner({
   const mine = proposal.proposed_by === currentUserId
 
   const setStatus = async (status: "accepted" | "declined" | "cancelled") => {
-    setBusy(true)
+    setBusy(status)
     const supabase = createClient()
     const { error } = await supabase.from("interview_proposals").update({ status }).eq("id", proposal.id)
     if (error) {
       toast({ variant: "destructive", title: "Could not update", description: error.message })
-      setBusy(false)
+      setBusy(null)
       return
     }
     if (status === "declined" && matchId) {
@@ -74,7 +74,7 @@ export function InterviewRsvpBanner({
     toast({
       title: status === "accepted" ? "Interview accepted" : status === "declined" ? "Interview declined" : "Interview cancelled",
     })
-    setBusy(false)
+    setBusy(null)
   }
 
   return (
@@ -90,7 +90,8 @@ export function InterviewRsvpBanner({
           size="sm"
           variant="outline"
           className="h-8 rounded-full"
-          disabled={busy}
+          loading={busy === "cancelled"}
+          loadingText="Cancelling…"
           onClick={() => void setStatus("cancelled")}
         >
           Cancel
@@ -102,7 +103,9 @@ export function InterviewRsvpBanner({
             size="sm"
             variant="outline"
             className="h-8 rounded-full"
-            disabled={busy}
+            disabled={busy !== null}
+            loading={busy === "declined"}
+            loadingText="Declining…"
             onClick={() => void setStatus("declined")}
           >
             Decline
@@ -111,7 +114,9 @@ export function InterviewRsvpBanner({
             type="button"
             size="sm"
             className="h-8 rounded-full"
-            disabled={busy}
+            disabled={busy !== null}
+            loading={busy === "accepted"}
+            loadingText="Accepting…"
             onClick={() => void setStatus("accepted")}
           >
             Accept

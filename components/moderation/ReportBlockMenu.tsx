@@ -181,7 +181,7 @@ export function ReportBlockMenu({
             <Button type="button" variant="outline" onClick={() => setReportOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" disabled={busy} onClick={() => void submitReport()}>
+            <Button type="button" loading={busy} loadingText="Sending…" onClick={() => void submitReport()}>
               Send report
             </Button>
           </DialogFooter>

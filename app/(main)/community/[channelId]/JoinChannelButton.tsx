@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Loader2, UserPlus, UserMinus } from "lucide-react"
+import { UserPlus, UserMinus } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface Props {
@@ -36,12 +36,11 @@ export function JoinChannelButton({ channelId, isMember, userId, showLabel, clas
       variant={isMember ? "outline" : "default"}
       size={showLabel ? "default" : "sm"}
       onClick={toggle}
-      disabled={loading}
+      loading={loading}
+      loadingText={isMember ? "Leaving…" : "Joining…"}
       className={cn(showLabel ? "px-6" : "h-8 px-3 text-xs", className)}
     >
-      {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : isMember ? (
+      {isMember ? (
         <><UserMinus className="h-4 w-4" />{showLabel && "Leave Channel"}</>
       ) : (
         <><UserPlus className="h-4 w-4" />{showLabel ? "Join Channel" : "Join"}</>

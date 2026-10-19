@@ -92,6 +92,7 @@ export function InterestedCandidatesPanel({
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [busyDirection, setBusyDirection] = useState<"right" | "left" | null>(null)
   const [items, setItems] = useState<CandidateItem[]>([])
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteTarget, setInviteTarget] = useState<InterviewInviteTarget | null>(null)
@@ -211,11 +212,13 @@ export function InterestedCandidatesPanel({
     }
 
     setBusyId(studentId)
+    setBusyDirection(direction)
     if (current?.decision) {
       const removed = await undoCandidateSwipe(supabase, { studentId, recruiterId, jobId })
       if (!removed.ok) {
         toast({ title: "Could not update candidate", description: removed.message || "Try again." })
         setBusyId(null)
+        setBusyDirection(null)
         return
       }
     }
@@ -232,6 +235,7 @@ export function InterestedCandidatesPanel({
       if (!removed.ok) {
         toast({ title: "Could not update candidate", description: removed.message || "Try again." })
         setBusyId(null)
+        setBusyDirection(null)
         return
       }
       const retry = await supabase.from("candidate_swipes").insert({
@@ -246,6 +250,7 @@ export function InterestedCandidatesPanel({
     if (error) {
       toast({ title: "Could not update candidate", description: error.message })
       setBusyId(null)
+      setBusyDirection(null)
       return
     }
 
@@ -277,6 +282,7 @@ export function InterestedCandidatesPanel({
       }
     }
     setBusyId(null)
+    setBusyDirection(null)
   }
 
   const byId = new Map(items.map((item) => [item.id, item]))
@@ -379,6 +385,8 @@ export function InterestedCandidatesPanel({
               size="sm"
               className="flex-1 rounded-xl"
               disabled={busyId === item.id}
+              loading={busyId === item.id && busyDirection === "right"}
+              loadingText="Shortlisting…"
               onClick={() => void setDecision(item.id, "right")}
             >
               Shortlist
@@ -389,6 +397,8 @@ export function InterestedCandidatesPanel({
               variant="outline"
               className="flex-1 rounded-xl"
               disabled={busyId === item.id}
+              loading={busyId === item.id && busyDirection === "left"}
+              loadingText="Passing…"
               onClick={() => void setDecision(item.id, "left")}
             >
               Pass

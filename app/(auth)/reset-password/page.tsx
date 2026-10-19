@@ -272,15 +272,11 @@ export default function ResetPasswordPage() {
           <Button
             type="submit"
             className="h-12 w-full text-[15px] font-semibold"
-            disabled={loading || password !== confirm || password.length < 8}
+            loading={loading}
+            loadingText="Updating…"
+            disabled={password !== confirm || password.length < 8}
           >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Updating…
-              </>
-            ) : (
-              "Set password"
-            )}
+            Set password
           </Button>
         </form>
 

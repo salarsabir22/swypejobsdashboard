@@ -1,39 +1,30 @@
-import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { getRequestUser } from "@/lib/nav/app-shell-user"
 import { RecruiterDashboardView } from "./recruiter-dashboard-view"
 import { StudentDashboardView } from "./student-dashboard-view"
-import { isStudentOnboardingComplete, isRecruiterOnboardingComplete, STUDENT_ONBOARDING_SELECT, RECRUITER_ONBOARDING_SELECT } from "@/lib/profile/completeness"
 
+/**
+ * Layout already enforces auth + onboarding via loadAppShellUser.
+ * Reuse the cached user so this page does not pay another getUser() hop.
+ */
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login")
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, full_name")
     .eq("id", user.id)
-    .single()
+    .maybeSingle()
 
   if (!profile) redirect("/onboarding")
   if (profile.role === "student") {
-    const { data: student } = await supabase
-      .from("student_profiles")
-      .select(STUDENT_ONBOARDING_SELECT)
-      .eq("id", user.id)
-      .maybeSingle()
-    if (!isStudentOnboardingComplete(student)) redirect("/onboarding")
     return <StudentDashboardView userId={user.id} fullName={profile.full_name} />
   }
   if (profile.role === "recruiter") {
-    const { data: recruiter } = await supabase
-      .from("recruiter_profiles")
-      .select(RECRUITER_ONBOARDING_SELECT)
-      .eq("id", user.id)
-      .maybeSingle()
-    if (!isRecruiterOnboardingComplete(recruiter)) redirect("/onboarding")
     return <RecruiterDashboardView userId={user.id} fullName={profile.full_name} />
   }
   if (profile.role === "university") redirect("/campus")
-  redirect("/admin")
+  if (profile.role === "admin") redirect("/admin")
+  redirect("/discover")
 }

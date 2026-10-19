@@ -8,7 +8,7 @@ import { provisionUniversityAccount } from "@/lib/campus/provision"
 import { applySignupRole } from "@/lib/profile/completeness"
 import { UniversityPicker } from "@/components/profile/UniversityPicker"
 import { cn } from "@/lib/utils"
-import { Loader2, Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -301,9 +301,11 @@ export default function SignupPage() {
           variant="outline"
           className="mb-4 h-12 w-full border border-[#14102e]/30 bg-white font-semibold hover:bg-secondary"
           onClick={handleGoogleSignup}
-          disabled={googleLoading || loading}
+          disabled={loading}
+          loading={googleLoading}
+          loadingText="Connecting…"
         >
-          {googleLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
+          <GoogleIcon />
           Google - {ROLE_INFO[role].label}
         </Button>
 
@@ -421,8 +423,13 @@ export default function SignupPage() {
             </Alert>
           )}
 
-          <Button type="submit" className="h-12 w-full text-[15px] font-semibold" disabled={loading}>
-            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Creating account…</> : "Create account"}
+          <Button
+            type="submit"
+            className="h-12 w-full text-[15px] font-semibold"
+            loading={loading}
+            loadingText="Creating account…"
+          >
+            Create account
           </Button>
         </form>
 

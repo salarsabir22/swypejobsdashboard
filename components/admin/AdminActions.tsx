@@ -29,18 +29,32 @@ export function EmployerDecision({ recruiterId }: { recruiterId: string }) {
   const router = useRouter()
   const [reason, setReason] = useState("incomplete_verification")
   const [notes, setNotes] = useState("")
+  const [busy, setBusy] = useState<"approve" | "reject" | "suspend" | null>(null)
   const run = async (action: "approve" | "reject" | "suspend") => {
-    const supabase = createClient()
-    const approved = action === "approve"
-    const { error } = await supabase.from("recruiter_profiles").update({ is_approved: approved }).eq("id", recruiterId)
-    if (error) {
-      toast({ variant: "destructive", title: error.message })
-      return
+    setBusy(action)
+    try {
+      // Browser RLS on recruiter_profiles often blocks admin updates with no error
+      // (0 rows). Approve through a server route that verifies admin + uses service role.
+      const res = await fetch("/api/admin/employers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recruiterId, action, reason, notes }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        toast({ variant: "destructive", title: data.error || "Could not update employer" })
+        return
+      }
+      toast({ title: action === "approve" ? "Approved" : action === "reject" ? "Rejected" : "Suspended" })
+      router.refresh()
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: error instanceof Error ? error.message : "Could not update employer",
+      })
+    } finally {
+      setBusy(null)
     }
-    await supabase.from("employer_reviews").insert({ recruiter_id: recruiterId, action, reason_code: reason, notes })
-    await audit(action, "employer", recruiterId, { reason, notes })
-    toast({ title: action === "approve" ? "Approved" : action === "reject" ? "Rejected" : "Suspended" })
-    router.refresh()
   }
   return (
     <div className="space-y-2">
@@ -58,13 +72,39 @@ export function EmployerDecision({ recruiterId }: { recruiterId: string }) {
       </Select>
       <Textarea rows={2} placeholder="Internal notes (and rejection email body)" value={notes} onChange={(e) => setNotes(e.target.value)} />
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" className="rounded-full" onClick={() => void run("approve")}>
+        <Button
+          type="button"
+          size="sm"
+          className="rounded-full"
+          disabled={busy !== null}
+          loading={busy === "approve"}
+          loadingText="Approving…"
+          onClick={() => void run("approve")}
+        >
           Approve
         </Button>
-        <Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => void run("reject")}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="rounded-full"
+          disabled={busy !== null}
+          loading={busy === "reject"}
+          loadingText="Rejecting…"
+          onClick={() => void run("reject")}
+        >
           Reject
         </Button>
-        <Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => void run("suspend")}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="rounded-full"
+          disabled={busy !== null}
+          loading={busy === "suspend"}
+          loadingText="Suspending…"
+          onClick={() => void run("suspend")}
+        >
           Suspend
         </Button>
       </div>

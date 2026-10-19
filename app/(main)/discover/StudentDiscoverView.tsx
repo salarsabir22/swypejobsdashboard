@@ -66,6 +66,7 @@ export function StudentDiscoverView({
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [swiping, setSwiping] = useState(false)
+  const [pendingAction, setPendingAction] = useState<"left" | "right" | "saved" | "undo" | null>(null)
   const [cardEpoch, setCardEpoch] = useState(0)
   const [celebrate, setCelebrate] = useState(false)
   const [lastSwipe, setLastSwipe] = useState<LastSwipe | null>(null)
@@ -245,6 +246,7 @@ export function StudentDiscoverView({
         return
       }
       setSwiping(true)
+      setPendingAction(direction)
       const supabase = createClient()
       const { error } = await supabase.from("job_swipes").insert({ student_id: userId, job_id: job.id, direction })
       if (error && !isUniqueViolation(error)) {
@@ -254,6 +256,7 @@ export function StudentDiscoverView({
           description: error.message,
         })
         setCardEpoch((n) => n + 1)
+        setPendingAction(null)
         setSwiping(false)
         return
       }
@@ -290,7 +293,10 @@ export function StudentDiscoverView({
         setSessionPassed((n) => n + 1)
       }
 
-      setTimeout(() => setSwiping(false), 100)
+      setTimeout(() => {
+        setPendingAction(null)
+        setSwiping(false)
+      }, 100)
     },
     [userId, swiping, currentJob, toast, router]
   )
@@ -298,6 +304,7 @@ export function StudentDiscoverView({
   const handleUndo = useCallback(async () => {
     if (swiping || !lastSwipe) return
     setSwiping(true)
+    setPendingAction("undo")
     const supabase = createClient()
     const result = await undoJobSwipe(supabase, {
       studentId: userId,
@@ -310,6 +317,7 @@ export function StudentDiscoverView({
         title: "Couldn’t undo",
         description: result.message ?? "Try again.",
       })
+      setPendingAction(null)
       setSwiping(false)
       return
     }
@@ -323,7 +331,10 @@ export function StudentDiscoverView({
       next.splice(Math.min(currentIndex, next.length), 0, restored)
       return next
     })
-    setTimeout(() => setSwiping(false), 100)
+    setTimeout(() => {
+      setPendingAction(null)
+      setSwiping(false)
+    }, 100)
   }, [swiping, lastSwipe, userId, toast, currentIndex])
 
   const currentReasons = currentJob
@@ -551,6 +562,7 @@ export function StudentDiscoverView({
                   size="icon"
                   onClick={() => void handleUndo()}
                   disabled={swiping || !lastSwipe}
+                  loading={pendingAction === "undo"}
                   className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
                   aria-label="Undo last swipe"
                 >
@@ -565,6 +577,7 @@ export function StudentDiscoverView({
                   size="icon"
                   onClick={() => void handleSwipe("left")}
                   disabled={swiping}
+                  loading={pendingAction === "left"}
                   className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
                   aria-label="Pass"
                 >
@@ -579,6 +592,7 @@ export function StudentDiscoverView({
                   size="icon"
                   onClick={() => void handleSwipe("saved")}
                   disabled={swiping}
+                  loading={pendingAction === "saved"}
                   className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
                   aria-label="Save for later"
                 >
@@ -592,6 +606,7 @@ export function StudentDiscoverView({
                   size="icon"
                   onClick={() => void handleSwipe("right")}
                   disabled={swiping}
+                  loading={pendingAction === "right"}
                   className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
                   aria-label="Apply"
                 >

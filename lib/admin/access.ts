@@ -1,18 +1,21 @@
 import { cache } from "react"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { getRequestUser } from "@/lib/nav/app-shell-user"
 
 export type AdminStaffRole = "super_admin" | "moderator" | "support" | "analyst" | "finance" | "readonly"
 
 export const requireAdmin = cache(async () => {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login?next=/admin")
-  const { data: profile } = await supabase.from("profiles").select("role, full_name").eq("id", user.id).maybeSingle()
+
+  const [profileRes, staffRes] = await Promise.all([
+    supabase.from("profiles").select("role, full_name").eq("id", user.id).maybeSingle(),
+    supabase.from("platform_staff").select("staff_role, modules").eq("user_id", user.id).maybeSingle(),
+  ])
+
+  const profile = profileRes.data
   if (profile?.role !== "admin") redirect("/discover")
-  const staffRes = await supabase.from("platform_staff").select("staff_role, modules").eq("user_id", user.id).maybeSingle()
   const staffRole = (!staffRes.error && (staffRes.data?.staff_role as AdminStaffRole)) || "super_admin"
   return {
     userId: user.id,

@@ -792,7 +792,7 @@ export function ChatThread({
               <Button
                 type="submit"
                 size="icon"
-                disabled={sending}
+                loading={sending}
                 className="h-12 w-12 shrink-0 rounded-full"
                 aria-label={pendingFiles.length ? "Send attachment" : "Send message"}
               >

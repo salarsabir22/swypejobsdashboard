@@ -155,8 +155,8 @@ export function InterviewInviteDialog({
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Skip
           </Button>
-          <Button type="button" onClick={() => void send()} disabled={busy}>
-            {busy ? "Sending…" : "Send invite"}
+          <Button type="button" onClick={() => void send()} loading={busy} loadingText="Sending…">
+            Send invite
           </Button>
         </DialogFooter>
       </DialogContent>

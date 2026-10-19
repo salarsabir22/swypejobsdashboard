@@ -98,8 +98,13 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
       .eq("student_id", userId)
       .order("created_at", { ascending: false })
       .limit(8),
-    supabase.from("job_swipes").select("created_at, direction").eq("student_id", userId).gte("created_at", since),
-    supabase.from("matches").select("created_at").eq("student_id", userId).gte("created_at", since),
+    supabase
+      .from("job_swipes")
+      .select("created_at, direction")
+      .eq("student_id", userId)
+      .gte("created_at", since)
+      .limit(500),
+    supabase.from("matches").select("created_at").eq("student_id", userId).gte("created_at", since).limit(500),
     supabase
       .from("job_swipes")
       .select("id", { count: "exact", head: true })
@@ -148,9 +153,11 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
   const viewers = (viewerRows || []) as ViewerProfile[]
   const viewerById = new Map(viewers.map((p) => [p.id, p]))
   const recruiterIds = viewers.filter((p) => p.role === "recruiter").map((p) => p.id)
-  const { data: companyRows } = recruiterIds.length
-    ? await supabase.from("recruiter_profiles").select("id, company_name, logo_url").in("id", recruiterIds)
-    : { data: [] as CompanyLite[] }
+  // Fetch companies in the same tick when we already have recruiter ids (single hop).
+  const { data: companyRows } =
+    recruiterIds.length > 0
+      ? await supabase.from("recruiter_profiles").select("id, company_name, logo_url").in("id", recruiterIds)
+      : { data: [] as CompanyLite[] }
   const companyById = new Map(((companyRows || []) as CompanyLite[]).map((c) => [c.id, c]))
 
   const days = daysLastN(30)

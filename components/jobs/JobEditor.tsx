@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/lib/hooks/use-toast"
-import { ArrowLeft, Loader2, X } from "lucide-react"
+import { ArrowLeft, X } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -394,8 +394,13 @@ export function JobEditor({ job }: { job?: Job }) {
               onSemestersChange={setRequiredSemesters}
             />
 
-            <Button type="submit" className="h-12 w-full rounded-xl" disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : editing ? "Save changes" : "Publish listing"}
+            <Button
+              type="submit"
+              className="h-12 w-full rounded-xl"
+              loading={loading}
+              loadingText={editing ? "Saving…" : "Publishing…"}
+            >
+              {editing ? "Save changes" : "Publish listing"}
             </Button>
           </form>
         </CardContent>

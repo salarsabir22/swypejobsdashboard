@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from "react"
-import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { getRequestUser } from "@/lib/nav/app-shell-user"
 import {
   GraduationCap,
   Calendar,
@@ -32,60 +32,75 @@ import { RecruiterIntegrationsCard } from "@/components/hiring/RecruiterIntegrat
 import type { UserRole } from "@/types"
 
 export default async function ProfilePage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login")
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
   const isStudent = profile?.role === "student"
   const isRecruiter = profile?.role === "recruiter"
 
-  const { data: studentProfile } = isStudent
-    ? await supabase.from("student_profiles").select("*").eq("id", user.id).maybeSingle()
-    : { data: null }
+  const [
+    studentRes,
+    recruiterRes,
+    matchCountRes,
+    activityCountRes,
+    savedRes,
+    appliedRes,
+    recruiterJobs,
+    postsCountRes,
+  ] = await Promise.all([
+    isStudent
+      ? supabase.from("student_profiles").select("*").eq("id", user.id).maybeSingle()
+      : Promise.resolve({ data: null as any }),
+    isRecruiter
+      ? supabase.from("recruiter_profiles").select("*").eq("id", user.id).maybeSingle()
+      : Promise.resolve({ data: null as any }),
+    supabase
+      .from("matches")
+      .select("*", { count: "exact", head: true })
+      .or(`student_id.eq.${user.id},recruiter_id.eq.${user.id}`),
+    isStudent
+      ? supabase
+          .from("job_swipes")
+          .select("*", { count: "exact", head: true })
+          .eq("student_id", user.id)
+          .eq("direction", "right")
+      : supabase.from("jobs").select("*", { count: "exact", head: true }).eq("recruiter_id", user.id),
+    isStudent
+      ? supabase
+          .from("job_swipes")
+          .select(
+            "id, created_at, job_id, jobs(id, title, is_active, job_type, location, is_remote, recruiter_profiles(company_name, logo_url))",
+          )
+          .eq("student_id", user.id)
+          .eq("direction", "saved")
+          .order("created_at", { ascending: false })
+          .limit(40)
+      : Promise.resolve({ data: [] as any[] }),
+    isStudent
+      ? supabase
+          .from("job_swipes")
+          .select("id, created_at, jobs(title, recruiter_profiles(company_name))")
+          .eq("student_id", user.id)
+          .eq("direction", "right")
+          .order("created_at", { ascending: false })
+          .limit(8)
+      : Promise.resolve({ data: [] as any[] }),
+    isRecruiter
+      ? supabase
+          .from("jobs")
+          .select("id, title, is_active")
+          .eq("recruiter_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(40)
+      : Promise.resolve({ data: [] as any[] }),
+    supabase.from("feed_posts").select("id", { count: "exact", head: true }).eq("author_id", user.id),
+  ])
 
-  const { data: recruiterProfile } = isRecruiter
-    ? await supabase.from("recruiter_profiles").select("*").eq("id", user.id).maybeSingle()
-    : { data: null }
-
-  const { count: matchCount } = await supabase
-    .from("matches")
-    .select("*", { count: "exact", head: true })
-    .or(`student_id.eq.${user.id},recruiter_id.eq.${user.id}`)
-
-  const { count: activityCount } = isStudent
-    ? await supabase.from("job_swipes").select("*", { count: "exact", head: true }).eq("student_id", user.id).eq("direction", "right")
-    : await supabase.from("jobs").select("*", { count: "exact", head: true }).eq("recruiter_id", user.id)
-
-  const savedRes = isStudent
-    ? await supabase
-        .from("job_swipes")
-        .select("id, created_at, job_id, jobs(id, title, is_active, job_type, location, is_remote, recruiter_profiles(company_name, logo_url))")
-        .eq("student_id", user.id)
-        .eq("direction", "saved")
-        .order("created_at", { ascending: false })
-    : { data: [] as any[] }
-
-  const appliedRes = isStudent
-    ? await supabase
-        .from("job_swipes")
-        .select("id, created_at, jobs(title, recruiter_profiles(company_name))")
-        .eq("student_id", user.id)
-        .eq("direction", "right")
-        .order("created_at", { ascending: false })
-        .limit(8)
-    : { data: [] as any[] }
-
-  const recruiterJobs = isRecruiter
-    ? await supabase.from("jobs").select("id, title, is_active").eq("recruiter_id", user.id).order("created_at", { ascending: false })
-    : { data: [] as any[] }
-
-  const postsCountRes = await supabase
-    .from("feed_posts")
-    .select("id", { count: "exact", head: true })
-    .eq("author_id", user.id)
+  const studentProfile = studentRes.data
+  const recruiterProfile = recruiterRes.data
+  const matchCount = matchCountRes.count
+  const activityCount = activityCountRes.count
   const postCount = postsCountRes.error ? 0 : postsCountRes.count ?? 0
 
   const savedRows = savedRes.data || []

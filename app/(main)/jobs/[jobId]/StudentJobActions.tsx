@@ -29,6 +29,7 @@ export function StudentJobActions({
   const needsApplyForm = jobHasMandatoryQuestions({ screening_questions: screeningQuestions })
   const [direction, setDirection] = useState<Direction | null>(null)
   const [loadingState, setLoadingState] = useState<"idle" | "fetch" | "act">("fetch")
+  const [pendingAction, setPendingAction] = useState<Direction | null>(null)
 
   const loadSwipe = useCallback(async () => {
     setLoadingState("fetch")
@@ -54,6 +55,7 @@ export function StudentJobActions({
       return
     }
     setLoadingState("act")
+    setPendingAction(next)
     const supabase = createClient()
     const { error } = await supabase.from("job_swipes").insert({
       student_id: userId,
@@ -67,6 +69,7 @@ export function StudentJobActions({
         title: "Could not save",
         description: dup ? "You already responded to this role." : error.message,
       })
+      setPendingAction(null)
       setLoadingState("idle")
       void loadSwipe()
       return
@@ -77,6 +80,7 @@ export function StudentJobActions({
     } else if (next === "saved") {
       toast({ title: "Saved for later" })
     }
+    setPendingAction(null)
     setLoadingState("idle")
   }
 
@@ -147,6 +151,8 @@ export function StudentJobActions({
           variant="outline"
           className="h-12 flex-1 gap-2 rounded-xl"
           disabled={busy}
+          loading={pendingAction === "left"}
+          loadingText="Passing…"
           onClick={() => void act("left")}
         >
           <X className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
@@ -157,12 +163,21 @@ export function StudentJobActions({
           variant="secondary"
           className="h-12 flex-1 gap-2 rounded-xl"
           disabled={busy}
+          loading={pendingAction === "saved"}
+          loadingText="Saving…"
           onClick={() => void act("saved")}
         >
           <Bookmark className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
           Save
         </Button>
-        <Button type="button" className="h-12 flex-1 gap-2 rounded-xl" disabled={busy} onClick={() => void act("right")}>
+        <Button
+          type="button"
+          className="h-12 flex-1 gap-2 rounded-xl"
+          disabled={busy}
+          loading={pendingAction === "right"}
+          loadingText="Applying…"
+          onClick={() => void act("right")}
+        >
           <Check className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           Apply
         </Button>

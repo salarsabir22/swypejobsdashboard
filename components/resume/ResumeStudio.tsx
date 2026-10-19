@@ -413,13 +413,30 @@ export function ResumeStudio({
           </div>
           {tab === "resume" ? (
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => void downloadResume()} disabled={busy !== null || !record}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={() => void downloadResume()}
+                disabled={busy !== null || !record}
+                loading={busy === "pdf"}
+                loadingText="Downloading…"
+              >
                 <Download className="h-4 w-4" />
                 Download PDF
               </Button>
-              <Button type="button" size="sm" className="rounded-full" onClick={() => void saveAsProfile()} disabled={busy !== null || !record}>
+              <Button
+                type="button"
+                size="sm"
+                className="rounded-full"
+                onClick={() => void saveAsProfile()}
+                disabled={busy !== null || !record}
+                loading={busy === "profile"}
+                loadingText="Publishing…"
+              >
                 <FileText className="h-4 w-4" />
-                {busy === "profile" ? "Publishing…" : record?.isProfile ? "Update profile CV" : "Use as profile CV"}
+                {record?.isProfile ? "Update profile CV" : "Use as profile CV"}
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -467,7 +484,16 @@ export function ResumeStudio({
                 <Sparkles className="h-4 w-4" />
                 Draft from profile
               </Button>
-              <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => void downloadLetter()} disabled={busy !== null || !letter}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={() => void downloadLetter()}
+                disabled={busy !== null || !letter}
+                loading={busy === "letter-pdf"}
+                loadingText="Downloading…"
+              >
                 <Download className="h-4 w-4" />
                 Download PDF
               </Button>

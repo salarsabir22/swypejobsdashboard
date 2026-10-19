@@ -132,7 +132,7 @@ export function InterviewProposeButton({
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" disabled={busy} onClick={() => void submit()}>
+            <Button type="button" loading={busy} loadingText="Sending…" onClick={() => void submit()}>
               Send
             </Button>
           </DialogFooter>

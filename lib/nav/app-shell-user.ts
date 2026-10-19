@@ -1,3 +1,4 @@
+import { cache } from "react"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import type { UserRole } from "@/types"
@@ -17,11 +18,17 @@ export type AppShellUser = {
   shareTitle: string | null
 }
 
-export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): Promise<AppShellUser> {
+/** One auth + profile round-trip per request (shared across layout/pages). */
+export const getRequestUser = cache(async () => {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
+  return { supabase, user }
+})
+
+export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): Promise<AppShellUser> {
+  const { supabase, user } = await getRequestUser()
 
   const empty: AppShellUser = {
     userId: null,
@@ -37,7 +44,7 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
     .from("profiles")
     .select("role, full_name, avatar_url")
     .eq("id", user.id)
-    .single()
+    .maybeSingle()
 
   const role = (profile?.role as UserRole | "admin") || "student"
   let shareTitle = profile?.full_name ?? null
@@ -50,8 +57,7 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
       .maybeSingle()
     if (company?.company_name) shareTitle = company.company_name
     if (opts?.requireOnboarding && !isRecruiterOnboardingComplete(company)) redirect("/onboarding")
-  }
-  if (role === "student") {
+  } else if (role === "student") {
     const { data: student } = await supabase
       .from("student_profiles")
       .select(STUDENT_ONBOARDING_SELECT)

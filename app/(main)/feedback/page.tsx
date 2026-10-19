@@ -93,8 +93,8 @@ export default function FeedbackPage() {
                 onChange={(e) => setImprove(e.target.value)}
               />
             </div>
-            <Button type="submit" className="h-11 w-full rounded-full" disabled={sending}>
-              {sending ? "Sending…" : "Send feedback"}
+            <Button type="submit" className="h-11 w-full rounded-full" loading={sending} loadingText="Sending…">
+              Send feedback
             </Button>
           </form>
         </CardContent>

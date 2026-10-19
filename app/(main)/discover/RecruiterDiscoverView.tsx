@@ -77,6 +77,7 @@ export function RecruiterDiscoverView({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [swiping, setSwiping] = useState(false)
+  const [pendingAction, setPendingAction] = useState<"left" | "right" | "undo" | null>(null)
   const [cardEpoch, setCardEpoch] = useState(0)
   const [jobs, setJobs] = useState<Job[]>([])
   const [selectedJobId, setSelectedJobId] = useState("")
@@ -235,6 +236,7 @@ export function RecruiterDiscoverView({
       if (!selectedJobId || swiping || !currentCandidate) return
       const candidate = currentCandidate
       setSwiping(true)
+      setPendingAction(direction)
       const supabase = createClient()
       const { error } = await supabase.from("candidate_swipes").insert({
         recruiter_id: userId,
@@ -249,6 +251,7 @@ export function RecruiterDiscoverView({
           description: error.message,
         })
         setCardEpoch((n) => n + 1)
+        setPendingAction(null)
         setSwiping(false)
         return
       }
@@ -287,7 +290,10 @@ export function RecruiterDiscoverView({
       } else {
         setSessionPassed((n) => n + 1)
       }
-      setTimeout(() => setSwiping(false), 100)
+      setTimeout(() => {
+        setPendingAction(null)
+        setSwiping(false)
+      }, 100)
     },
     [userId, selectedJobId, selectedTitle, swiping, currentCandidate, toast]
   )
@@ -295,6 +301,7 @@ export function RecruiterDiscoverView({
   const handleUndo = useCallback(async () => {
     if (swiping || !lastSwipe) return
     setSwiping(true)
+    setPendingAction("undo")
     const supabase = createClient()
     const result = await undoCandidateSwipe(supabase, {
       recruiterId: userId,
@@ -307,6 +314,7 @@ export function RecruiterDiscoverView({
         title: "Couldn’t undo",
         description: result.message ?? "Try again.",
       })
+      setPendingAction(null)
       setSwiping(false)
       return
     }
@@ -319,7 +327,10 @@ export function RecruiterDiscoverView({
       next.splice(Math.min(currentIndex, next.length), 0, restored)
       return next
     })
-    setTimeout(() => setSwiping(false), 100)
+    setTimeout(() => {
+      setPendingAction(null)
+      setSwiping(false)
+    }, 100)
   }, [swiping, lastSwipe, userId, toast, currentIndex])
 
   const currentReasons = currentCandidate
@@ -583,6 +594,7 @@ export function RecruiterDiscoverView({
                   size="icon"
                   onClick={() => void handleUndo()}
                   disabled={swiping || !lastSwipe || lastSwipe.jobId !== selectedJobId}
+                  loading={pendingAction === "undo"}
                   className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
                   aria-label="Undo last swipe"
                 >
@@ -597,6 +609,7 @@ export function RecruiterDiscoverView({
                   size="icon"
                   onClick={() => void handleSwipe("left")}
                   disabled={swiping}
+                  loading={pendingAction === "left"}
                   className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
                   aria-label="Pass"
                 >
@@ -610,6 +623,7 @@ export function RecruiterDiscoverView({
                   size="icon"
                   onClick={() => void handleSwipe("right")}
                   disabled={swiping}
+                  loading={pendingAction === "right"}
                   className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
                   aria-label="Shortlist"
                 >

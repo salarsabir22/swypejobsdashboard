@@ -2072,19 +2072,11 @@ export default function OnboardingPage() {
                           type="button"
                           className="h-11 w-full gap-2 rounded-xl px-8 font-body text-sm font-semibold sm:w-auto"
                           onClick={handleComplete}
-                          disabled={loading || uploading}
+                          loading={loading || uploading}
+                          loadingText={uploading ? "Uploading…" : "Saving…"}
                         >
-                          {loading || uploading ? (
-                            <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              {uploading ? "Uploading…" : "Saving…"}
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="h-4 w-4" />
-                              Finish
-                            </>
-                          )}
+                          <CheckCircle2 className="h-4 w-4" />
+                          Finish
                         </Button>
                       )}
                     </div>

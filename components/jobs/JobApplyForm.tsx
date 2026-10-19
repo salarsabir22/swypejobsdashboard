@@ -270,8 +270,8 @@ export function JobApplyForm({
         </div>
       ))}
       <div className="flex flex-wrap gap-3">
-        <Button type="submit" disabled={busy} className="h-12 px-6">
-          {busy ? "Submitting…" : "Submit application"}
+        <Button type="submit" loading={busy} loadingText="Submitting…" className="h-12 px-6">
+          Submit application
         </Button>
         <Button type="button" variant="ghost" asChild>
           <Link href={`/jobs/${jobId}`}>Back to role</Link>

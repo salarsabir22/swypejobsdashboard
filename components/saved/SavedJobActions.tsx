@@ -6,7 +6,7 @@ import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/lib/hooks/use-toast"
 import { Button } from "@/components/ui/button"
-import { Loader2, Send, Trash2 } from "lucide-react"
+import { Send, Trash2 } from "lucide-react"
 
 type SavedJobActionsProps = {
   swipeId: string
@@ -49,13 +49,11 @@ export function SavedJobActions({ swipeId, jobId, jobTitle, userId, isActive }: 
         className="rounded-full text-muted-foreground hover:text-destructive"
         onClick={() => void unsave()}
         disabled={busy !== null}
+        loading={busy === "unsave"}
+        loadingText="Removing…"
         aria-label="Remove from saved"
       >
-        {busy === "unsave" ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Trash2 className="h-4 w-4" />
-        )}
+        <Trash2 className="h-4 w-4" />
         <span className="ml-1.5 hidden sm:inline">Remove</span>
       </Button>
       <Button asChild variant="outline" size="sm" className="rounded-full">
@@ -67,13 +65,11 @@ export function SavedJobActions({ swipeId, jobId, jobTitle, userId, isActive }: 
         className="rounded-full gap-1.5"
         onClick={() => void apply()}
         disabled={!isActive || busy !== null}
+        loading={busy === "apply"}
+        loadingText="Opening…"
         title={!isActive ? "This listing is closed" : undefined}
       >
-        {busy === "apply" ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Send className="h-4 w-4" />
-        )}
+        <Send className="h-4 w-4" />
         Apply
       </Button>
     </div>

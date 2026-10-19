@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2, CheckCircle2, RefreshCw, ArrowLeft } from "lucide-react"
+import { CheckCircle2, RefreshCw, ArrowLeft } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -93,13 +93,11 @@ export default function ForgotPasswordPage() {
             variant="outline"
             className="mb-4 h-12 w-full border border-[#14102e]/30 bg-white font-semibold hover:bg-secondary"
             onClick={() => sendReset(true)}
-            disabled={resending || resent}
+            disabled={resent}
+            loading={resending}
+            loadingText="Sending…"
           >
-            {resending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Sending…
-              </>
-            ) : resent ? (
+            {resent ? (
               <>
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                 <span className="text-muted-foreground">Sent again</span>
@@ -162,14 +160,13 @@ export default function ForgotPasswordPage() {
             <p className="text-[11px] text-muted-foreground">Only sent if an account exists</p>
           </div>
 
-          <Button type="submit" className="h-12 w-full text-[15px] font-semibold" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Sending…
-              </>
-            ) : (
-              "Send reset link"
-            )}
+          <Button
+            type="submit"
+            className="h-12 w-full text-[15px] font-semibold"
+            loading={loading}
+            loadingText="Sending…"
+          >
+            Send reset link
           </Button>
         </form>
 

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { LogOut, Loader2 } from "lucide-react"
+import { LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function SignOutButton() {
@@ -18,8 +18,8 @@ export function SignOutButton() {
   }
 
   return (
-    <Button type="button" variant="outline" className="w-full" onClick={signOut} disabled={loading}>
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+    <Button type="button" variant="outline" className="w-full" onClick={signOut} loading={loading} loadingText="Signing out…">
+      <LogOut className="h-4 w-4" />
       Sign Out
     </Button>
   )

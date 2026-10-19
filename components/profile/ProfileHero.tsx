@@ -142,9 +142,11 @@ export function ProfileHero({
               variant="secondary"
               className="absolute bottom-3 right-3 h-8 rounded-full bg-white/95 text-foreground shadow-sm hover:bg-white"
               disabled={busy !== null}
+              loading={busy === "cover"}
+              loadingText="Uploading…"
               onClick={() => coverInput.current?.click()}
             >
-              {busy === "cover" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+              <Camera className="h-3.5 w-3.5" />
               {cover ? "Change cover" : "Add cover"}
             </Button>
           </>
