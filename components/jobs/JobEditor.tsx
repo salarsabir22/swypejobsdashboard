@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { JOB_CATEGORIES } from "@/lib/company-options"
@@ -389,13 +390,12 @@ export function JobEditor({ job }: { job?: Job }) {
             <div className="space-y-2">
               <Label htmlFor="job-deadline">Application deadline (optional)</Label>
               <div className="flex min-w-0 gap-2">
-                <Input
+                <DatePicker
                   id="job-deadline"
-                  type="date"
                   className="h-11 rounded-xl"
                   min={todayIso()}
                   value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
+                  onChange={setDeadline}
                 />
                 {deadline ? (
                   <Button type="button" variant="outline" className="h-11 shrink-0 rounded-xl" onClick={() => setDeadline("")}>

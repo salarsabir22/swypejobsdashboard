@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/lib/hooks/use-toast"
 import type { AttentionStudent } from "@/lib/campus/types"
 import { Button } from "@/components/ui/button"
+import { DateTimePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -131,8 +132,8 @@ export function EventForm({ university }: { university: string }) {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>Starts</Label>
-          <Input type="datetime-local" value={starts} onChange={(e) => setStarts(e.target.value)} />
+          <Label htmlFor="event-starts">Starts</Label>
+          <DateTimePicker id="event-starts" value={starts} onChange={setStarts} />
         </div>
       </div>
       <Button

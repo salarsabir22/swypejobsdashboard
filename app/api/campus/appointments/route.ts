@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import {
+  APPOINTMENT_COLUMNS,
+  appointmentTopic,
+  appointmentWriteStatus,
+  toAppointmentView,
+  type AppointmentRecord,
+} from "@/lib/campus/appointments"
 
 export const runtime = "nodejs"
 
@@ -28,15 +35,19 @@ export async function GET() {
   }
 
   const admin = createAdminClient()
-  let query = admin.from("campus_appointments").select("id, student_id, university, topic, note, starts_at, status, created_at").order("starts_at", { ascending: true }).limit(200)
+  let query = admin.from("campus_appointments").select(APPOINTMENT_COLUMNS).order("starts_at", { ascending: true }).limit(200)
   if (access.university) query = query.eq("university", access.university)
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  const ids = [...new Set((data || []).map((row) => row.student_id))]
+  const rows = (data || []) as AppointmentRecord[]
+  const ids = [...new Set(rows.map((row) => row.student_id).filter(Boolean))] as string[]
   const { data: profiles } = ids.length ? await admin.from("profiles").select("id, full_name").in("id", ids) : { data: [] }
   const names = new Map((profiles || []).map((p) => [p.id, p.full_name]))
   return NextResponse.json({
-    appointments: (data || []).map((row) => ({ ...row, student_name: names.get(row.student_id) || "Student" })),
+    appointments: rows.map((row) => ({
+      ...toAppointmentView(row),
+      student_name: names.get(row.student_id || "") || "Student",
+    })),
   })
 }
 
@@ -52,20 +63,29 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "id and status are required." }, { status: 400 })
   }
   const admin = createAdminClient()
-  const { data: existing } = await admin.from("campus_appointments").select("id, university, student_id, topic, starts_at").eq("id", body.id).maybeSingle()
+  const { data: existing } = await admin
+    .from("campus_appointments")
+    .select(APPOINTMENT_COLUMNS)
+    .eq("id", body.id)
+    .maybeSingle()
   if (!existing) return NextResponse.json({ error: "Not found." }, { status: 404 })
-  if (access.university && existing.university !== access.university) {
+  const row = existing as AppointmentRecord
+  if (access.university && row.university !== access.university) {
     return NextResponse.json({ error: "Not found." }, { status: 404 })
   }
-  const { error } = await admin.from("campus_appointments").update({ status: body.status, advisor_id: user.id }).eq("id", body.id)
+  const nextStatus = appointmentWriteStatus(body.status as (typeof STATUSES)[number])
+  const { error } = await admin
+    .from("campus_appointments")
+    .update({ status: nextStatus, advisor_id: user.id })
+    .eq("id", body.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (body.status === "confirmed") {
     await admin.from("notifications").insert({
-      user_id: existing.student_id,
+      user_id: row.student_id,
       type: "appointment",
       title: "Advising appointment confirmed",
-      body: `${existing.topic} on ${new Date(existing.starts_at).toLocaleString()}`,
-      data: { appointment_id: existing.id },
+      body: `${appointmentTopic(row.kind)} on ${row.starts_at ? new Date(row.starts_at).toLocaleString() : "the scheduled time"}`,
+      data: { appointment_id: row.id },
     })
   }
   return NextResponse.json({ ok: true })

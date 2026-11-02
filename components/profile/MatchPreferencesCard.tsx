@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const GENDERS = [
   { id: "", label: "Prefer not to say" },
@@ -57,11 +58,16 @@ export function MatchPreferencesCard({
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="pref-gender">Gender</Label>
-            <select id="pref-gender" className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm" value={gender} onChange={(e) => setGender(e.target.value)}>
-              {GENDERS.map((option) => (
-                <option key={option.id || "unset"} value={option.id}>{option.label}</option>
-              ))}
-            </select>
+            <Select value={gender || "unset"} onValueChange={(v) => setGender(v === "unset" ? "" : v)}>
+              <SelectTrigger id="pref-gender">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {GENDERS.map((option) => (
+                  <SelectItem key={option.id || "unset"} value={option.id || "unset"}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="pref-dept">Department</Label>

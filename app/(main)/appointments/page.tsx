@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { ArrowLeft, Calendar } from "lucide-react"
 import { useToast } from "@/lib/hooks/use-toast"
-import { Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { DateTimePicker } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
@@ -33,12 +32,13 @@ export default function AppointmentsPage() {
   const [saving, setSaving] = useState(false)
 
   const load = async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data, error } = await supabase.from("campus_appointments").select("id, topic, note, starts_at, status").eq("student_id", user.id).order("starts_at", { ascending: true })
-    if (error) return
-    setRows((data || []) as Appointment[])
+    const res = await fetch("/api/appointments")
+    const body = (await res.json().catch(() => null)) as { appointments?: Appointment[]; error?: string } | null
+    if (!res.ok) {
+      toast({ variant: "destructive", title: "Couldn’t load appointments", description: body?.error })
+      return
+    }
+    setRows(body?.appointments || [])
   }
 
   useEffect(() => {
@@ -52,25 +52,15 @@ export default function AppointmentsPage() {
       return
     }
     setSaving(true)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setSaving(false)
-      return
-    }
-    const { data: student } = await supabase.from("student_profiles").select("university").eq("id", user.id).maybeSingle()
-    const { error } = await supabase.from("campus_appointments").insert({
-      student_id: user.id,
-      university: student?.university || "",
-      topic,
-      note: note.trim() || null,
-      starts_at: new Date(when).toISOString(),
-      status: "requested",
+    const res = await fetch("/api/appointments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, note: note.trim() || null, starts_at: new Date(when).toISOString() }),
     })
+    const body = (await res.json().catch(() => null)) as { error?: string } | null
     setSaving(false)
-    if (error) {
-      const missing = /campus_appointments/i.test(error.message)
-      toast({ variant: "destructive", title: "Couldn’t request a slot", description: missing ? "Advising isn’t available on this workspace yet." : error.message })
+    if (!res.ok) {
+      toast({ variant: "destructive", title: "Couldn’t request a slot", description: body?.error || "Advising isn’t available on this workspace yet." })
       return
     }
     setNote("")
@@ -79,9 +69,13 @@ export default function AppointmentsPage() {
   }
 
   const cancel = async (id: string) => {
-    const supabase = createClient()
-    const { error } = await supabase.from("campus_appointments").update({ status: "cancelled" }).eq("id", id)
-    if (error) toast({ variant: "destructive", title: "Couldn’t cancel", description: error.message })
+    const res = await fetch("/api/appointments", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status: "cancelled" }),
+    })
+    const body = (await res.json().catch(() => null)) as { error?: string } | null
+    if (!res.ok) toast({ variant: "destructive", title: "Couldn’t cancel", description: body?.error })
     else void load()
   }
 
@@ -103,13 +97,20 @@ export default function AppointmentsPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="appt-topic">Topic</Label>
-            <select id="appt-topic" className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm" value={topic} onChange={(e) => setTopic(e.target.value)}>
-              {TOPICS.map((item) => <option key={item}>{item}</option>)}
-            </select>
+            <Select value={topic} onValueChange={setTopic}>
+              <SelectTrigger id="appt-topic">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TOPICS.map((item) => (
+                  <SelectItem key={item} value={item}>{item}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="appt-when">Preferred time</Label>
-            <Input id="appt-when" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+            <DateTimePicker id="appt-when" value={when} onChange={setWhen} />
           </div>
         </div>
         <div className="space-y-1.5">
@@ -125,6 +126,7 @@ export default function AppointmentsPage() {
               <div className="space-y-1.5">
                 <p className="font-medium">{row.topic}</p>
                 <p className="text-sm text-muted-foreground">{new Date(row.starts_at).toLocaleString()}</p>
+                {row.note ? <p className="text-sm text-muted-foreground">{row.note}</p> : null}
                 <StatusBadge value={row.status} />
               </div>
               {row.status === "requested" ? (

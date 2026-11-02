@@ -9,6 +9,7 @@ import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -192,39 +193,37 @@ export function CompanyWorkspace({ role, company, defaults, members, invites, sc
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="company-industry">Industry</Label>
-                <select
-                  id="company-industry"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
-                  disabled={!canEdit}
-                >
-                  <option value="">Select</option>
-                  {industry && !(COMPANY_INDUSTRIES as readonly string[]).includes(industry) ? (
-                    <option value={industry}>{industry}</option>
-                  ) : null}
-                  {COMPANY_INDUSTRIES.map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
-                </select>
+                <Select value={industry || "unset"} onValueChange={(v) => setIndustry(v === "unset" ? "" : v)} disabled={!canEdit}>
+                  <SelectTrigger id="company-industry">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unset">Select</SelectItem>
+                    {industry && !(COMPANY_INDUSTRIES as readonly string[]).includes(industry) ? (
+                      <SelectItem value={industry}>{industry}</SelectItem>
+                    ) : null}
+                    {COMPANY_INDUSTRIES.map((item) => (
+                      <SelectItem key={item} value={item}>{item}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="company-size">Company size</Label>
-                <select
-                  id="company-size"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={employeeCount}
-                  onChange={(e) => setEmployeeCount(e.target.value)}
-                  disabled={!canEdit}
-                >
-                  <option value="">Select</option>
-                  {employeeCount && !(EMPLOYEE_RANGES as readonly string[]).includes(employeeCount) ? (
-                    <option value={employeeCount}>{employeeCount}</option>
-                  ) : null}
-                  {EMPLOYEE_RANGES.map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
-                </select>
+                <Select value={employeeCount || "unset"} onValueChange={(v) => setEmployeeCount(v === "unset" ? "" : v)} disabled={!canEdit}>
+                  <SelectTrigger id="company-size">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unset">Select</SelectItem>
+                    {employeeCount && !(EMPLOYEE_RANGES as readonly string[]).includes(employeeCount) ? (
+                      <SelectItem value={employeeCount}>{employeeCount}</SelectItem>
+                    ) : null}
+                    {EMPLOYEE_RANGES.map((item) => (
+                      <SelectItem key={item} value={item}>{item}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="space-y-1.5">

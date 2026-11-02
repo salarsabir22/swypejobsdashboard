@@ -6,6 +6,7 @@ import { useToast } from "@/lib/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
   EMPLOYMENT_LABEL,
@@ -91,19 +92,19 @@ export function CareerSurveyForm({
     <div className="space-y-6">
       <div className="space-y-1.5">
         <Label htmlFor="survey-year">Survey year</Label>
-        <select
-          id="survey-year"
-          className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
-          value={year}
-          onChange={(e) => pickYear(Number(e.target.value))}
-        >
-          {YEARS.map((y) => (
-            <option key={y} value={y}>
-              {y}
-              {byYear.has(y) ? " · submitted" : ""}
-            </option>
-          ))}
-        </select>
+        <Select value={String(year)} onValueChange={(v) => pickYear(Number(v))}>
+          <SelectTrigger id="survey-year">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {YEARS.map((y) => (
+              <SelectItem key={y} value={String(y)}>
+                {y}
+                {byYear.has(y) ? " · submitted" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <p className="text-[13px] text-muted-foreground">
           One response per year. The Career Development Center uses this for HEC placement and NBEAC employment reports. It is labeled self-reported.
         </p>
@@ -111,18 +112,18 @@ export function CareerSurveyForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="survey-status">What best describes you this year?</Label>
-        <select
-          id="survey-status"
-          className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
-          value={form.employmentStatus}
-          onChange={(e) => set("employmentStatus", e.target.value as EmploymentStatus)}
-        >
-          {EMPLOYMENT_STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {EMPLOYMENT_LABEL[status]}
-            </option>
-          ))}
-        </select>
+        <Select value={form.employmentStatus} onValueChange={(v) => set("employmentStatus", v as EmploymentStatus)}>
+          <SelectTrigger id="survey-status">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {EMPLOYMENT_STATUSES.map((status) => (
+              <SelectItem key={status} value={status}>
+                {EMPLOYMENT_LABEL[status]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {isWorking(form.employmentStatus) ? (
@@ -145,19 +146,19 @@ export function CareerSurveyForm({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="survey-related">Related to your degree?</Label>
-            <select
-              id="survey-related"
-              className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
-              value={form.relatedToDegree}
-              onChange={(e) => set("relatedToDegree", e.target.value as RelatedToDegree | "")}
-            >
-              <option value="">Prefer not to say</option>
-              {RELATED_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option === "yes" ? "Yes" : option === "somewhat" ? "Somewhat" : "No"}
-                </option>
-              ))}
-            </select>
+            <Select value={form.relatedToDegree || "unset"} onValueChange={(v) => set("relatedToDegree", v === "unset" ? "" : v as RelatedToDegree)}>
+              <SelectTrigger id="survey-related">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unset">Prefer not to say</SelectItem>
+                {RELATED_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option === "yes" ? "Yes" : option === "somewhat" ? "Somewhat" : "No"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       ) : null}
@@ -171,19 +172,19 @@ export function CareerSurveyForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="survey-satisfaction">Satisfaction with your outcome (1–5, optional)</Label>
-        <select
-          id="survey-satisfaction"
-          className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
-          value={form.satisfaction}
-          onChange={(e) => set("satisfaction", e.target.value)}
-        >
-          <option value="">Not answered</option>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
+        <Select value={form.satisfaction || "unset"} onValueChange={(v) => set("satisfaction", v === "unset" ? "" : v)}>
+          <SelectTrigger id="survey-satisfaction">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="unset">Not answered</SelectItem>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <SelectItem key={n} value={String(n)}>
+                {n}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-1.5">

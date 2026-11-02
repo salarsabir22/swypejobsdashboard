@@ -11,6 +11,7 @@ const LABELS: Record<string, string> = {
   approved: "Approved",
   rejected: "Held",
   requested: "Requested",
+  booked: "Requested",
   confirmed: "Confirmed",
   cancelled: "Cancelled",
   no_show: "No-show",
@@ -57,6 +58,7 @@ export function statusTone(value: string | null | undefined): "default" | "secon
       return "destructive"
     case "pending":
     case "requested":
+    case "booked":
     case "shortlisted":
     case "interview":
     case "offer":

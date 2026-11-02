@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { getInitials, formatDate } from "@/lib/utils"
@@ -518,11 +519,16 @@ export function InterestedCandidatesPanel({
               <section className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-heading text-sm font-semibold">{top.length > 0 ? "Other applicants" : "All applicants"}</h3>
-                  <select className="h-8 rounded-full border border-border bg-background px-3 text-[12px]" value={sortBy} onChange={(e) => setSortBy(e.target.value as "recent" | "name" | "cgpa")} aria-label="Sort applicants">
-                    <option value="recent">Newest</option>
-                    <option value="name">Name</option>
-                    <option value="cgpa">CGPA</option>
-                  </select>
+                  <Select value={sortBy} onValueChange={(v) => setSortBy(v as "recent" | "name" | "cgpa")}>
+                    <SelectTrigger aria-label="Sort applicants" className="h-8 w-auto min-w-[7.5rem] rounded-full px-3 text-[12px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="recent">Newest</SelectItem>
+                      <SelectItem value="name">Name</SelectItem>
+                      <SelectItem value="cgpa">CGPA</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <ul className="m-0 list-none space-y-3 p-0">
                   <ShowMoreList

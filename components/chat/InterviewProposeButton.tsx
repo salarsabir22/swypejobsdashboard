@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { DateTimePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -115,7 +116,7 @@ export function InterviewProposeButton({
           <div className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="interview-when">When</Label>
-              <Input id="interview-when" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+              <DateTimePicker id="interview-when" value={when} onChange={setWhen} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="interview-link">Link or location (optional)</Label>

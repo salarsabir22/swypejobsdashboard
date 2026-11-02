@@ -4,8 +4,8 @@ import { useState } from "react"
 import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
 import { EXPORT_DATASETS, EXPORT_LABEL, exportHref, type ExportDataset, type ExportFormat, type ExportRange } from "@/lib/admin/export"
 
 /** One-click CSV download of a full dataset. */
@@ -125,13 +125,13 @@ export function ReportExportPanel() {
               <Label htmlFor="report-from" className="text-[13px]">
                 From
               </Label>
-              <Input id="report-from" type="date" className="h-10 rounded-xl" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <DatePicker id="report-from" className="h-10 rounded-xl" value={from} onChange={setFrom} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="report-to" className="text-[13px]">
                 To
               </Label>
-              <Input id="report-to" type="date" className="h-10 rounded-xl" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+              <DatePicker id="report-to" className="h-10 rounded-xl" value={to} min={from || undefined} onChange={setTo} />
             </div>
           </>
         ) : (

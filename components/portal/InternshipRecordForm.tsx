@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/lib/hooks/use-toast"
 import { Button } from "@/components/ui/button"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -62,12 +63,12 @@ export function InternshipRecordForm() {
           <Input value={role} onChange={(e) => setRole(e.target.value)} required />
         </div>
         <div className="space-y-1.5">
-          <Label>Start</Label>
-          <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+          <Label htmlFor="intern-start">Start</Label>
+          <DatePicker id="intern-start" value={start} onChange={setStart} />
         </div>
         <div className="space-y-1.5">
-          <Label>End</Label>
-          <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+          <Label htmlFor="intern-end">End</Label>
+          <DatePicker id="intern-end" value={end} onChange={setEnd} min={start || undefined} />
         </div>
       </div>
       <div className="space-y-1.5">

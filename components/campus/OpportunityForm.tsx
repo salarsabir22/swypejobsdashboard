@@ -2,8 +2,10 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
 const KINDS = [
@@ -50,13 +52,20 @@ export function OpportunityForm() {
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="opp-kind">Kind</Label>
-          <select id="opp-kind" className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm" value={kind} onChange={(e) => setKind(e.target.value)}>
-            {KINDS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-          </select>
+          <Select value={kind} onValueChange={setKind}>
+            <SelectTrigger id="opp-kind">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {KINDS.map((item) => (
+                <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="opp-deadline">Deadline</Label>
-          <Input id="opp-deadline" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+          <DatePicker id="opp-deadline" value={deadline} onChange={setDeadline} />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="opp-title">Title</Label>
