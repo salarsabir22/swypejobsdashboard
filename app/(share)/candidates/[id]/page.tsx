@@ -12,6 +12,8 @@ import { ProfilePosts } from "@/components/feed/ProfilePosts"
 import { ProfileHero } from "@/components/profile/ProfileHero"
 import { profileSharePath } from "@/lib/share/profile-path"
 import { signedStorageUrl } from "@/lib/storage/signed-url"
+import { currentRole, formatWorkDates, parseCareerHistory } from "@/lib/profile/career"
+import { studentIsAlumni } from "@/lib/jobs/targeting"
 import type { UserRole } from "@/types"
 
 export default async function CandidatePublicPage({
@@ -73,6 +75,12 @@ export default async function CandidatePublicPage({
 
   const school = [student?.university, student?.degree].filter(Boolean).join(" · ")
   const name = profile.full_name || "Candidate"
+  const alumni = studentIsAlumni(student)
+  const nowRole = alumni ? currentRole(parseCareerHistory(student).work) : null
+  const headline =
+    (alumni && nowRole ? [nowRole.position, nowRole.name].filter(Boolean).join(" at ") : "") ||
+    school ||
+    (alumni ? "Alumni" : "Student")
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -90,12 +98,22 @@ export default async function CandidatePublicPage({
       <ProfileHero
         userId={id}
         name={name}
-        headline={school || "Student"}
+        headline={headline}
         subline={
-          student?.graduation_year ? (
-            <p className="flex items-center gap-1.5 font-body text-xs text-muted-foreground">
-              <Calendar className="h-3.5 w-3.5 shrink-0" />
-              Class of {student.graduation_year}
+          student?.graduation_year || alumni ? (
+            <p className="flex flex-wrap items-center gap-1.5 font-body text-xs text-muted-foreground">
+              {student?.graduation_year ? (
+                <>
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  Class of {student.graduation_year}
+                </>
+              ) : null}
+              {alumni ? (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">Alumni</span>
+              ) : null}
+              {alumni && student?.mentorship_opt_in ? (
+                <span className="rounded-full border border-border px-2 py-0.5">Open to mentoring</span>
+              ) : null}
             </p>
           ) : null
         }
@@ -160,6 +178,69 @@ export default async function CandidatePublicPage({
             </Card>
           ) : null}
 
+          {(() => {
+            const career = parseCareerHistory(student)
+            if (!career.work.length && !career.projects.length && !career.certifications.length) return null
+            return (
+              <Card className="shadow-none">
+                <CardContent className="space-y-5 p-5 sm:p-6">
+                  {career.work.length ? (
+                    <div>
+                      <h2 className="mb-3 font-heading text-sm font-semibold">Experience</h2>
+                      <ul className="space-y-3">
+                        {career.work.map((w) => (
+                          <li key={w.id}>
+                            <p className="font-heading text-sm font-semibold">
+                              {w.position}
+                              <span className="font-normal text-muted-foreground"> · {w.name}</span>
+                            </p>
+                            <p className="mt-0.5 font-body text-xs text-muted-foreground">
+                              {w.kind === "internship" ? "Internship" : "Job"}
+                              {formatWorkDates(w) ? ` · ${formatWorkDates(w)}` : ""}
+                            </p>
+                            {w.summary ? <p className="mt-1 font-body text-sm text-foreground/90">{w.summary}</p> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {career.projects.length ? (
+                    <div>
+                      <h2 className="mb-3 font-heading text-sm font-semibold">Projects</h2>
+                      <ul className="space-y-2">
+                        {career.projects.map((p) => (
+                          <li key={p.id}>
+                            {p.url ? (
+                              <a href={p.url} target="_blank" rel="noopener noreferrer" className="font-heading text-sm font-semibold text-primary hover:underline">
+                                {p.name}
+                              </a>
+                            ) : (
+                              <p className="font-heading text-sm font-semibold">{p.name}</p>
+                            )}
+                            {p.description ? <p className="font-body text-sm text-muted-foreground">{p.description}</p> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {career.certifications.length ? (
+                    <div>
+                      <h2 className="mb-3 font-heading text-sm font-semibold">Certifications</h2>
+                      <div className="flex flex-wrap gap-2">
+                        {career.certifications.map((c) => (
+                          <Badge key={c.id} variant="outline" className="font-normal">
+                            {c.name}
+                            {c.issuer ? <span className="text-muted-foreground"> · {c.issuer}</span> : null}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            )
+          })()}
+
           {student?.skills?.length ? (
             <Card className="shadow-none">
               <CardContent className="p-5 sm:p-6">
@@ -177,7 +258,7 @@ export default async function CandidatePublicPage({
 
           <ProfilePosts
             profileUserId={id}
-            headline={school || "Student"}
+            headline={headline}
             currentUser={
               user && viewer
                 ? {

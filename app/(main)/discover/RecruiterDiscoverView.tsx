@@ -29,7 +29,7 @@ import { undoCandidateSwipe } from "@/lib/swipe/undo"
 import { getBlockedPeerIds } from "@/lib/moderation/blocks"
 import { useToast } from "@/lib/hooks/use-toast"
 import { InterviewInviteDialog, type InterviewInviteTarget } from "@/components/hiring/InterviewInviteDialog"
-import { studentEligibleForJob } from "@/lib/jobs/screening"
+import { studentEligibility } from "@/lib/jobs/targeting"
 
 interface Candidate {
   profile: Profile
@@ -42,6 +42,11 @@ interface Job {
   title: string
   required_skills?: string[] | null
   required_semesters?: number[] | null
+  degree_programs?: string[] | null
+  graduation_years?: number[] | null
+  min_cgpa?: number | null
+  experience_level?: string | null
+  alumni_only?: boolean | null
 }
 
 type SwipeRow = { student_id: string }
@@ -90,6 +95,8 @@ export function RecruiterDiscoverView({
   const [university, setUniversity] = useState("")
   const [gradYear, setGradYear] = useState("")
   const [skillQuery, setSkillQuery] = useState("")
+  const [degreeQuery, setDegreeQuery] = useState("")
+  const [keyword, setKeyword] = useState("")
   const [matchOpen, setMatchOpen] = useState(false)
   const [matchName, setMatchName] = useState("")
   const [matchHref, setMatchHref] = useState<string | null>(null)
@@ -175,12 +182,21 @@ export function RecruiterDiscoverView({
 
   async function loadInitialData() {
     const supabase = createClient()
-    const { data: jobsData } = await supabase
+    const jobsRes = await supabase
       .from("jobs")
-      .select("id, title, required_skills, required_semesters")
+      .select("id, title, required_skills, required_semesters, degree_programs, graduation_years, min_cgpa, experience_level, alumni_only")
       .eq("recruiter_id", userId)
       .eq("is_active", true)
-    const list = (jobsData as Job[]) || []
+    let list = (jobsRes.data as Job[] | null) || []
+    if (jobsRes.error) {
+      // Targeting migration not applied yet.
+      const fallback = await supabase
+        .from("jobs")
+        .select("id, title, required_skills, required_semesters")
+        .eq("recruiter_id", userId)
+        .eq("is_active", true)
+      list = (fallback.data as Job[] | null) || []
+    }
     setJobs(list)
     if (list[0]) {
       setSelectedJobId(list[0].id)
@@ -203,27 +219,40 @@ export function RecruiterDiscoverView({
     const uni = university.trim().toLowerCase()
     const year = gradYear.trim()
     const skill = skillQuery.trim().toLowerCase()
+    const degree = degreeQuery.trim().toLowerCase()
+    const tokens = keyword
+      .toLowerCase()
+      .split(/[\s,]+/)
+      .filter((t) => t.length > 1)
     return allCandidates.filter((c) => {
       if (uni && !(c.studentProfile.university || "").toLowerCase().includes(uni)) return false
       if (year && String(c.studentProfile.graduation_year || "") !== year) return false
       if (skill && !(c.studentProfile.skills || []).some((s) => s.toLowerCase().includes(skill))) return false
-      if (
-        !c.applied &&
-        !studentEligibleForJob({
-          requiredSemesters: selectedJob?.required_semesters,
-          stillEnrolled: c.studentProfile.still_enrolled,
-          currentSemester: c.studentProfile.current_semester,
-        })
-      ) {
+      if (degree && !(c.studentProfile.degree || "").toLowerCase().includes(degree)) return false
+      if (tokens.length) {
+        const text = [
+          c.profile.full_name,
+          c.profile.bio,
+          c.studentProfile.university,
+          c.studentProfile.degree,
+          ...(c.studentProfile.skills || []),
+          ...(c.studentProfile.interests || []),
+        ]
+          .filter(Boolean)
+          .join(" \n ")
+          .toLowerCase()
+        if (!tokens.every((t) => text.includes(t))) return false
+      }
+      if (!c.applied && !studentEligibility(selectedJob, c.studentProfile).eligible) {
         return false
       }
       return true
     })
-  }, [allCandidates, university, gradYear, skillQuery, selectedJob?.required_semesters])
+  }, [allCandidates, university, gradYear, skillQuery, degreeQuery, keyword, selectedJob])
 
   useEffect(() => {
     setCurrentIndex(0)
-  }, [university, gradYear, skillQuery])
+  }, [university, gradYear, skillQuery, degreeQuery, keyword])
 
   const currentCandidate = candidates[currentIndex]
   const nextCandidate = candidates[currentIndex + 1]
@@ -367,7 +396,9 @@ export function RecruiterDiscoverView({
             Once a listing is live, candidates show up here for that job.
           </p>
           <Button asChild className="mt-6">
-            <Link href="/jobs/new">Post a job</Link>
+            <Link href="/jobs/new" className="inline-flex items-center justify-center">
+              Post a job
+            </Link>
           </Button>
         </div>
         <DiscoverHowItWorks audience="recruiter" />
@@ -392,12 +423,29 @@ export function RecruiterDiscoverView({
           },
         },
         {
+          id: "keyword",
+          label: "Search",
+          kind: "text",
+          value: keyword,
+          placeholder: "Name, skill, degree…",
+          inputMode: "search",
+          onChange: setKeyword,
+        },
+        {
           id: "university",
           label: "University",
           kind: "text",
           value: university,
           placeholder: "LUMS, NUST…",
           onChange: setUniversity,
+        },
+        {
+          id: "degree",
+          label: "Degree program",
+          kind: "text",
+          value: degreeQuery,
+          placeholder: "BBA, Computer Science…",
+          onChange: setDegreeQuery,
         },
         {
           id: "year",
@@ -422,6 +470,8 @@ export function RecruiterDiscoverView({
         setUniversity("")
         setGradYear("")
         setSkillQuery("")
+        setDegreeQuery("")
+        setKeyword("")
       }}
     />
   )
@@ -586,7 +636,7 @@ export function RecruiterDiscoverView({
 
             <DiscoverKeysHint>← Pass · → Shortlist · Z Undo</DiscoverKeysHint>
 
-            <div className="flex shrink-0 items-end justify-center gap-5 pb-1 sm:gap-6">
+            <div className="flex shrink-0 flex-wrap items-end justify-center gap-5 pb-1 sm:gap-6">
               <div className="flex flex-col items-center gap-1">
                 <Button
                   type="button"
@@ -595,7 +645,7 @@ export function RecruiterDiscoverView({
                   onClick={() => void handleUndo()}
                   disabled={swiping || !lastSwipe || lastSwipe.jobId !== selectedJobId}
                   loading={pendingAction === "undo"}
-                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
+                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12 [&_svg]:size-5 sm:[&_svg]:size-6"
                   aria-label="Undo last swipe"
                 >
                   <RotateCcw className="h-5 w-5" strokeWidth={1.75} />
@@ -610,7 +660,7 @@ export function RecruiterDiscoverView({
                   onClick={() => void handleSwipe("left")}
                   disabled={swiping}
                   loading={pendingAction === "left"}
-                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
+                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12 [&_svg]:size-5 sm:[&_svg]:size-6"
                   aria-label="Pass"
                 >
                   <X className="h-5 w-5" strokeWidth={1.75} />
@@ -624,7 +674,7 @@ export function RecruiterDiscoverView({
                   onClick={() => void handleSwipe("right")}
                   disabled={swiping}
                   loading={pendingAction === "right"}
-                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
+                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12 [&_svg]:size-5 sm:[&_svg]:size-6"
                   aria-label="Shortlist"
                 >
                   <Star className="h-5 w-5" fill="currentColor" strokeWidth={1.5} />

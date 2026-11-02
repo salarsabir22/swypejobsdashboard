@@ -13,6 +13,7 @@ export default async function CampusEquityPage({ searchParams }: { searchParams:
   return (
     <CampusFrame
       snapshot={snapshot}
+      showSources
       title="Equity and inclusion"
       description="FERPA-gated. Only consented demographic records are shown. Views of this page are written to the campus audit log."
     >

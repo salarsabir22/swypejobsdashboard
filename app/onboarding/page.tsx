@@ -46,7 +46,7 @@ const STEPS_STUDENT = [
   { title: "Photo & bio", description: "Photo and short bio (optional).", required: false },
   { title: "Education", description: "School, degree, and graduation year.", required: true },
   { title: "Skills & interests", description: "Skills and preferred role categories.", required: true },
-  { title: "Links & resume", description: "Links, CV, and optional intro video.", required: false },
+  { title: "Links & resume", description: "LinkedIn (required), other links, CV, and optional intro video.", required: true },
 ]
 const STEPS_RECRUITER = [
   { title: "Company", description: "Company name, description, and website.", required: true },
@@ -1107,6 +1107,9 @@ export default function OnboardingPage() {
   const [institutionType, setInstitutionType] = useState<"university" | "college">("university")
   const [stillEnrolled, setStillEnrolled] = useState(false)
   const [currentSemester, setCurrentSemester] = useState("")
+  const [cgpa, setCgpa] = useState("")
+  const [isAlumni, setIsAlumni] = useState(false)
+  const [mentorshipOptIn, setMentorshipOptIn] = useState(false)
   const [skills, setSkills] = useState<string[]>([])
   const [skillInput, setSkillInput] = useState("")
   const [preferredCategories, setPreferredCategories] = useState<string[]>([])
@@ -1135,6 +1138,11 @@ export default function OnboardingPage() {
 
       const pendingRole = localStorage.getItem("pending_role") as UserRole | null
       const metaRole = user.user_metadata?.role as UserRole | undefined
+      if (localStorage.getItem("pending_alumni") === "1") {
+        setIsAlumni(true)
+        setStillEnrolled(false)
+        localStorage.removeItem("pending_alumni")
+      }
       const { data: existingProfile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
       if (existingProfile?.role === "admin") {
         localStorage.removeItem("pending_role")
@@ -1202,12 +1210,25 @@ export default function OnboardingPage() {
       if (profile?.bio) setBio(profile.bio)
       if (profile?.avatar_url) setAvatarPreview(profile.avatar_url)
 
-      const { data: student } = await supabase
+      let studentRes = await supabase
         .from("student_profiles")
-        .select("university, degree, graduation_year, institution_type, still_enrolled, current_semester, skills, preferred_job_categories, linkedin_url, github_url, portfolio_url, resume_url")
+        .select("university, degree, graduation_year, institution_type, still_enrolled, current_semester, cgpa, is_alumni, mentorship_opt_in, skills, preferred_job_categories, linkedin_url, github_url, portfolio_url, resume_url")
         .eq("id", user.id)
         .maybeSingle()
+      if (studentRes.error) {
+        studentRes = await supabase
+          .from("student_profiles")
+          .select("university, degree, graduation_year, institution_type, still_enrolled, current_semester, skills, preferred_job_categories, linkedin_url, github_url, portfolio_url, resume_url")
+          .eq("id", user.id)
+          .maybeSingle()
+      }
+      const student = studentRes.data as
+        | (Record<string, any> & { cgpa?: number | null; is_alumni?: boolean | null; mentorship_opt_in?: boolean | null })
+        | null
       if (student) {
+        if (student.cgpa !== null && student.cgpa !== undefined) setCgpa(Number(student.cgpa).toFixed(2))
+        if (student.is_alumni === true) setIsAlumni(true)
+        if (student.mentorship_opt_in === true) setMentorshipOptIn(true)
         if (student.university) setUniversity(student.university)
         if (student.degree) setDegree(student.degree)
         if (student.graduation_year) setGraduationYear(String(student.graduation_year))
@@ -1265,6 +1286,15 @@ export default function OnboardingPage() {
       return false
     }
   }
+  const isLinkedInUrl = (value: string) => {
+    if (!value.trim()) return false
+    try {
+      const url = new URL(value)
+      return (url.protocol === "http:" || url.protocol === "https:") && /(^|\.)linkedin\.com$/i.test(url.hostname)
+    } catch {
+      return false
+    }
+  }
 
   const stepChecklist = (() => {
     if (role === "student") {
@@ -1288,7 +1318,7 @@ export default function OnboardingPage() {
         ]
       }
       return [
-        { label: "At least one link or CV", done: Boolean(linkedinUrl || githubUrl || portfolioUrl || resumeFile || existingResumeUrl) },
+        { label: "LinkedIn profile added", done: isLinkedInUrl(linkedinUrl) },
         { label: "All entered links use https://", done: [linkedinUrl, githubUrl, portfolioUrl].every(isValidHttpUrl) },
       ]
     }
@@ -1326,8 +1356,8 @@ export default function OnboardingPage() {
         }
       }
       if (step === 3) {
-        if (!linkedinUrl && !githubUrl && !portfolioUrl && !resumeFile && !existingResumeUrl) {
-          setStepError("Add at least one link or upload your CV.")
+        if (!isLinkedInUrl(linkedinUrl)) {
+          setStepError("Add your LinkedIn profile URL (e.g. https://linkedin.com/in/your-name). It’s required.")
           return false
         }
         if (![linkedinUrl, githubUrl, portfolioUrl].every(isValidHttpUrl)) {
@@ -1403,6 +1433,9 @@ export default function OnboardingPage() {
           institution_type: institutionType,
           still_enrolled: stillEnrolled,
           current_semester: stillEnrolled && currentSemester ? parseInt(currentSemester) : null,
+          cgpa: cgpa.trim() ? Number(cgpa) : null,
+          is_alumni: !stillEnrolled && isAlumni,
+          mentorship_opt_in: !stillEnrolled && isAlumni && mentorshipOptIn,
           skills, preferred_job_categories: preferredCategories,
           linkedin_url: linkedinUrl || null, github_url: githubUrl || null,
           portfolio_url: portfolioUrl || null, resume_url: resumeUrl || null,
@@ -1412,16 +1445,25 @@ export default function OnboardingPage() {
           delete studentData.institution_type
           delete studentData.still_enrolled
           delete studentData.current_semester
+          delete studentData.cgpa
+          delete studentData.is_alumni
+          delete studentData.mentorship_opt_in
           const retry = await supabase.from("student_profiles").update(studentData).eq("id", user.id).select()
           updated = retry.data
           studentErr = retry.error
         }
         if (!updated || updated.length === 0) {
           const insert = await supabase.from("student_profiles").insert(studentData)
-          if (insert.error && (studentData.institution_type || studentData.still_enrolled || studentData.current_semester)) {
+          if (
+            insert.error &&
+            (studentData.institution_type || studentData.still_enrolled || studentData.current_semester || studentData.cgpa !== undefined)
+          ) {
             delete studentData.institution_type
             delete studentData.still_enrolled
             delete studentData.current_semester
+            delete studentData.cgpa
+            delete studentData.is_alumni
+            delete studentData.mentorship_opt_in
             await supabase.from("student_profiles").insert(studentData)
           }
         }
@@ -1672,6 +1714,20 @@ export default function OnboardingPage() {
                     </Select>
                   </div>
                   <div>
+                    <Label className={labelClass}>CGPA (optional)</Label>
+                    <Input
+                      className={inputFieldClass}
+                      inputMode="decimal"
+                      placeholder="e.g. 3.40"
+                      value={cgpa}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/[^\d.]/g, "")
+                        if (v === "" || (Number(v) >= 0 && Number(v) <= 4)) setCgpa(v)
+                      }}
+                    />
+                    <HelpText>On a 4.00 scale. Some employers set a minimum CGPA; without one you won’t see those roles.</HelpText>
+                  </div>
+                  <div>
                     <Label className={labelClass}>This is a</Label>
                     <Select value={institutionType} onValueChange={(v) => setInstitutionType(v as "university" | "college")}>
                       <SelectTrigger className={cn(inputFieldClass, "w-full justify-between pr-3")}>
@@ -1709,7 +1765,40 @@ export default function OnboardingPage() {
                       </Select>
                       <HelpText>Some internships are only shown to 7th and 8th semester students.</HelpText>
                     </div>
-                  ) : null}
+                  ) : (
+                    <>
+                      <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/40 p-4 text-sm">
+                        <input
+                          type="checkbox"
+                          className="mt-1 size-4 accent-[var(--primary)]"
+                          checked={isAlumni}
+                          onChange={(e) => setIsAlumni(e.target.checked)}
+                        />
+                        <span>
+                          <span className="font-medium">I’ve graduated (alumni)</span>
+                          <span className="block text-[13px] text-muted-foreground">
+                            Unlocks alumni-only mid-career roles. Keep your employment history current under Profile → Experience.
+                          </span>
+                        </span>
+                      </label>
+                      {isAlumni ? (
+                        <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/40 p-4 text-sm">
+                          <input
+                            type="checkbox"
+                            className="mt-1 size-4 accent-[var(--primary)]"
+                            checked={mentorshipOptIn}
+                            onChange={(e) => setMentorshipOptIn(e.target.checked)}
+                          />
+                          <span>
+                            <span className="font-medium">Open to mentoring current students</span>
+                            <span className="block text-[13px] text-muted-foreground">
+                              The Career Development Center may introduce you to students in your field.
+                            </span>
+                          </span>
+                        </label>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               )}
 
@@ -1817,12 +1906,15 @@ export default function OnboardingPage() {
               {role === "student" && step === 3 && (
                 <div className="space-y-4">
                   {[
-                    { label: "LinkedIn URL", value: linkedinUrl, setter: setLinkedinUrl, placeholder: "https://linkedin.com/in/your-name" },
-                    { label: "GitHub URL", value: githubUrl, setter: setGithubUrl, placeholder: "https://github.com/your-username" },
-                    { label: "Portfolio / Website", value: portfolioUrl, setter: setPortfolioUrl, placeholder: "https://yourportfolio.com" },
-                  ].map(({ label: fieldLabel, value, setter, placeholder }) => (
+                    { label: "LinkedIn URL", value: linkedinUrl, setter: setLinkedinUrl, placeholder: "https://linkedin.com/in/your-name", required: true },
+                    { label: "GitHub URL", value: githubUrl, setter: setGithubUrl, placeholder: "https://github.com/your-username", required: false },
+                    { label: "Portfolio / Website", value: portfolioUrl, setter: setPortfolioUrl, placeholder: "https://yourportfolio.com", required: false },
+                  ].map(({ label: fieldLabel, value, setter, placeholder, required }) => (
                     <div key={fieldLabel}>
-                      <Label className={labelClass}>{fieldLabel}</Label>
+                      <Label className={labelClass}>
+                        {fieldLabel}
+                        {required ? <span className="font-normal text-muted-foreground"> (required)</span> : null}
+                      </Label>
                       <div className="relative mt-1.5">
                         <Input
                           className={cn(inputFieldClass, "pl-10")}
@@ -1851,7 +1943,8 @@ export default function OnboardingPage() {
                       <input type="file" accept=".pdf" className="hidden" onChange={(e) => setResumeFile(e.target.files?.[0] || null)} />
                     </label>
                     <HelpText>
-                      Recruiters can download your CV when you apply. After setup, you can also build one in Resume.
+                      Recruiters can download your CV when you apply. After setup, you can also build one in Resume and add
+                      internships, projects, and certifications under Profile → Experience.
                     </HelpText>
                   </div>
                   <div>

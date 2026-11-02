@@ -17,8 +17,9 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
   return (
     <CampusFrame
       snapshot={snapshot}
+      showSources
       title="Career office"
-      description="Placement, engagement, and swipe-level demand for your students. Headline numbers mix live platform activity with NACE-style survey records when those exist."
+      description="Placement, engagement, and swipe-level demand for your students. Headline numbers mix live platform activity with survey records when those exist."
     >
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <DashboardKpiCard
@@ -95,7 +96,7 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
       <div className="grid gap-4 lg:grid-cols-2">
         <BreakdownList
           title="What students swipe right"
-          description="Intent Handshake cannot see."
+          description="Right-swipes on Discover, grouped by category."
           rows={snapshot.swipeSignals.rightByCategory}
         />
         <BreakdownList

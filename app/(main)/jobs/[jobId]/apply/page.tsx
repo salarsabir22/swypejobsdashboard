@@ -3,7 +3,9 @@ import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { JobApplyForm } from "@/components/jobs/JobApplyForm"
 import { parseCoverLetters, parseResumeLibrary } from "@/lib/resume/schema"
-import { parseScreeningQuestions, studentEligibleForJob } from "@/lib/jobs/screening"
+import { parseScreeningQuestions } from "@/lib/jobs/screening"
+import { studentEligibility } from "@/lib/jobs/targeting"
+import { deadlinePassed, formatDeadline } from "@/lib/jobs/deadline"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -20,7 +22,7 @@ export default async function JobApplyPage({ params }: { params: Promise<{ jobId
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, title, recruiter_id, is_active, screening_questions, required_semesters, recruiter_profiles(company_name, is_approved)")
+    .select("*, recruiter_profiles(company_name, is_approved)")
     .eq("id", jobId)
     .maybeSingle()
   if (!job) notFound()
@@ -28,34 +30,49 @@ export default async function JobApplyPage({ params }: { params: Promise<{ jobId
   const company = Array.isArray(job.recruiter_profiles) ? job.recruiter_profiles[0] : job.recruiter_profiles
   if (!job.is_active || company?.is_approved !== true) notFound()
 
+  const deadline = (job as { application_deadline?: string | null }).application_deadline
+  if (deadlinePassed(deadline)) {
+    return (
+      <div className="mx-auto max-w-xl space-y-4">
+        <h1 className="text-[clamp(1.8rem,3vw,2.4rem)] font-semibold tracking-[-0.04em]">Applications have closed</h1>
+        <p className="text-[15px] text-muted-foreground">
+          {company?.company_name || "The employer"} stopped accepting applications for {job.title} on{" "}
+          {formatDeadline(deadline)}.
+        </p>
+        <Button asChild>
+          <Link href="/discover">Discover more roles</Link>
+        </Button>
+      </div>
+    )
+  }
+
   const studentQuery = await supabase
     .from("student_profiles")
-    .select("still_enrolled, current_semester, cover_letters, resume_document")
+    .select("still_enrolled, current_semester, degree, graduation_year, cgpa, is_alumni, gender, department, preferred_locations, cover_letters, resume_document")
     .eq("id", user.id)
     .maybeSingle()
   const student = studentQuery.error
     ? (
         await supabase
           .from("student_profiles")
-          .select("still_enrolled, current_semester")
+          .select("still_enrolled, current_semester, degree, graduation_year")
           .eq("id", user.id)
           .maybeSingle()
       ).data
     : studentQuery.data
 
-  if (
-    !studentEligibleForJob({
-      requiredSemesters: job.required_semesters,
-      stillEnrolled: student?.still_enrolled,
-      currentSemester: student?.current_semester,
-    })
-  ) {
+  const eligibility = studentEligibility(job, student)
+  if (!eligibility.eligible) {
     return (
       <div className="mx-auto max-w-xl space-y-4">
-        <h1 className="text-[clamp(1.8rem,3vw,2.4rem)] font-semibold tracking-[-0.04em]">This role isn’t open to your semester</h1>
-        <p className="text-[15px] text-muted-foreground">
-          The employer asked for candidates in specific semesters. Update your education on your profile if that’s changed.
-        </p>
+        <h1 className="text-[clamp(1.8rem,3vw,2.4rem)] font-semibold tracking-[-0.04em]">This role isn’t open to your profile</h1>
+        <p className="text-[15px] text-muted-foreground">The employer limited who can apply:</p>
+        <ul className="list-disc space-y-1 pl-5 text-[15px] text-muted-foreground">
+          {eligibility.reasons.map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+        <p className="text-[15px] text-muted-foreground">Update your education on your profile if any of this has changed.</p>
         <Button asChild>
           <Link href="/onboarding">Update education</Link>
         </Button>

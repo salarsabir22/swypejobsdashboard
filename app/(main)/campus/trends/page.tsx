@@ -13,6 +13,7 @@ export default async function CampusTrendsPage({ searchParams }: { searchParams:
   return (
     <CampusFrame
       snapshot={snapshot}
+      showSources
       title="Comparisons and trends"
       description="Year-over-year and cohort views. Peer benchmarks stay anonymous and only unlock after enough partner campuses share NACE files."
     >

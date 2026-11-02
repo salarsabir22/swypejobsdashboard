@@ -27,7 +27,10 @@ import {
   whyThisJob,
   type RankingWeights,
 } from "@/lib/match/fit"
-import { applyHref, jobHasMandatoryQuestions, studentEligibleForJob } from "@/lib/jobs/screening"
+import { applyHref, jobHasMandatoryQuestions } from "@/lib/jobs/screening"
+import { studentEligibility } from "@/lib/jobs/targeting"
+import { openDeadlineFilter } from "@/lib/jobs/deadline"
+import { jobMatchesKeyword, jobMeetsMinSalary } from "@/lib/jobs/search"
 import { JOB_CATEGORIES } from "@/lib/company-options"
 import { excludeInFilter, isUniqueViolation } from "@/lib/swipe/errors"
 import { X, Check, RotateCcw, Bookmark, RefreshCw } from "lucide-react"
@@ -36,6 +39,16 @@ import { Button } from "@/components/ui/button"
 import { undoJobSwipe } from "@/lib/swipe/undo"
 import { getBlockedPeerIds } from "@/lib/moderation/blocks"
 import { useToast } from "@/lib/hooks/use-toast"
+import {
+  CURATED_BADGE,
+  FEED_ALL,
+  FEED_CURATED,
+  FEED_STORAGE_KEY,
+  jobVisibleOnCampus,
+  parseFeedMode,
+  reviewKey,
+  type DiscoverFeedMode,
+} from "@/lib/jobs/curation"
 
 type JobSwipeRow = { job_id: string; direction: string }
 type LastSwipe = { job: Job; direction: SwipeDirection }
@@ -53,6 +66,14 @@ export function StudentDiscoverView({
   preferredCategories,
   stillEnrolled,
   currentSemester,
+  degree,
+  graduationYear,
+  cgpa,
+  isAlumni,
+  gender,
+  department,
+  preferredLocations,
+  university,
   selfImageUrl,
   selfName = "You",
 }: {
@@ -61,6 +82,14 @@ export function StudentDiscoverView({
   preferredCategories?: string[] | null
   stillEnrolled?: boolean | null
   currentSemester?: number | null
+  degree?: string | null
+  graduationYear?: number | null
+  cgpa?: number | null
+  isAlumni?: boolean | null
+  gender?: string | null
+  department?: string | null
+  preferredLocations?: string[] | null
+  university?: string | null
   selfImageUrl?: string | null
   selfName?: string
 }) {
@@ -84,6 +113,12 @@ export function StudentDiscoverView({
   const [remote, setRemote] = useState("all")
   const [category, setCategory] = useState("all")
   const [location, setLocation] = useState("")
+  const [keyword, setKeyword] = useState("")
+  const [minSalary, setMinSalary] = useState("")
+  const [company, setCompany] = useState("")
+  const [industry, setIndustry] = useState("")
+  const [market, setMarket] = useState("all")
+  const [feedMode, setFeedMode] = useState<DiscoverFeedMode>(FEED_CURATED)
   const [matchOpen, setMatchOpen] = useState(false)
   const [matchName, setMatchName] = useState("")
   const [matchHref, setMatchHref] = useState<string | null>(null)
@@ -95,24 +130,39 @@ export function StudentDiscoverView({
 
   const jobs = useMemo(() => {
     const loc = location.trim().toLowerCase()
+    const minPay = minSalary ? Number(minSalary) : null
     return allJobs.filter((job) => {
       if (jobType !== "all" && job.job_type !== jobType) return false
       if (remote === "remote" && !job.is_remote) return false
       if (remote === "onsite" && job.is_remote) return false
       if (category !== "all" && (job.category || "") !== category) return false
       if (loc && !(job.location || "").toLowerCase().includes(loc) && !job.is_remote) return false
+      if (!jobMatchesKeyword(job, keyword)) return false
+      if (!jobMeetsMinSalary(job, minPay)) return false
+      const employer = Array.isArray(job.recruiter_profiles) ? job.recruiter_profiles[0] : job.recruiter_profiles
+      if (company.trim() && !(employer?.company_name || "").toLowerCase().includes(company.trim().toLowerCase())) return false
+      if (industry.trim() && !(employer?.industry || "").toLowerCase().includes(industry.trim().toLowerCase())) return false
+      if (market === "international" && job.is_international !== true) return false
+      if (market === "local" && job.is_international === true) return false
+      if (feedMode === FEED_CURATED && job.cdc_curated !== true) return false
       if (
-        !studentEligibleForJob({
-          requiredSemesters: job.required_semesters,
-          stillEnrolled,
-          currentSemester,
-        })
+        !studentEligibility(job, {
+          still_enrolled: stillEnrolled,
+          current_semester: currentSemester,
+          degree,
+          graduation_year: graduationYear,
+          cgpa,
+          is_alumni: isAlumni,
+          gender,
+          department,
+          preferred_locations: preferredLocations,
+        }).eligible
       ) {
         return false
       }
       return true
     })
-  }, [allJobs, jobType, remote, category, location, stillEnrolled, currentSemester])
+  }, [allJobs, jobType, remote, category, location, keyword, minSalary, company, industry, market, feedMode, stillEnrolled, currentSemester, degree, graduationYear, cgpa, isAlumni, gender, department, preferredLocations])
 
   const rankJobs = useCallback(
     (rows: Job[], weights: RankingWeights = rankingWeights) =>
@@ -165,12 +215,22 @@ export function StudentDiscoverView({
 
       let query = supabase
         .from("jobs")
-        .select("*, recruiter_profiles(id, company_name, logo_url, website_url, description, is_approved)")
+        .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved)")
         .eq("is_active", true)
+        .or(openDeadlineFilter())
 
       if (exclude) query = query.not("id", "in", exclude)
 
-      const { data, error } = await query.order("created_at", { ascending: false }).limit(DECK_PAGE)
+      let { data, error } = await query.order("created_at", { ascending: false }).limit(DECK_PAGE)
+      if (error && /application_deadline/i.test(error.message)) {
+        // Migration not applied yet: fall back to the pre-deadline query.
+        let fallback = supabase
+          .from("jobs")
+          .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved)")
+          .eq("is_active", true)
+        if (exclude) fallback = fallback.not("id", "in", exclude)
+        ;({ data, error } = await fallback.order("created_at", { ascending: false }).limit(DECK_PAGE))
+      }
       if (error) {
         toast({ variant: "destructive", title: "Couldn’t load roles", description: error.message })
         setLoading(false)
@@ -180,8 +240,36 @@ export function StudentDiscoverView({
       }
 
       const fetched = (data || []) as Job[]
+      const [collectionRes, reviewRes] = await Promise.all([
+        supabase
+          .from("job_collection_items")
+          .select("job_id, job_collections!inner(name, university, is_active)")
+          .eq("job_collections.is_active", true),
+        supabase.from("campus_job_reviews").select("job_id, university, status"),
+      ])
+      const curated = new Map<string, string>()
+      for (const row of collectionRes.data || []) {
+        const col = Array.isArray(row.job_collections) ? row.job_collections[0] : row.job_collections
+        if (!col || col.is_active === false) continue
+        if (university && col.university && col.university.toLowerCase() !== university.toLowerCase()) continue
+        if (!curated.has(row.job_id)) curated.set(row.job_id, col.name)
+      }
+      const reviews = new Map<string, string>()
+      for (const row of reviewRes.data || []) {
+        if (row.job_id && row.university) reviews.set(reviewKey(row.job_id, row.university), row.status)
+      }
+      const tagged = fetched.map((job) => ({
+        ...job,
+        cdc_curated: curated.has(job.id),
+        collection_label: curated.get(job.id) || null,
+      }))
       const rows = rankJobs(
-        fetched.filter((j) => j.recruiter_profiles?.is_approved === true && !blocked.has(j.recruiter_id)),
+        tagged.filter(
+          (j) =>
+            j.recruiter_profiles?.is_approved === true &&
+            !blocked.has(j.recruiter_id) &&
+            jobVisibleOnCampus(j, university, reviews)
+        ),
         activeWeights,
       )
       setHasMore(fetched.length >= DECK_PAGE && rows.length > 0)
@@ -206,7 +294,7 @@ export function StudentDiscoverView({
       setLoadingMore(false)
       loadingMoreRef.current = false
     },
-    [userId, rankJobs, toast, rankingWeights]
+    [userId, rankJobs, toast, rankingWeights, university]
   )
 
   useEffect(() => {
@@ -214,6 +302,11 @@ export function StudentDiscoverView({
   }, [allJobs])
 
   useEffect(() => {
+    try {
+      setFeedMode(parseFeedMode(window.localStorage.getItem(FEED_STORAGE_KEY)))
+    } catch {
+      setFeedMode(FEED_CURATED)
+    }
     queueMicrotask(() => {
       void loadJobs("replace")
     })
@@ -222,8 +315,16 @@ export function StudentDiscoverView({
   }, [])
 
   useEffect(() => {
+    try {
+      window.localStorage.setItem(FEED_STORAGE_KEY, feedMode)
+    } catch {
+      /* ignore */
+    }
+  }, [feedMode])
+
+  useEffect(() => {
     setCurrentIndex(0)
-  }, [jobType, remote, category, location])
+  }, [jobType, remote, category, location, keyword, minSalary, company, industry, market, feedMode])
 
   const currentJob = jobs[currentIndex]
   const nextJob = jobs[currentIndex + 1]
@@ -362,6 +463,30 @@ export function StudentDiscoverView({
 
   const filterFields = [
     {
+      id: "feed",
+      label: "Feed",
+      kind: "select" as const,
+      pin: true,
+      chip: false,
+      value: feedMode,
+      emptyValue: FEED_CURATED,
+      onChange: (value: string) => setFeedMode(parseFeedMode(value)),
+      options: [
+        { value: FEED_CURATED, label: "Campus curated" },
+        { value: FEED_ALL, label: "All jobs" },
+      ],
+    },
+    {
+      id: "keyword",
+      label: "Search",
+      kind: "text" as const,
+      pin: true,
+      value: keyword,
+      placeholder: "Role, company, or skill…",
+      inputMode: "search" as const,
+      onChange: setKeyword,
+    },
+    {
       id: "type",
       label: "Type",
       kind: "select" as const,
@@ -406,6 +531,43 @@ export function StudentDiscoverView({
       placeholder: "Lahore, Karachi…",
       onChange: setLocation,
     },
+    {
+      id: "salary",
+      label: "Min salary (PKR)",
+      kind: "text" as const,
+      value: minSalary,
+      placeholder: "e.g. 80000",
+      inputMode: "numeric" as const,
+      onChange: (v: string) => setMinSalary(v.replace(/[^\d]/g, "")),
+    },
+    {
+      id: "company",
+      label: "Company",
+      kind: "text" as const,
+      value: company,
+      placeholder: "Employer name",
+      onChange: setCompany,
+    },
+    {
+      id: "industry",
+      label: "Industry",
+      kind: "text" as const,
+      value: industry,
+      placeholder: "Banking, software…",
+      onChange: setIndustry,
+    },
+    {
+      id: "market",
+      label: "Market",
+      kind: "select" as const,
+      value: market,
+      onChange: setMarket,
+      options: [
+        { value: "all", label: "Local and international" },
+        { value: "local", label: "Local" },
+        { value: "international", label: "International" },
+      ],
+    },
   ]
 
   const filters = (
@@ -417,6 +579,12 @@ export function StudentDiscoverView({
         setRemote("all")
         setCategory("all")
         setLocation("")
+        setKeyword("")
+        setMinSalary("")
+        setCompany("")
+        setIndustry("")
+        setMarket("all")
+        setFeedMode(FEED_CURATED)
       }}
     />
   )
@@ -444,7 +612,12 @@ export function StudentDiscoverView({
         className="hidden lg:flex"
         eyebrow="Discover"
         title="Roles for you"
-        description={sessionLine || "Swipe through live listings ranked by skill and category fit. Apply sends your profile; chat waits for a match."}
+        description={
+          sessionLine ||
+          (feedMode === FEED_CURATED
+            ? `Default feed is ${CURATED_BADGE}. Switch to All jobs for every listing you’re allowed to see.`
+            : "All jobs permitted for your campus. Swipe right to apply; chat waits for a match.")
+        }
         action={
           <Button type="button" variant="outline" className="rounded-full" onClick={() => void loadJobs("replace")}>
             Refresh feed
@@ -495,19 +668,30 @@ export function StudentDiscoverView({
         {emptyChrome}
         <div className="flex min-h-[40vh] flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-card/40 px-4 py-16 text-center">
           <p className="font-heading text-xl font-semibold tracking-tight">
-            {allJobs.length === 0 ? "No new roles right now" : "Nothing matches these filters"}
+            {allJobs.length === 0
+              ? "No new roles right now"
+              : feedMode === FEED_CURATED && !allJobs.some((j) => j.cdc_curated)
+                ? "No campus-curated roles yet"
+                : "Nothing matches these filters"}
           </p>
           <p className="mt-2 max-w-sm font-body text-sm text-muted-foreground">
             {allJobs.length === 0
               ? hasMore
                 ? "Loading more listings…"
                 : "Verified teams haven’t posted anything you haven’t already seen. Refresh in a bit."
-              : "Widen type, category, or city to see more of this stack."}
+              : feedMode === FEED_CURATED && !allJobs.some((j) => j.cdc_curated)
+                ? "Your career office hasn’t added roles to a curated collection yet. Switch the feed to All jobs."
+                : "Widen type, category, or city to see more of this stack."}
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
             <Button type="button" onClick={() => void loadJobs(allJobs.length === 0 && hasMore ? "append" : "replace")}>
               {allJobs.length === 0 && hasMore ? "Load more" : "Refresh feed"}
             </Button>
+            {feedMode === FEED_CURATED && allJobs.some((j) => j.cdc_curated !== true) ? (
+              <Button type="button" variant="outline" onClick={() => setFeedMode(FEED_ALL)}>
+                Switch to All jobs
+              </Button>
+            ) : null}
             {lastSwipe ? (
               <Button type="button" variant="outline" onClick={() => void handleUndo()} disabled={swiping}>
                 <RotateCcw className="h-4 w-4" />
@@ -566,7 +750,7 @@ export function StudentDiscoverView({
 
             <DiscoverKeysHint>← Pass · → Apply · ↑ Save · Z Undo</DiscoverKeysHint>
 
-            <div className="flex shrink-0 items-end justify-center gap-4 pb-1 sm:gap-6">
+            <div className="flex shrink-0 flex-wrap items-end justify-center gap-4 pb-1 sm:gap-6">
               <div className="flex flex-col items-center gap-1">
                 <Button
                   type="button"
@@ -575,7 +759,7 @@ export function StudentDiscoverView({
                   onClick={() => void handleUndo()}
                   disabled={swiping || !lastSwipe}
                   loading={pendingAction === "undo"}
-                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
+                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12 [&_svg]:size-5 sm:[&_svg]:size-6"
                   aria-label="Undo last swipe"
                 >
                   <RotateCcw className="h-5 w-5" strokeWidth={1.75} />
@@ -590,7 +774,7 @@ export function StudentDiscoverView({
                   onClick={() => void handleSwipe("left")}
                   disabled={swiping}
                   loading={pendingAction === "left"}
-                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
+                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12 [&_svg]:size-5 sm:[&_svg]:size-6"
                   aria-label="Pass"
                 >
                   <X className="h-5 w-5" strokeWidth={1.75} />
@@ -605,7 +789,7 @@ export function StudentDiscoverView({
                   onClick={() => void handleSwipe("saved")}
                   disabled={swiping}
                   loading={pendingAction === "saved"}
-                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
+                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12 [&_svg]:size-5 sm:[&_svg]:size-6"
                   aria-label="Save for later"
                 >
                   <Bookmark className="h-5 w-5" strokeWidth={1.75} />
@@ -619,7 +803,7 @@ export function StudentDiscoverView({
                   onClick={() => void handleSwipe("right")}
                   disabled={swiping}
                   loading={pendingAction === "right"}
-                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12"
+                  className="h-10 w-10 rounded-full sm:h-12 sm:w-12 [&_svg]:size-5 sm:[&_svg]:size-6"
                   aria-label="Apply"
                 >
                   <Check className="h-5 w-5" strokeWidth={2.25} />

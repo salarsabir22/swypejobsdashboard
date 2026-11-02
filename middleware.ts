@@ -10,6 +10,8 @@ const PUBLIC_PREFIXES = [
   "/privacy",
   "/terms",
   "/candidates",
+  "/invite",
+  "/help",
 ]
 
 function isPublicCompanyProfile(pathname: string) {

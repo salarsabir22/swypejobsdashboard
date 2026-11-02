@@ -12,6 +12,8 @@ export interface Profile {
   cover_url?: string | null
   bio: string | null
   profile_video_url: string | null
+  /** Transactional email opt-in; defaults true. */
+  email_notifications?: boolean | null
   created_at: string
   updated_at: string
 }
@@ -24,11 +26,24 @@ export interface StudentProfile {
   institution_type?: "university" | "college" | null
   still_enrolled?: boolean | null
   current_semester?: number | null
+  /** 0.00–4.00 */
+  cgpa?: number | null
+  /** Graduated; unlocks alumni-only roles and mentorship. */
+  is_alumni?: boolean | null
+  mentorship_opt_in?: boolean | null
+  academic_history?: unknown | null
+  gender?: string | null
+  department?: string | null
+  preferred_locations?: string[] | null
   skills: string[]
   interests: string[]
   resume_url: string | null
   resume_document?: unknown | null
   cover_letters?: unknown | null
+  /** JSON arrays; see lib/profile/career.ts */
+  work_history?: unknown | null
+  projects?: unknown | null
+  certifications?: unknown | null
   linkedin_url: string | null
   github_url: string | null
   portfolio_url: string | null
@@ -73,6 +88,25 @@ export interface Job {
   compensation_note?: string | null
   screening_questions?: ScreeningQuestion[] | null
   required_semesters?: number[] | null
+  /** Audience targeting (see lib/jobs/targeting.ts). */
+  degree_programs?: string[] | null
+  graduation_years?: number[] | null
+  min_cgpa?: number | null
+  experience_level?: "any" | "fresh" | "experienced" | null
+  /** Only alumni can see and apply. */
+  alumni_only?: boolean | null
+  target_genders?: string[] | null
+  departments?: string[] | null
+  location_preferences?: string[] | null
+  is_international?: boolean | null
+  /** `YYYY-MM-DD`; applications close at end of this day. */
+  application_deadline?: string | null
+  /** network = all eligible users; partner_universities = selected campuses after approval. */
+  distribution_scope?: "network" | "partner_universities" | null
+  target_universities?: string[] | null
+  /** Set in Discover from active campus collections. */
+  cdc_curated?: boolean
+  collection_label?: string | null
   created_at: string
   updated_at: string
   recruiter_profiles?: RecruiterProfile

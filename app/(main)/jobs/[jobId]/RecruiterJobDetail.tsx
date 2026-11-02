@@ -1,16 +1,18 @@
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { ArrowLeft, Pencil } from "lucide-react"
-import { DiscoverStatStrip } from "@/components/discover"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { formatDate } from "@/lib/utils"
 import { formatSalary } from "@/lib/jobs/salary"
+import { deadlineLabel, deadlinePassed, formatDeadline } from "@/lib/jobs/deadline"
+import { describeTargeting } from "@/lib/jobs/targeting"
 import type { Job, RecruiterProfile } from "@/types"
 import { JobToggleButton } from "./JobToggleButton"
 import { InterestedCandidatesPanel } from "./InterestedCandidatesPanel"
+import { JobInsights } from "./JobInsights"
 import { ShareButton } from "@/components/share/ShareButton"
 
 function formatJobType(raw: string) {
@@ -29,12 +31,6 @@ export async function RecruiterJobDetail({
   userId: string
 }) {
   const supabase = await createClient()
-
-  const { count: swipeCount } = await supabase
-    .from("job_swipes")
-    .select("*", { count: "exact", head: true })
-    .eq("job_id", jobId)
-    .eq("direction", "right")
 
   const { count: matchCount } = await supabase
     .from("matches")
@@ -77,14 +73,7 @@ export async function RecruiterJobDetail({
         </Button>
       </div>
 
-      <DiscoverStatStrip
-        columns={2}
-        caption="This listing"
-        items={[
-          { label: "Applications", value: swipeCount || 0 },
-          { label: "Matches", value: matchCount || 0 },
-        ]}
-      />
+      <JobInsights jobId={jobId} matches={matchCount || 0} />
 
       <InterestedCandidatesPanel
         recruiterId={userId}
@@ -110,6 +99,14 @@ export async function RecruiterJobDetail({
           <Badge variant="secondary" className="font-normal capitalize">
             {formatJobType(job.job_type)}
           </Badge>
+          {deadlineLabel(job.application_deadline) ? (
+            <Badge
+              variant={deadlinePassed(job.application_deadline) ? "outline" : "secondary"}
+              className="font-normal text-muted-foreground"
+            >
+              {deadlineLabel(job.application_deadline)}
+            </Badge>
+          ) : null}
         </CardHeader>
         <CardContent className="space-y-6">
           {job.description ? (
@@ -147,9 +144,27 @@ export async function RecruiterJobDetail({
             </div>
           ) : null}
 
+          {describeTargeting(job).length > 0 ? (
+            <div>
+              <h2 className="mb-2 font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Audience
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {describeTargeting(job).map((line) => (
+                  <Badge key={line} variant="outline" className="font-normal text-muted-foreground">
+                    {line}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <Separator />
 
-          <p className="font-body text-xs text-muted-foreground">Posted {formatDate(job.created_at)}</p>
+          <p className="font-body text-xs text-muted-foreground">
+            Posted {formatDate(job.created_at)}
+            {job.application_deadline ? ` · Deadline ${formatDeadline(job.application_deadline)}` : ""}
+          </p>
         </CardContent>
       </Card>
 

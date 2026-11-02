@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdminApi, writeAudit } from "@/lib/admin/api-auth"
+import { emailUserInBackground } from "@/lib/email/send"
+import { employerApprovedEmail, employerRejectedEmail } from "@/lib/email/templates"
 
 export const runtime = "nodejs"
 
@@ -16,6 +18,7 @@ async function applyOne(
   notes?: string | null,
 ) {
   const approved = action === "approve"
+  const { data: before } = await admin.from("recruiter_profiles").select("is_approved").eq("id", recruiterId).maybeSingle()
   const { data: updated, error: updateError } = await admin
     .from("recruiter_profiles")
     .update({ is_approved: approved })
@@ -25,6 +28,20 @@ async function applyOne(
 
   if (updateError) throw new Error(updateError.message)
   if (!updated) throw new Error("Recruiter profile not found.")
+
+  // Spec §5.3: email the employer on approval / rejection. Only when the state actually changes.
+  if (action === "approve" && before?.is_approved !== true) {
+    emailUserInBackground(admin, recruiterId, (name) => employerApprovedEmail({ recruiterName: name, companyName: updated.company_name }), {
+      recruiter_id: recruiterId,
+    })
+  } else if (action === "reject") {
+    emailUserInBackground(
+      admin,
+      recruiterId,
+      (name) => employerRejectedEmail({ recruiterName: name, companyName: updated.company_name, reason: notes || reason || null }),
+      { recruiter_id: recruiterId },
+    )
+  }
 
   await admin.from("employer_reviews").insert({
     recruiter_id: recruiterId,

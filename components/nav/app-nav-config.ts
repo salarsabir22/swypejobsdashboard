@@ -1,8 +1,13 @@
 import {
   Bookmark,
   Briefcase,
+  Calendar,
+  CircleHelp,
   Columns3,
   FileText,
+  Globe,
+  GraduationCap,
+  Handshake,
   LayoutDashboard,
   Layers,
   MessageCircle,
@@ -33,11 +38,22 @@ export const recruiterTabs: TabItem[] = [
 
 export const studentMoreLinks: MoreLink[] = [
   { href: "/dashboard", label: "Insights", icon: LayoutDashboard },
+  { href: "/internships", label: "Internships", icon: GraduationCap },
+  { href: "/events", label: "Events", icon: Calendar },
+  { href: "/opportunities", label: "International", icon: Globe },
+  { href: "/appointments", label: "Advising", icon: Handshake },
+  { href: "/announcements", label: "Announcements", icon: MessageSquareText },
   { href: "/community", label: "Community", icon: Users },
-  { href: "/resume", label: "Resume", icon: FileText },
   { href: "/profile", label: "Profile", icon: User },
   { href: "/profile#saved", label: "Saved roles", icon: Bookmark },
+  { href: "/help", label: "Help", icon: CircleHelp },
   { href: "/feedback", label: "Feedback", icon: MessageSquareText },
+]
+
+export const alumniMoreLinks: MoreLink[] = [
+  { href: "/mentorship", label: "Mentorship", icon: Handshake },
+  { href: "/profile/experience", label: "Employment history", icon: Briefcase },
+  ...studentMoreLinks,
 ]
 
 export const recruiterMoreLinks: MoreLink[] = [
@@ -45,7 +61,10 @@ export const recruiterMoreLinks: MoreLink[] = [
   { href: "/dashboard", label: "Insights", icon: LayoutDashboard },
   { href: "/community", label: "Community", icon: Users },
   { href: "/company", label: "Company", icon: User },
-  { href: "/profile", label: "Profile", icon: User },
   { href: "/jobs/new", label: "Post a job", icon: Briefcase },
+  { href: "/partnerships", label: "Campus partnerships", icon: Handshake },
+  { href: "/events", label: "Events", icon: Calendar },
+  { href: "/profile", label: "Profile", icon: User },
+  { href: "/help", label: "Help", icon: CircleHelp },
   { href: "/feedback", label: "Feedback", icon: MessageSquareText },
 ]

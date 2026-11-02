@@ -22,6 +22,8 @@ import { SavedJobActions } from "@/components/saved/SavedJobActions"
 import { CompletenessCard } from "@/components/profile/CompletenessCard"
 import { ProfileHero } from "@/components/profile/ProfileHero"
 import { recruiterCompleteness, studentCompleteness } from "@/lib/profile/completeness"
+import { currentRole, formatWorkDates, parseCareerHistory } from "@/lib/profile/career"
+import { studentIsAlumni } from "@/lib/jobs/targeting"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -29,6 +31,8 @@ import { ProfilePosts } from "@/components/feed/ProfilePosts"
 import { profileSharePath } from "@/lib/share/profile-path"
 import { signedStorageUrl } from "@/lib/storage/signed-url"
 import { RecruiterIntegrationsCard } from "@/components/hiring/RecruiterIntegrationsCard"
+import { EmailPreferencesCard } from "@/components/profile/EmailPreferencesCard"
+import { MatchPreferencesCard } from "@/components/profile/MatchPreferencesCard"
 import type { UserRole } from "@/types"
 
 export default async function ProfilePage() {
@@ -109,6 +113,9 @@ export default async function ProfilePage() {
   const resumeHref = sp?.resume_url
     ? await signedStorageUrl(supabase, "resumes", sp.resume_url)
     : null
+  const career = parseCareerHistory(sp)
+  const alumni = isStudent && studentIsAlumni(sp)
+  const nowRole = currentRole(career.work)
   const completeness = isStudent
     ? studentCompleteness({
         avatar: profile?.avatar_url,
@@ -118,6 +125,8 @@ export default async function ProfilePage() {
         resume: sp?.resume_url,
         video: profile?.profile_video_url,
         linkedin: sp?.linkedin_url,
+        experience: career.work.length > 0,
+        projects: career.projects.length > 0,
       })
     : isRecruiter
       ? recruiterCompleteness({
@@ -131,7 +140,9 @@ export default async function ProfilePage() {
 
   const headline = isRecruiter
     ? [rp?.company_name, rp?.industry].filter(Boolean).join(" · ") || "Recruiter"
-    : [sp?.degree, sp?.university].filter(Boolean).join(" · ") || "Student"
+    : alumni && nowRole
+      ? [nowRole.position, nowRole.name].filter(Boolean).join(" at ")
+      : [sp?.degree, sp?.university].filter(Boolean).join(" · ") || (alumni ? "Alumni" : "Student")
   const displayName = isRecruiter ? rp?.company_name || profile?.full_name || "Company" : profile?.full_name || "You"
 
   return (
@@ -251,6 +262,18 @@ export default async function ProfilePage() {
 
           {isRecruiter ? <RecruiterIntegrationsCard calendlyUrl={rp?.calendly_url} /> : null}
 
+          {isStudent ? (
+            <MatchPreferencesCard userId={user.id} gender={sp?.gender} department={sp?.department} locations={sp?.preferred_locations} />
+          ) : null}
+
+          {isStudent || isRecruiter ? (
+            <EmailPreferencesCard
+              userId={user.id}
+              enabled={profile?.email_notifications !== false}
+              role={isStudent ? "student" : "recruiter"}
+            />
+          ) : null}
+
           <Card className="shadow-sm">
             <CardContent className="p-5">
               <h2 className="mb-2 font-data text-[10px] uppercase tracking-wide text-muted-foreground">About</h2>
@@ -278,7 +301,19 @@ export default async function ProfilePage() {
             <>
               <Card className="shadow-sm">
                 <CardContent className="p-5">
-                  <h2 className="mb-2 font-data text-[10px] uppercase tracking-wide text-muted-foreground">Education</h2>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <h2 className="font-data text-[10px] uppercase tracking-wide text-muted-foreground">Education</h2>
+                    {alumni ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        <Badge className="font-normal">Alumni</Badge>
+                        {sp?.mentorship_opt_in ? (
+                          <Badge variant="outline" className="font-normal">
+                            Mentor
+                          </Badge>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                   {sp?.university ? (
                     <div>
                       <p className="flex items-center gap-1.5 font-heading font-semibold">
@@ -292,11 +327,110 @@ export default async function ProfilePage() {
                           Class of {sp.graduation_year}
                         </p>
                       ) : null}
+                      {alumni ? (
+                        <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3">
+                          <p className="font-data text-[10px] uppercase tracking-wide text-muted-foreground">Currently</p>
+                          {nowRole ? (
+                            <>
+                              <p className="mt-1 font-heading text-sm font-semibold">
+                                {nowRole.position}
+                                <span className="font-normal text-muted-foreground"> · {nowRole.name}</span>
+                              </p>
+                              {formatWorkDates(nowRole) ? (
+                                <p className="mt-0.5 font-body text-xs text-muted-foreground">{formatWorkDates(nowRole)}</p>
+                              ) : null}
+                            </>
+                          ) : (
+                            <p className="mt-1 font-body text-sm text-muted-foreground">
+                              No current employer set.{" "}
+                              <Link href="/profile/experience" className="text-primary hover:underline">
+                                Add your current role
+                              </Link>
+                            </p>
+                          )}
+                          <p className="mt-2 font-body text-xs">
+                            <Link href="/profile/survey" className="text-primary hover:underline">
+                              {nowRole ? "Update your career survey" : "Fill in your career survey"}
+                            </Link>
+                          </p>
+                        </div>
+                      ) : null}
                     </div>
                   ) : (
                     <Link href="/onboarding" className="font-body text-sm text-primary hover:underline">
                       Add your university
                     </Link>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card id="experience" className="shadow-sm">
+                <CardContent className="p-5">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h2 className="font-data text-[10px] uppercase tracking-wide text-muted-foreground">Experience</h2>
+                    <span className="flex gap-3">
+                      <Link href="/profile/education" className="font-body text-xs text-primary hover:underline">Degrees</Link>
+                      <Link href="/profile/experience" className="font-body text-xs text-primary hover:underline">
+                        {career.work.length || career.projects.length || career.certifications.length ? "Edit" : "Add"}
+                      </Link>
+                    </span>
+                  </div>
+                  {career.work.length === 0 && career.projects.length === 0 && career.certifications.length === 0 ? (
+                    <p className="font-body text-sm text-muted-foreground">
+                      Add internships, jobs, projects, and certifications so employers can see what you’ve done.
+                    </p>
+                  ) : (
+                    <div className="space-y-5">
+                      {career.work.length ? (
+                        <ul className="space-y-3">
+                          {career.work.map((w) => (
+                            <li key={w.id}>
+                              <p className="font-heading text-sm font-semibold">
+                                {w.position}
+                                <span className="font-normal text-muted-foreground"> · {w.name}</span>
+                              </p>
+                              <p className="mt-0.5 font-body text-xs text-muted-foreground">
+                                {w.kind === "internship" ? "Internship" : "Job"}
+                                {formatWorkDates(w) ? ` · ${formatWorkDates(w)}` : ""}
+                              </p>
+                              {w.summary ? <p className="mt-1 font-body text-sm text-foreground/90">{w.summary}</p> : null}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {career.projects.length ? (
+                        <div>
+                          <p className="mb-2 font-data text-[10px] uppercase tracking-wide text-muted-foreground">Projects</p>
+                          <ul className="space-y-2">
+                            {career.projects.map((p) => (
+                              <li key={p.id}>
+                                {p.url ? (
+                                  <a href={p.url} target="_blank" rel="noopener noreferrer" className="font-heading text-sm font-semibold text-primary hover:underline">
+                                    {p.name}
+                                  </a>
+                                ) : (
+                                  <p className="font-heading text-sm font-semibold">{p.name}</p>
+                                )}
+                                {p.description ? <p className="font-body text-sm text-muted-foreground">{p.description}</p> : null}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                      {career.certifications.length ? (
+                        <div>
+                          <p className="mb-2 font-data text-[10px] uppercase tracking-wide text-muted-foreground">Certifications</p>
+                          <div className="flex flex-wrap gap-2">
+                            {career.certifications.map((c) => (
+                              <Badge key={c.id} variant="outline" className="font-normal">
+                                {c.name}
+                                {c.issuer ? <span className="text-muted-foreground"> · {c.issuer}</span> : null}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   )}
                 </CardContent>
               </Card>

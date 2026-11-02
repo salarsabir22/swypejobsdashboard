@@ -14,6 +14,7 @@ export default async function CampusQualityPage({ searchParams }: { searchParams
   return (
     <CampusFrame
       snapshot={snapshot}
+      showSources
       title="Match quality"
       description="Whether student preferences line up with posted jobs, which skills employers ask for that students lack, and conversion after they apply."
     >

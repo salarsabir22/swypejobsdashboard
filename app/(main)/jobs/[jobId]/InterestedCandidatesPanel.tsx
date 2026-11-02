@@ -17,7 +17,7 @@ import { ApplicationAnswersList } from "@/components/jobs/ApplicationAnswersList
 import { InterviewInviteDialog, type InterviewInviteTarget } from "@/components/hiring/InterviewInviteDialog"
 import { undoCandidateSwipe } from "@/lib/swipe/undo"
 import { isUniqueViolation } from "@/lib/swipe/errors"
-import { Sparkles } from "lucide-react"
+import { Download, Sparkles } from "lucide-react"
 
 interface CandidateItem {
   id: string
@@ -34,11 +34,14 @@ interface CandidateItem {
   github_url: string | null
   portfolio_url: string | null
   decision: "right" | "left" | null
+  cgpa: number | null
+  tags: string[]
 }
 
 interface ApplicationRow {
   student_id: string
   created_at: string
+  recruiter_tags?: string[] | null
 }
 
 interface ProfileRow {
@@ -58,6 +61,7 @@ interface StudentProfileRow {
   linkedin_url: string | null
   github_url: string | null
   portfolio_url: string | null
+  cgpa?: number | null
 }
 
 interface DecisionRow {
@@ -101,17 +105,29 @@ export function InterestedCandidatesPanel({
   const [ranker, setRanker] = useState<string | null>(null)
   const [provider, setProvider] = useState<string | null>(null)
   const [picksLoading, setPicksLoading] = useState(true)
+  const [sortBy, setSortBy] = useState<"recent" | "name" | "cgpa">("recent")
+  const tagChoices = ["Strong fit", "Interview", "Hold"]
 
   useEffect(() => {
     const run = async () => {
       setLoading(true)
 
-      const { data: applications } = await supabase
+      const applicationsQuery = await supabase
         .from("job_swipes")
-        .select("student_id, created_at")
+        .select("student_id, created_at, recruiter_tags")
         .eq("job_id", jobId)
         .eq("direction", "right")
         .order("created_at", { ascending: false })
+      const applications = applicationsQuery.error
+        ? (
+            await supabase
+              .from("job_swipes")
+              .select("student_id, created_at")
+              .eq("job_id", jobId)
+              .eq("direction", "right")
+              .order("created_at", { ascending: false })
+          ).data
+        : applicationsQuery.data
 
       const appRows = (applications || []) as ApplicationRow[]
       const studentIds = appRows.map((a) => a.student_id)
@@ -125,7 +141,7 @@ export function InterestedCandidatesPanel({
         supabase.from("profiles").select("id, full_name, avatar_url, bio").in("id", studentIds),
         supabase
           .from("student_profiles")
-          .select("id, university, degree, graduation_year, skills, resume_url, linkedin_url, github_url, portfolio_url")
+          .select("id, university, degree, graduation_year, cgpa, skills, resume_url, linkedin_url, github_url, portfolio_url")
           .in("id", studentIds),
         supabase
           .from("candidate_swipes")
@@ -161,6 +177,8 @@ export function InterestedCandidatesPanel({
             linkedin_url: sp?.linkedin_url ?? null,
             github_url: sp?.github_url ?? null,
             portfolio_url: sp?.portfolio_url ?? null,
+            cgpa: sp?.cgpa ?? null,
+            tags: a.recruiter_tags || [],
             decision: decisionMap.get(a.student_id) ?? null,
           } as CandidateItem
         })
@@ -285,13 +303,29 @@ export function InterestedCandidatesPanel({
     setBusyDirection(null)
   }
 
+  const toggleTag = async (studentId: string, tag: string) => {
+    const current = items.find((item) => item.id === studentId)
+    if (!current) return
+    const tags = current.tags.includes(tag) ? current.tags.filter((item) => item !== tag) : [...current.tags, tag]
+    const { error } = await supabase.from("job_swipes").update({ recruiter_tags: tags }).eq("job_id", jobId).eq("student_id", studentId).eq("direction", "right")
+    if (error) {
+      toast({ variant: "destructive", title: "Couldn’t tag", description: /recruiter_tags/i.test(error.message) ? "Tags aren’t available on this workspace yet." : error.message })
+      return
+    }
+    setItems((prev) => prev.map((item) => (item.id === studentId ? { ...item, tags } : item)))
+  }
+
   const byId = new Map(items.map((item) => [item.id, item]))
   const top = picks.flatMap((pick, index) => {
     const item = byId.get(pick.studentId)
     return item ? [{ pick, item, rank: index + 1 }] : []
   })
   const topIds = new Set(top.map((row) => row.item.id))
-  const others = top.length > 0 ? items.filter((item) => !topIds.has(item.id)) : items
+  const others = (top.length > 0 ? items.filter((item) => !topIds.has(item.id)) : items).slice().sort((a, b) => {
+    if (sortBy === "name") return (a.full_name || "").localeCompare(b.full_name || "")
+    if (sortBy === "cgpa") return (b.cgpa || 0) - (a.cgpa || 0)
+    return 0
+  })
 
   const renderCandidate = (item: CandidateItem, highlight?: { rank: number; score: number; reason: string }) => {
     const schoolLine = [item.university, item.degree, item.graduation_year].filter(Boolean).join(" · ")
@@ -338,6 +372,18 @@ export function InterestedCandidatesPanel({
                   {schoolLine ? (
                     <p className="mt-0.5 truncate font-body text-[11px] text-muted-foreground">{schoolLine}</p>
                   ) : null}
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {tagChoices.map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        className={`rounded-full border px-2 py-0.5 text-[11px] ${item.tags.includes(tag) ? "border-primary bg-primary/10" : "border-border text-muted-foreground"}`}
+                        onClick={() => void toggleTag(item.id, tag)}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <time className="shrink-0 font-body text-[11px] tabular-nums text-muted-foreground">
                   {formatDate(item.applied_at)}
@@ -377,13 +423,13 @@ export function InterestedCandidatesPanel({
           <Separator className="my-4" />
 
           <div className="flex flex-wrap gap-2">
-            <Button asChild size="sm" variant="secondary" className="rounded-xl">
+            <Button asChild size="sm" variant="secondary">
               <Link href={`/candidates/${item.id}?job=${jobId}`}>Profile</Link>
             </Button>
             <Button
               type="button"
               size="sm"
-              className="flex-1 rounded-xl"
+              className="min-w-[7.5rem] flex-1"
               disabled={busyId === item.id}
               loading={busyId === item.id && busyDirection === "right"}
               loadingText="Shortlisting…"
@@ -395,7 +441,7 @@ export function InterestedCandidatesPanel({
               type="button"
               size="sm"
               variant="outline"
-              className="flex-1 rounded-xl"
+              className="min-w-[5.5rem] flex-1"
               disabled={busyId === item.id}
               loading={busyId === item.id && busyDirection === "left"}
               loadingText="Passing…"
@@ -417,7 +463,8 @@ export function InterestedCandidatesPanel({
 
   return (
     <Card className="shadow-sm">
-      <CardHeader>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+        <div className="space-y-1.5">
         <CardTitle className="font-heading text-lg">Applicants</CardTitle>
         <CardDescription>
           {items.length > 0 && pickSource === "ai"
@@ -430,6 +477,15 @@ export function InterestedCandidatesPanel({
               ? "Top 10 are ranked from skills, resume, and application answers."
               : "Students who applied to this listing."}
         </CardDescription>
+        </div>
+        {items.length > 0 ? (
+          <Button asChild variant="outline" size="sm" className="rounded-full">
+            <a href={`/api/jobs/${jobId}/resumes`}>
+              <Download className="h-3.5 w-3.5" />
+              Download resumes
+            </a>
+          </Button>
+        ) : null}
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -460,7 +516,14 @@ export function InterestedCandidatesPanel({
 
             {others.length > 0 ? (
               <section className="space-y-3">
-                <h3 className="font-heading text-sm font-semibold">{top.length > 0 ? "Other applicants" : "All applicants"}</h3>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-heading text-sm font-semibold">{top.length > 0 ? "Other applicants" : "All applicants"}</h3>
+                  <select className="h-8 rounded-full border border-border bg-background px-3 text-[12px]" value={sortBy} onChange={(e) => setSortBy(e.target.value as "recent" | "name" | "cgpa")} aria-label="Sort applicants">
+                    <option value="recent">Newest</option>
+                    <option value="name">Name</option>
+                    <option value="cgpa">CGPA</option>
+                  </select>
+                </div>
                 <ul className="m-0 list-none space-y-3 p-0">
                   <ShowMoreList
                     items={others}

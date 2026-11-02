@@ -14,6 +14,7 @@ export default async function CampusMarketPage({ searchParams }: { searchParams:
   return (
     <CampusFrame
       snapshot={snapshot}
+      showSources
       title="Employer and job market"
       description="Who is hiring, what they post, and where student supply does not meet demand."
     >

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Career office gaps vs Handshake</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm 20mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #14102e;
+      font: 10.5pt/1.45 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      background: #fff;
+    }
+    h1, h2, h3 { font-family: "Segoe UI Semibold", "Segoe UI", Arial, sans-serif; letter-spacing: -0.03em; }
+    h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 8pt; }
+    h2 { font-size: 13.5pt; margin: 22pt 0 8pt; page-break-after: avoid; }
+    h3 { font-size: 11pt; margin: 0 0 6pt; }
+    p { margin: 0 0 8pt; }
+    .kicker {
+      color: #5a48ff;
+      font-size: 9pt;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 4pt;
+    }
+    .lede { font-size: 11.5pt; color: #55506b; max-width: 42em; }
+    .meta { font-size: 8.5pt; color: #55506b; margin-top: 10pt; }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 8pt;
+      margin: 16pt 0 18pt;
+    }
+    .stat {
+      border: 1px solid rgba(20,16,46,0.14);
+      border-radius: 8pt;
+      padding: 8pt 10pt;
+    }
+    .stat strong { display: block; font-size: 11pt; }
+    .stat span { color: #55506b; font-size: 8pt; }
+    .callout {
+      background: #ecebff;
+      border-left: 3pt solid #5a48ff;
+      padding: 10pt 12pt;
+      border-radius: 0 8pt 8pt 0;
+      margin: 12pt 0 16pt;
+      page-break-inside: avoid;
+    }
+    .callout p { margin: 0; }
+    .callout .t { font-weight: 650; margin-bottom: 4pt; color: #5a48ff; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.6pt;
+      page-break-inside: auto;
+    }
+    th, td {
+      border-bottom: 1px solid rgba(20,16,46,0.12);
+      padding: 7pt 6pt;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #55506b;
+      font-weight: 650;
+    }
+    tr { page-break-inside: avoid; }
+    .tag {
+      display: inline-block;
+      font-size: 7.5pt;
+      font-weight: 650;
+      padding: 1pt 6pt;
+      border-radius: 999pt;
+      white-space: nowrap;
+    }
+    .gap { background: #ecebff; color: #3a2bc8; }
+    .win { background: #dcfce7; color: #166534; }
+    .thin { background: #fef3c7; color: #92400e; }
+    .cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12pt;
+      margin: 8pt 0 4pt;
+    }
+    .box {
+      border: 1px solid rgba(20,16,46,0.14);
+      border-radius: 8pt;
+      padding: 10pt 12pt;
+      page-break-inside: avoid;
+    }
+    .box ol { margin: 0; padding-left: 16pt; }
+    .box li { margin-bottom: 5pt; }
+    .note { font-size: 8pt; color: #55506b; margin-top: 6pt; }
+    footer.foot {
+      margin-top: 18pt;
+      padding-top: 8pt;
+      border-top: 1px solid rgba(20,16,46,0.14);
+      font-size: 8pt;
+      color: #55506b;
+    }
+  </style>
+</head>
+<body>
+  <p class="kicker">swypejobs · Career office product brief</p>
+  <h1>Gaps versus Handshake’s career office</h1>
+  <p class="lede">Handshake’s staff product is an operations desk. Ours is an insights shell with a thin ops layer. Advisors open Handshake to clear queues. They open ours to read a board pack.</p>
+  <p class="meta">Internal design comparison · 3 November 2026 · Sources: Handshake Help Center (job/employer approvals, staff roles, reporting) and Handshake 2025 EDU vision. Our side: current <code>/campus</code> routes.</p>
+
+  <div class="stats">
+    <div class="stat"><strong>Inbox first</strong><span>Handshake daily start</span></div>
+    <div class="stat"><strong>Dashboard first</strong><span>Our Campus Home</span></div>
+    <div class="stat"><strong>10 staff jobs</strong><span>Compared in this brief</span></div>
+    <div class="stat"><strong>1 unique win</strong><span>Swipe demand signals</span></div>
+  </div>
+
+  <div class="callout">
+    <p class="t">Mental model</p>
+    <p>Handshake organizes around queues: pending jobs, pending employers, today’s appointments, upcoming fairs. We organize around reports: placement rate, engagement, equity flag. Advisors come in to process work, not to read a board pack. Home should be the queue; Reports should be the board pack.</p>
+  </div>
+
+  <h2>Staff jobs</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:14%">Staff job</th>
+        <th style="width:34%">Handshake</th>
+        <th style="width:34%">This product</th>
+        <th style="width:18%">Call</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Morning inbox</td>
+        <td>Pending jobs first. Approving a job can approve the employer. Auto-approve by industry, title, employer type.</td>
+        <td>Home is a KPI dashboard. Approvals is a separate list. The same Approve/Hold also lives under Actions.</td>
+        <td><span class="tag gap">Handshake leads</span></td>
+      </tr>
+      <tr>
+        <td>Employer relations</td>
+        <td>Employer CRM: search, notes, flags, roles at the school, default permissions, heatmaps.</td>
+        <td>Invite form + partnership request list. One employer is not a durable relationship record with history.</td>
+        <td><span class="tag gap">Handshake leads</span></td>
+      </tr>
+      <tr>
+        <td>Curate student feed</td>
+        <td>Collections of jobs, employers, events, and fairs. Students follow collections and filter search by them.</td>
+        <td>Job-only collections that power the Campus curated Discover stack. Stronger default for swipe, narrower object model.</td>
+        <td><span class="tag win">Different edge</span></td>
+      </tr>
+      <tr>
+        <td>Advise students</td>
+        <td>Appointment types, mediums, rooms, drop-ins, counselor calendars, notes, staff-level permissions.</td>
+        <td>Student requests a datetime. Staff Confirm / Complete / No-show / Cancel. No calendar, rooms, or counselor identity.</td>
+        <td><span class="tag gap">Handshake leads</span></td>
+      </tr>
+      <tr>
+        <td>Events and fairs</td>
+        <td>Events + career fairs as products: booths, registration, QR check-in, invoices, attendee email.</td>
+        <td>Title, type, start time. Student RSVP is Going / not. Fair booths are not built.</td>
+        <td><span class="tag gap">Handshake leads</span></td>
+      </tr>
+      <tr>
+        <td>On-campus recruiting</td>
+        <td>Interview schedules, slot assignment, room check-in.</td>
+        <td>Interviews live in recruiter–student chat, not a campus-owned schedule.</td>
+        <td><span class="tag gap">Handshake leads</span></td>
+      </tr>
+      <tr>
+        <td>Student outreach</td>
+        <td>Student search, targeted email, collections follow, event targeting.</td>
+        <td>Nudge form on a named attention list (seniors / quiet / zero). No student directory or campaign history.</td>
+        <td><span class="tag thin">Started</span></td>
+      </tr>
+      <tr>
+        <td>Reporting</td>
+        <td>Insights: dashboards, 50+ prebuilt reports, scheduled email, custom reports, Access vs Manage.</td>
+        <td>Eight report pages that repeat the KPI grid. NACE/HEC export exists.</td>
+        <td><span class="tag thin">Coverage, not a tool</span></td>
+      </tr>
+      <tr>
+        <td>Staff roles</td>
+        <td>Access vs Manage per module (jobs, employers, events, appointments, analytics, fairs).</td>
+        <td>director / advisor / dean is labeled in the header. Nav and actions are the same for everyone.</td>
+        <td><span class="tag gap">Handshake leads</span></td>
+      </tr>
+      <tr>
+        <td>Demand signal</td>
+        <td>Applications, profile views, fair check-ins, employer heatmaps.</td>
+        <td>Swipe right vs pass by category, want-vs-posted. Handshake cannot see this. Unique.</td>
+        <td><span class="tag win">We lead</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Flow, not features</h2>
+  <div class="cols">
+    <div class="box">
+      <h3>Handshake daily loop</h3>
+      <ol>
+        <li>Open pending jobs. Approve, decline, or request more info. Auto-rules eat the obvious ones.</li>
+        <li>Scan today’s appointments and drop-ins. Notes stay on the student.</li>
+        <li>Check fair / event registrations and employer booth questions.</li>
+        <li>Pull a student list or employer record only when doing outreach.</li>
+        <li>Insights is a separate mode for the director and institutional reporting.</li>
+      </ol>
+    </div>
+    <div class="box">
+      <h3>Our daily loop today</h3>
+      <ol>
+        <li>Land on six KPIs and source badges. Primary CTA is “Open action queue.”</li>
+        <li>Approvals is a title + company row with Approve / Hold. No job body, no “request info,” no auto-approve.</li>
+        <li>Employers is invite + pending partnership. No notes, flags, or school-level roles.</li>
+        <li>Advising is a flat request list. Events is a three-field form.</li>
+        <li>Actions duplicates approvals, events, and nudges. Reports splits the same snapshot across eight URLs.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>Information architecture</h2>
+  <div class="cols">
+    <div class="box">
+      <h3>Handshake (simplified)</h3>
+      <p>Students · Employers · Jobs · Events · Fairs · Appointments · Interviews · Insights · Settings</p>
+      <p>Objects first. Permissions (Access / Manage) hide write actions. Settings is a real product: approval preferences, appointment types, rooms.</p>
+    </div>
+    <div class="box">
+      <h3>Ours (current)</h3>
+      <p>Home · Approvals · Curated jobs · Employers · Advising · More (4) · Reports (8)</p>
+      <p>Primary set is the right instinct. Reports still has eight peers that are one dashboard with different charts. Actions is a junk drawer. staffRole is cosmetic.</p>
+    </div>
+  </div>
+
+  <h2>Where we should not copy Handshake</h2>
+  <p>Handshake’s student surface is search. Ours is swipe. Campus curated as the default Discover stack is the correct career-office lever — one collection membership changes what students see first. Handshake collections are optional filters on a search product.</p>
+  <p>Swipe right vs pass by category is a demand signal Handshake does not have. Keep it on Home as an operations insight (“students want X, we have Y jobs”), not as another report page.</p>
+  <p>Do not recreate Handshake’s 50-report catalog. One Insights mode with saved exports (NACE / HEC) is enough until a director asks for scheduled email.</p>
+
+  <h2>Close the gap in this order</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:12%">Priority</th>
+        <th style="width:44%">Change</th>
+        <th>Why it matches staff reality</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>P0</td>
+        <td>Make Home an inbox: pending jobs, pending employers, today’s advising, students needing a nudge.</td>
+        <td>Advisors process queues. Directors can still open Reports.</td>
+      </tr>
+      <tr>
+        <td>P0</td>
+        <td>Job-based approval like Handshake: one queue, job body visible, approve-job-approves-employer, Hold with a reason.</td>
+        <td>Stops Approvals and Actions from being two copies of the same decision.</td>
+      </tr>
+      <tr>
+        <td>P1</td>
+        <td>Employer record: notes, status history, invite + partnership on one profile. Kill the three stacked lists.</td>
+        <td>Employer relations is a CRM job, not a form job.</td>
+      </tr>
+      <tr>
+        <td>P1</td>
+        <td>Advising calendar: staff identity, type, confirm/reschedule. Student already books; the desk is the hole.</td>
+        <td>This is the actual in-office work Handshake owns.</td>
+      </tr>
+      <tr>
+        <td>P2</td>
+        <td>Events with RSVP counts and a student list. Fairs/booths later.</td>
+        <td>A datetime form is not an event product.</td>
+      </tr>
+      <tr>
+        <td>P2</td>
+        <td>Collapse eight report routes into Insights. Keep NACE export. Staff roles that actually hide write actions.</td>
+        <td>Matches Handshake’s Access vs Manage without copying their report zoo.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <p class="t">Design tradeoff</p>
+    <p>Copying Handshake’s full career-center suite is a multi-year product. Winning as a campus tool means being better at the two things they are weak at (swipe curation + demand from passes) and being competent at the three things staff will not switch without (job queue, employer record, advising desk).</p>
+  </div>
+
+  <h2>Appendix · Product UI gaps already in this codebase</h2>
+  <p>Separate from Handshake. These are visual and IA issues on the Next.js app itself.</p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:22%">Gap</th>
+        <th>What it looks like</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Two visual languages</td>
+        <td>Discover, Chat, Feed, Insights feel designed. Events, Mentorship, Partnerships, Help, and most Campus tools still read as spec CRUD.</td>
+      </tr>
+      <tr>
+        <td>Overloaded chrome</td>
+        <td>Student top nav, bottom nav, and More disagree on labels. Campus previously exposed 16 peer items; now primary + More/Reports — Reports still has eight destinations.</td>
+      </tr>
+      <tr>
+        <td>Dead header API</td>
+        <td>Eyebrow is now rendered on the shared page header. Spec pages still need to stay on that header as new screens land.</td>
+      </tr>
+      <tr>
+        <td>Token pile</td>
+        <td>Clearpath, Apple, waitlist, and monochrome names still sit in CSS. Dark tokens exist; <code>.dark</code> is not wired.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <footer class="foot">
+    swypejobs · Confidential product brief · Not for employers or students · Page generated from the 3 Nov 2026 career-office review
+  </footer>
+</body>
+</html>

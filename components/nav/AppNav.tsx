@@ -12,7 +12,7 @@ import { NotificationBell } from "@/components/nav/NotificationBell"
 import { ShareProfileMenuItem } from "@/components/share/ShareButton"
 import { shareOrCopyLink } from "@/lib/share/share-link"
 import { useToast } from "@/lib/hooks/use-toast"
-import { recruiterMoreLinks, studentMoreLinks } from "@/components/nav/app-nav-config"
+import { alumniMoreLinks, recruiterMoreLinks, studentMoreLinks } from "@/components/nav/app-nav-config"
 import { useChatUnread } from "@/lib/hooks/use-chat-unread"
 import { NavUnreadBadge } from "@/components/nav/NavUnreadBadge"
 import { profileSharePath } from "@/lib/share/profile-path"
@@ -44,8 +44,9 @@ const studentLinks: NavLink[] = [
   { href: "/feed", label: "Feed" },
   { href: "/matches", label: "Applications" },
   { href: "/resume", label: "Resume" },
-  { href: "/chat", label: "Messages" },
+  { href: "/chat", label: "Chat" },
   { href: "/dashboard", label: "Insights" },
+  { href: "/events", label: "Events" },
   { href: "/community", label: "Community" },
 ]
 
@@ -55,17 +56,17 @@ const recruiterLinks: NavLink[] = [
   { href: "/jobs", label: "Jobs" },
   { href: "/company", label: "Company" },
   { href: "/matches", label: "Pipeline" },
-  { href: "/chat", label: "Messages" },
+  { href: "/chat", label: "Chat" },
   { href: "/dashboard", label: "Insights" },
   { href: "/community", label: "Community" },
 ]
 
 const universityLinks: NavLink[] = [
   { href: "/campus", label: "Home" },
-  { href: "/campus/outcomes", label: "Outcomes" },
-  { href: "/campus/engagement", label: "Students" },
-  { href: "/campus/market", label: "Market" },
-  { href: "/campus/actions", label: "Actions" },
+  { href: "/campus/approvals", label: "Approvals" },
+  { href: "/campus/collections", label: "Curated jobs" },
+  { href: "/campus/employers", label: "Employers" },
+  { href: "/campus/appointments", label: "Advising" },
   { href: "/campus/reports", label: "Reports" },
 ]
 
@@ -91,9 +92,10 @@ interface AppNavProps {
   avatarUrl?: string | null
   shareTitle?: string | null
   adminModules?: string[]
+  isAlumni?: boolean
 }
 
-export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle, adminModules }: AppNavProps) {
+export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle, adminModules, isAlumni }: AppNavProps) {
   const pathname = usePathname()
   const { toast } = useToast()
   const chatUnread = useChatUnread()
@@ -110,7 +112,7 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle, a
         : role === "university"
           ? universityLinks
           : []
-  const moreLinks = role === "recruiter" ? recruiterMoreLinks : studentMoreLinks
+  const moreLinks = role === "recruiter" ? recruiterMoreLinks : isAlumni ? alumniMoreLinks : studentMoreLinks
   const homeHref = !signedIn ? "/" : role === "admin" ? "/admin" : role === "university" ? "/campus" : "/discover"
   const modules = adminModules?.length ? adminModules : ["all"]
 
@@ -133,7 +135,15 @@ export function AppNav({ role, userId, fullName, email, avatarUrl, shareTitle, a
   const displayName = fullName ?? email?.split("@")[0] ?? "User"
   const initials = displayName.charAt(0).toUpperCase()
   const roleLabel =
-    role === "admin" ? "Admin" : role === "university" ? "Career office" : role === "recruiter" ? "Recruiter" : "Student"
+    role === "admin"
+      ? "Admin"
+      : role === "university"
+        ? "Career office"
+        : role === "recruiter"
+          ? "Recruiter"
+          : isAlumni
+            ? "Alumni"
+            : "Student"
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-border/80 bg-background/75 backdrop-blur-2xl backdrop-saturate-150">

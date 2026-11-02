@@ -17,7 +17,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { JOB_CATEGORIES } from "@/lib/company-options"
 import { notifyNewJobsInCategory } from "@/lib/engagement"
 import { parseRequiredSemesters, parseScreeningQuestions, type ScreeningQuestion } from "@/lib/jobs/screening"
+import { parseDeadline, todayIso } from "@/lib/jobs/deadline"
+import { parseCgpa, parseJobTargeting } from "@/lib/jobs/targeting"
 import { ScreeningQuestionsEditor } from "@/components/jobs/ScreeningQuestionsEditor"
+import { JobTargetingEditor, type JobTargetingValue } from "@/components/jobs/JobTargetingEditor"
+import { UniversityPicker } from "@/components/profile/UniversityPicker"
 import type { Job } from "@/types"
 
 const SKILL_SUGGESTIONS = [
@@ -45,6 +49,7 @@ export function JobEditor({ job }: { job?: Job }) {
   const [jobType, setJobType] = useState(job?.job_type ?? "")
   const [location, setLocation] = useState(job?.location ?? "")
   const [isRemote, setIsRemote] = useState(Boolean(job?.is_remote))
+  const [isInternational, setIsInternational] = useState(Boolean(job?.is_international))
   const [requiredSkills, setRequiredSkills] = useState<string[]>(job?.required_skills ?? [])
   const [niceToHaveSkills, setNiceToHaveSkills] = useState<string[]>(job?.nice_to_have_skills ?? [])
   const [category, setCategory] = useState(job?.category ?? "")
@@ -55,6 +60,25 @@ export function JobEditor({ job }: { job?: Job }) {
   const [salaryNote, setSalaryNote] = useState(job?.compensation_note ?? "")
   const [questions, setQuestions] = useState<ScreeningQuestion[]>(() => parseScreeningQuestions(job?.screening_questions))
   const [requiredSemesters, setRequiredSemesters] = useState<number[]>(() => parseRequiredSemesters(job?.required_semesters))
+  const [deadline, setDeadline] = useState(() => parseDeadline(job?.application_deadline) ?? "")
+  const [targeting, setTargeting] = useState<JobTargetingValue>(() => {
+    const t = parseJobTargeting(job)
+    return {
+      degreePrograms: t.degreePrograms,
+      graduationYears: t.graduationYears,
+      minCgpa: t.minCgpa === null ? "" : t.minCgpa.toFixed(2),
+      experienceLevel: t.experienceLevel,
+      alumniOnly: t.alumniOnly,
+      genders: t.genders,
+      departments: t.departments,
+      locationPreferences: t.locationPreferences,
+    }
+  })
+  const [distributionScope, setDistributionScope] = useState<"network" | "partner_universities">(
+    job?.distribution_scope === "partner_universities" ? "partner_universities" : "network"
+  )
+  const [targetUniversities, setTargetUniversities] = useState<string[]>(job?.target_universities ?? [])
+  const [campusPick, setCampusPick] = useState("")
 
   const addSkill = (skill: string, list: string[], setList: (v: string[]) => void, clear: () => void) => {
     const s = skill.trim()
@@ -68,6 +92,15 @@ export function JobEditor({ job }: { job?: Job }) {
       toast({ variant: "destructive", title: "Missing fields", description: "Title and job type are required." })
       return
     }
+    if (deadline && deadline < todayIso()) {
+      toast({ variant: "destructive", title: "Deadline is in the past", description: "Pick today or a later date, or clear it." })
+      return
+    }
+    const minCgpa = targeting.minCgpa.trim() ? parseCgpa(targeting.minCgpa) : null
+    if (targeting.minCgpa.trim() && minCgpa === null) {
+      toast({ variant: "destructive", title: "Invalid CGPA", description: "Enter a number between 0.00 and 4.00." })
+      return
+    }
     setLoading(true)
     const supabase = createClient()
     const {
@@ -79,6 +112,7 @@ export function JobEditor({ job }: { job?: Job }) {
       job_type: jobType,
       location: location || null,
       is_remote: isRemote,
+      is_international: isInternational,
       required_skills: requiredSkills,
       nice_to_have_skills: niceToHaveSkills,
     }
@@ -94,12 +128,38 @@ export function JobEditor({ job }: { job?: Job }) {
     payload.salary_currency = "PKR"
     payload.screening_questions = questions.filter((q) => q.prompt.trim())
     payload.required_semesters = requiredSemesters
+    payload.application_deadline = deadline || null
+    payload.degree_programs = targeting.degreePrograms
+    payload.graduation_years = targeting.graduationYears
+    payload.min_cgpa = minCgpa
+    payload.experience_level = targeting.experienceLevel
+    payload.alumni_only = targeting.alumniOnly
+    payload.target_genders = targeting.genders
+    payload.departments = targeting.departments
+    payload.location_preferences = targeting.locationPreferences
+    payload.distribution_scope = distributionScope
+    payload.target_universities = distributionScope === "partner_universities" ? targetUniversities : []
+    const hasTargeting =
+      targeting.degreePrograms.length > 0 ||
+      targeting.graduationYears.length > 0 ||
+      minCgpa !== null ||
+      targeting.experienceLevel !== "any" ||
+      targeting.alumniOnly ||
+      targeting.genders.length > 0 ||
+      targeting.departments.length > 0 ||
+      targeting.locationPreferences.length > 0 ||
+      isInternational ||
+      distributionScope === "partner_universities" ||
+      targetUniversities.length > 0
 
     const query = editing
       ? supabase.from("jobs").update(payload).eq("id", job!.id)
       : supabase.from("jobs").insert(payload)
     const { error } = await query
-    if (error && (category || min || max || salaryNote.trim() || questions.length || requiredSemesters.length)) {
+    if (
+      error &&
+      (category || min || max || salaryNote.trim() || questions.length || requiredSemesters.length || deadline || hasTargeting)
+    ) {
       delete payload.category
       delete payload.salary_min
       delete payload.salary_max
@@ -107,6 +167,18 @@ export function JobEditor({ job }: { job?: Job }) {
       delete payload.salary_currency
       delete payload.screening_questions
       delete payload.required_semesters
+      delete payload.application_deadline
+      delete payload.degree_programs
+      delete payload.graduation_years
+      delete payload.min_cgpa
+      delete payload.experience_level
+      delete payload.alumni_only
+      delete payload.target_genders
+      delete payload.departments
+      delete payload.location_preferences
+      delete payload.is_international
+      delete payload.distribution_scope
+      delete payload.target_universities
       const retry = editing
         ? await supabase.from("jobs").update(payload).eq("id", job!.id)
         : await supabase.from("jobs").insert(payload)
@@ -131,9 +203,34 @@ export function JobEditor({ job }: { job?: Job }) {
     if (!editing && category) {
       void notifyNewJobsInCategory(supabase, { category })
     }
+    const pushedId = editing
+      ? job!.id
+      : (
+          await supabase.from("jobs").select("id").eq("recruiter_id", user!.id).order("created_at", { ascending: false }).limit(1).maybeSingle()
+        ).data?.id
+    if (pushedId) {
+      void fetch("/api/jobs/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: pushedId }),
+      }).catch(() => undefined)
+      if (distributionScope === "partner_universities" && targetUniversities.length) {
+        const reviews = targetUniversities.map((university) => ({
+          job_id: pushedId,
+          university,
+          status: "pending",
+        }))
+        await supabase.from("campus_job_reviews").upsert(reviews, { onConflict: "job_id,university" })
+      }
+    }
     toast({
       title: editing ? "Job updated" : "Job posted",
-      description: editing ? "Students will see the new details." : "It's live. Applications will show up in Pipeline.",
+      description:
+        distributionScope === "partner_universities"
+          ? "Campus career offices review partner listings before students see them."
+          : editing
+            ? "Students will see the new details."
+            : "It's live. Applications will show up in Pipeline.",
     })
     router.push(editing ? `/jobs/${job!.id}` : "/jobs")
     router.refresh()
@@ -224,8 +321,8 @@ export function JobEditor({ job }: { job?: Job }) {
               />
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <div className="min-w-0 flex-1 space-y-2 sm:min-w-[12rem]">
                 <Label htmlFor="job-location">Location</Label>
                 <Input
                   id="job-location"
@@ -243,6 +340,14 @@ export function JobEditor({ job }: { job?: Job }) {
                 onClick={() => setIsRemote(!isRemote)}
               >
                 Remote
+              </Button>
+              <Button
+                type="button"
+                variant={isInternational ? "default" : "outline"}
+                className="h-11 shrink-0 rounded-xl"
+                onClick={() => setIsInternational(!isInternational)}
+              >
+                International
               </Button>
             </div>
 
@@ -281,11 +386,33 @@ export function JobEditor({ job }: { job?: Job }) {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="job-deadline">Application deadline (optional)</Label>
+              <div className="flex min-w-0 gap-2">
+                <Input
+                  id="job-deadline"
+                  type="date"
+                  className="h-11 rounded-xl"
+                  min={todayIso()}
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                />
+                {deadline ? (
+                  <Button type="button" variant="outline" className="h-11 shrink-0 rounded-xl" onClick={() => setDeadline("")}>
+                    Clear
+                  </Button>
+                ) : null}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The listing hides from Discover after this day and students can no longer apply. Leave blank to keep it open.
+              </p>
+            </div>
+
             <Separator />
 
             <div className="space-y-3">
               <Label>Required skills</Label>
-              <div className="flex gap-2">
+              <div className="flex min-w-0 gap-2">
                 <Input
                   className="h-11 rounded-xl"
                   placeholder="Add a skill"
@@ -344,7 +471,7 @@ export function JobEditor({ job }: { job?: Job }) {
 
             <div className="space-y-3">
               <Label>Nice-to-have skills</Label>
-              <div className="flex gap-2">
+              <div className="flex min-w-0 gap-2">
                 <Input
                   className="h-11 rounded-xl"
                   placeholder="Add a skill"
@@ -384,6 +511,61 @@ export function JobEditor({ job }: { job?: Job }) {
                 ))}
               </div>
             </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <Label>Who can see this listing</Label>
+              <p className="text-[13px] text-muted-foreground">
+                Network-wide listings go to every eligible student. Partner campuses each approve the role before it appears there.
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setDistributionScope("network")}
+                  className={`rounded-2xl border px-4 py-3 text-left text-sm ${distributionScope === "network" ? "border-primary bg-primary/5" : "border-border"}`}
+                >
+                  <span className="font-medium">All eligible students</span>
+                  <span className="mt-1 block text-[13px] text-muted-foreground">SwypeJobs network, subject to verification.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDistributionScope("partner_universities")}
+                  className={`rounded-2xl border px-4 py-3 text-left text-sm ${distributionScope === "partner_universities" ? "border-primary bg-primary/5" : "border-border"}`}
+                >
+                  <span className="font-medium">Partner campuses only</span>
+                  <span className="mt-1 block text-[13px] text-muted-foreground">Creates an approval task per selected university.</span>
+                </button>
+              </div>
+              {distributionScope === "partner_universities" ? (
+                <div className="space-y-2">
+                  <UniversityPicker
+                    value={campusPick}
+                    onChange={(value) => {
+                      setCampusPick(value)
+                      if (value && value !== "Other (type your own)" && !targetUniversities.includes(value)) {
+                        setTargetUniversities((prev) => [...prev, value])
+                        setCampusPick("")
+                      }
+                    }}
+                  />
+                  <div className="flex flex-wrap gap-1.5">
+                    {targetUniversities.map((name) => (
+                      <Badge key={name} variant="secondary" className="gap-1 font-normal">
+                        {name}
+                        <button type="button" aria-label={`Remove ${name}`} onClick={() => setTargetUniversities((prev) => prev.filter((x) => x !== name))}>
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <Separator />
+
+            <JobTargetingEditor value={targeting} onChange={setTargeting} />
 
             <Separator />
 

@@ -20,13 +20,11 @@ export const metadata: Metadata = {
       "Swipe on jobs. Match with recruiters. Chat directly. No cold emails. No ghosting.",
     type: "website",
   },
-  icons: { icon: "data:," },
 }
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   themeColor: "#5a48ff",
 }
 

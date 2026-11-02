@@ -18,14 +18,14 @@ export function DashboardEmptyState({
   secondaryAction,
 }: DashboardEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-muted/25 px-6 py-12 text-center">
+    <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-muted/25 px-6 py-12 text-center">
       <div className="rounded-2xl bg-muted/80 p-3 text-muted-foreground">
         <Icon className="h-8 w-8" strokeWidth={1.25} aria-hidden />
       </div>
       <h3 className="font-heading mt-4 text-base font-semibold text-foreground">{title}</h3>
       <p className="font-body mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{description}</p>
       {(primaryAction || secondaryAction) && (
-        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
           {primaryAction ? (
             <Button asChild>
               <Link href={primaryAction.href}>{primaryAction.label}</Link>

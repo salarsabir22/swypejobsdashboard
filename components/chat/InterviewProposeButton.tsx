@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Calendar } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/lib/hooks/use-toast"
+import { requestStudentEmail } from "@/lib/email/client"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -83,6 +84,8 @@ export function InterviewProposeButton({
       data: { conversation_id: conversationId, match_id: matchId },
     })
     await supabase.from("matches").update({ pipeline_status: "interview" }).eq("id", matchId)
+    // Only the recruiter's proposal emails the student; the route rejects student callers.
+    requestStudentEmail({ kind: "interview", matchId, message: `${text}${note.trim() ? `\n\n${note.trim()}` : ""}` })
     onSent?.(text)
     toast({ title: "Interview proposed" })
     setOpen(false)

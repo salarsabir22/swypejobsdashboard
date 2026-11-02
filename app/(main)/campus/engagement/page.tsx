@@ -14,6 +14,7 @@ export default async function CampusEngagementPage({ searchParams }: { searchPar
   return (
     <CampusFrame
       snapshot={snapshot}
+      showSources
       title="Student engagement"
       description="Who is on the platform, who is complete, and where the class drops off between signup and offer."
     >

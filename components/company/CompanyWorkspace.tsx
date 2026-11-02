@@ -144,8 +144,7 @@ export function CompanyWorkspace({ role, company, defaults, members, invites, sc
         />
         <Card>
           <CardContent className="p-5 text-sm text-muted-foreground">
-            The company workspace is not in the database yet. Run supabase/migrations/004_companies.sql and
-            005_company_workspace.sql in the Supabase SQL editor, then reload this page.
+            The company workspace isn’t ready on this account yet. Ask your admin to finish setup, then reload this page.
           </CardContent>
         </Card>
       </div>

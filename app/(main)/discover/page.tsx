@@ -34,11 +34,33 @@ export default async function DiscoverPage() {
     )
   }
 
-  const { data: student } = await supabase
+  let studentRes = await supabase
     .from("student_profiles")
-    .select("skills, preferred_job_categories, still_enrolled, current_semester")
+    .select("skills, preferred_job_categories, still_enrolled, current_semester, degree, graduation_year, cgpa, is_alumni, gender, department, preferred_locations, university")
     .eq("id", user.id)
     .maybeSingle()
+  if (studentRes.error) {
+    // cgpa / is_alumni columns may not exist until the migrations run.
+    studentRes = await supabase
+      .from("student_profiles")
+      .select("skills, preferred_job_categories, still_enrolled, current_semester, degree, graduation_year")
+      .eq("id", user.id)
+      .maybeSingle()
+  }
+  const student = studentRes.data as {
+    skills?: string[] | null
+    preferred_job_categories?: string[] | null
+    still_enrolled?: boolean | null
+    current_semester?: number | null
+    degree?: string | null
+    graduation_year?: number | null
+    cgpa?: number | null
+    is_alumni?: boolean | null
+    gender?: string | null
+    department?: string | null
+    preferred_locations?: string[] | null
+    university?: string | null
+  } | null
 
   return (
     <StudentDiscoverView
@@ -47,6 +69,14 @@ export default async function DiscoverPage() {
       preferredCategories={student?.preferred_job_categories ?? []}
       stillEnrolled={student?.still_enrolled ?? null}
       currentSemester={student?.current_semester ?? null}
+      degree={student?.degree ?? null}
+      graduationYear={student?.graduation_year ?? null}
+      cgpa={student?.cgpa ?? null}
+      isAlumni={student?.is_alumni ?? null}
+      gender={student?.gender ?? null}
+      department={student?.department ?? null}
+      preferredLocations={student?.preferred_locations ?? []}
+      university={student?.university ?? null}
       selfImageUrl={profile.avatar_url}
       selfName={profile.full_name || "You"}
     />

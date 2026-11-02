@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { AdminFrame } from "@/components/admin/AdminFrame"
 import { UserModerationPanel } from "@/components/admin/UserModerationPanel"
 import { AdminFilterTabs, AdminPagination } from "@/components/admin/AdminPagination"
+import { ExportButton } from "@/components/admin/ExportButton"
 import { formatDate, getInitials } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -167,9 +168,12 @@ export default async function AdminUsersPage({
           ]}
           hrefFor={(value) => hrefFor(1, value, queryText, mod)}
         />
-        <p className="text-[13px] text-muted-foreground">
-          {total} user{total === 1 ? "" : "s"}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-[13px] text-muted-foreground">
+            {total} user{total === 1 ? "" : "s"}
+          </p>
+          <ExportButton dataset="students" label="Export students CSV" />
+        </div>
       </div>
 
       <AdminFilterTabs

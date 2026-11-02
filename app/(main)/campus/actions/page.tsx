@@ -40,6 +40,7 @@ export default async function CampusActionsPage({
   return (
     <CampusFrame
       snapshot={snapshot}
+      showSources
       title="Action tools"
       description="Alerts, nudges, job moderation, events, and employer outreach — what the office can do, not just see."
     >

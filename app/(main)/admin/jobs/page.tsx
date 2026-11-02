@@ -4,6 +4,7 @@ import { jobFlags, jobQualityScore } from "@/lib/admin/flags"
 import { AdminFrame } from "@/components/admin/AdminFrame"
 import { BulkJobActions } from "@/components/admin/BulkJobActions"
 import { JobModerationPanel } from "@/components/admin/JobModerationPanel"
+import { ExportButton } from "@/components/admin/ExportButton"
 import { AdminFilterTabs, AdminPagination } from "@/components/admin/AdminPagination"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { Badge } from "@/components/ui/badge"
@@ -108,6 +109,7 @@ export default async function AdminJobsPage({
           {status === "live" ? (
             <BulkJobActions mode="offline" jobIds={jobs.filter((j) => j.is_active).map((j) => j.id)} />
           ) : null}
+          <ExportButton dataset="jobs" label="Export CSV" />
         </div>
       </div>
 

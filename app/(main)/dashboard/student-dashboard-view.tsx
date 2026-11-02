@@ -11,6 +11,7 @@ import { DashboardFeedRow } from "@/components/dashboard/DashboardFeedRow"
 import { StudentDashboardCharts } from "@/components/dashboard/StudentDashboardCharts"
 import { CompletenessCard } from "@/components/profile/CompletenessCard"
 import { studentCompleteness } from "@/lib/profile/completeness"
+import { skillGaps } from "@/lib/profile/skill-gap"
 import { formatDate } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { daysLastN, shortDayLabel } from "@/lib/dashboard/time-series"
@@ -128,7 +129,7 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
     supabase.from("profiles").select("avatar_url, bio, profile_video_url").eq("id", userId).maybeSingle(),
     supabase
       .from("student_profiles")
-      .select("university, skills, resume_url, linkedin_url")
+      .select("university, skills, preferred_job_categories, resume_url, linkedin_url")
       .eq("id", userId)
       .maybeSingle(),
     supabase.from("matches").select("job_id, pipeline_status, is_archived").eq("student_id", userId),
@@ -255,6 +256,9 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
                 cta: "View applications",
               }
 
+  const { data: openRoles } = await supabase.from("jobs").select("category, required_skills").eq("is_active", true).limit(200)
+  const gaps = skillGaps(studentRes.data?.skills, openRoles || [], studentRes.data?.preferred_job_categories)
+
   return (
     <div className="space-y-8">
       <DashboardPageHeader
@@ -324,6 +328,30 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
           />
         </div>
       </section>
+
+      <DashboardPanel title="Skill gaps" description="Skills asked for on live roles in your categories that aren’t on your profile yet.">
+        {gaps.length ? (
+          <ul className="space-y-1.5 text-[14px]">
+            {gaps.map((gap) => (
+              <li key={gap.label}>
+                <span className="font-medium">{gap.label}</span>
+                <span className="text-muted-foreground"> · asked on {gap.count} role{gap.count === 1 ? "" : "s"}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[14px] text-muted-foreground">No gap against the current listings, or add preferred categories on your profile.</p>
+        )}
+        <div className="mt-4 flex flex-wrap gap-3 text-sm">
+          <Link href="/discover" className="text-primary hover:underline">Campus-curated jobs</Link>
+          <Link href="/internships" className="text-primary hover:underline">Internships</Link>
+          <Link href="/events" className="text-primary hover:underline">Events</Link>
+          <Link href="/announcements" className="text-primary hover:underline">Announcements</Link>
+          <Link href="/appointments" className="text-primary hover:underline">Book advising</Link>
+          <Link href="/profile/education" className="text-primary hover:underline">Education history</Link>
+          <Link href="/opportunities" className="text-primary hover:underline">International opportunities</Link>
+        </div>
+      </DashboardPanel>
 
       <DashboardFunnel
         title="Application pipeline"

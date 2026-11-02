@@ -15,13 +15,15 @@ import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
 import { getInitials, formatDate, cn } from "@/lib/utils"
 import { useToast } from "@/lib/hooks/use-toast"
-import { PIPELINE_LABEL, PIPELINE_STATUSES, type PipelineStatus } from "@/lib/match/fit"
+import { PIPELINE_LABEL, PIPELINE_NOTIFICATION, PIPELINE_STATUSES, type PipelineStatus } from "@/lib/match/fit"
+import { requestStudentEmail } from "@/lib/email/client"
 import { PipelineSkeleton } from "@/components/skeletons"
 import { ShowMoreButton, ShowMoreList } from "@/components/ui/show-more-list"
 
-const BOARD_STAGES = ["chatting", "interview", "offer", "hired"] as const satisfies readonly PipelineStatus[]
+const BOARD_STAGES = ["chatting", "shortlisted", "interview", "offer", "hired"] as const satisfies readonly PipelineStatus[]
 const STAGE_TAB_LABEL: Record<(typeof BOARD_STAGES)[number] | "archived", string> = {
   chatting: "Chat",
+  shortlisted: "Shortlist",
   interview: "Interview",
   offer: "Offer",
   hired: "Hired",
@@ -42,6 +44,7 @@ type MatchRow = {
   is_archived?: boolean
   pipeline_status?: string | null
   recruiter_notes?: string | null
+  student_id?: string
   jobs?: { title?: string | null; job_type?: string | null } | null
   profiles?: {
     id?: string
@@ -140,12 +143,30 @@ export function RecruiterMatchesView({ userId }: { userId: string }) {
 
   const updatePipeline = async (matchId: string, status: PipelineStatus) => {
     const supabase = createClient()
+    const match = matches.find((m) => m.id === matchId)
+    const previous = (match?.pipeline_status as PipelineStatus | undefined) || "chatting"
+    if (previous === status) return
     const { error } = await supabase.from("matches").update({ pipeline_status: status }).eq("id", matchId)
     if (error) {
       toast({ variant: "destructive", title: "Couldn’t update status", description: error.message })
       return
     }
     setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, pipeline_status: status } : m)))
+
+    // Spec 5.3: students get an automatic status update when they're shortlisted / moved forward.
+    const studentId = match?.student_id || match?.profiles?.id
+    const copy = PIPELINE_NOTIFICATION[status]
+    if (studentId && copy) {
+      const jobTitle = match?.jobs?.title || "Your application"
+      void supabase.from("notifications").insert({
+        user_id: studentId,
+        type: "pipeline_update",
+        title: copy.title,
+        body: copy.body(jobTitle),
+        data: { match_id: matchId, pipeline_status: status, job_title: match?.jobs?.title ?? null },
+      })
+      requestStudentEmail({ kind: "pipeline", matchId, status })
+    }
   }
 
   const saveNotes = async (matchId: string, notes: string) => {
@@ -164,6 +185,7 @@ export function RecruiterMatchesView({ userId }: { userId: string }) {
   const displayed = tab === "all" ? active : tab === "starred" ? shortlisted : archived
   const stageCounts: Record<StageTab, number> = {
     chatting: active.filter((m) => (m.pipeline_status || "chatting") === "chatting").length,
+    shortlisted: active.filter((m) => m.pipeline_status === "shortlisted").length,
     interview: active.filter((m) => m.pipeline_status === "interview").length,
     offer: active.filter((m) => m.pipeline_status === "offer").length,
     hired: active.filter((m) => m.pipeline_status === "hired").length,
@@ -184,7 +206,7 @@ export function RecruiterMatchesView({ userId }: { userId: string }) {
     const statusSelect = (
       <Select value={status} onValueChange={(value) => void updatePipeline(match.id, value as PipelineStatus)}>
         <SelectTrigger
-          className={cn("rounded-full bg-muted/70 text-xs shadow-none", compact ? "h-8 w-[8.25rem]" : "h-9 w-full sm:w-[180px]")}
+          className={cn("rounded-full bg-muted/70 text-xs shadow-none", compact ? "h-8 w-full" : "h-9 w-full sm:w-[180px]")}
           aria-label="Pipeline status"
         >
           <SelectValue />
@@ -230,24 +252,26 @@ export function RecruiterMatchesView({ userId }: { userId: string }) {
                 <Star className={cn("h-4 w-4", match.is_shortlisted && "fill-primary text-primary")} strokeWidth={1.5} />
               </Button>
             </div>
-            <div className="mt-2.5 flex items-center gap-2">
+            <div className="mt-2.5 space-y-2">
               {statusSelect}
-              <Button asChild size="sm" className="h-8 min-w-0 flex-1">
-                <Link href={`/chat/${convId || match.id}`}>
-                  <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
-                  Message
-                </Link>
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 shrink-0"
-                onClick={() => toggleArchive(match.id, !!match.is_archived)}
-                aria-label={match.is_archived ? "Unarchive" : "Archive"}
-              >
-                <Archive className="h-4 w-4" strokeWidth={1.5} />
-              </Button>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <Button asChild size="sm" className="h-8 min-w-[7.75rem] flex-1">
+                  <Link href={`/chat/${convId || match.id}`}>
+                    <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    Message
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 shrink-0"
+                  onClick={() => toggleArchive(match.id, !!match.is_archived)}
+                  aria-label={match.is_archived ? "Unarchive" : "Archive"}
+                >
+                  <Archive className="h-4 w-4" strokeWidth={1.5} />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -307,7 +331,7 @@ export function RecruiterMatchesView({ userId }: { userId: string }) {
             {status !== "chatting" ? <Badge variant="secondary">{PIPELINE_LABEL[status]}</Badge> : null}
           </div>
 
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
             <Button
               type="button"
               size="icon"
@@ -332,7 +356,10 @@ export function RecruiterMatchesView({ userId }: { userId: string }) {
               </Button>
             ) : null}
             <Button asChild size="sm">
-              <Link href={`/chat/${convId || match.id}`}>Open chat</Link>
+              <Link href={`/chat/${convId || match.id}`}>
+                <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
+                Message
+              </Link>
             </Button>
           </div>
         </CardContent>
@@ -411,15 +438,15 @@ export function RecruiterMatchesView({ userId }: { userId: string }) {
       </div>
 
       <Tabs value={stage} onValueChange={(value) => setStage(value as StageTab)} className="lg:hidden">
-        <div className="sticky top-16 z-10 -mx-4 bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
-          <TabsList className="grid h-[3.35rem] w-full grid-cols-5 gap-0.5 rounded-xl p-1">
+        <div className="sticky top-16 z-10 -mx-4 overflow-x-auto bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
+          <TabsList className="flex h-auto w-max min-w-full gap-1 rounded-xl p-1">
             {([...BOARD_STAGES, "archived"] as const).map((status) => (
               <TabsTrigger
                 key={status}
                 value={status}
-                className="group min-w-0 flex-col gap-0.5 rounded-lg px-0 py-1 text-[10px] font-medium leading-none sm:text-[11px]"
+                className="h-auto shrink-0 flex-col gap-0.5 rounded-lg px-3 py-1.5 text-[11px] font-medium leading-none"
               >
-                <span className="truncate">{STAGE_TAB_LABEL[status]}</span>
+                <span>{STAGE_TAB_LABEL[status]}</span>
                 <span className="font-data text-[10px] tabular-nums text-muted-foreground group-data-[state=active]:text-primary">
                   {stageCounts[status]}
                 </span>
@@ -461,10 +488,10 @@ export function RecruiterMatchesView({ userId }: { userId: string }) {
 
       <div className="hidden space-y-6 lg:block">
         <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
-          <TabsList className="grid h-auto w-full max-w-md grid-cols-3">
-            <TabsTrigger value="all">All ({active.length})</TabsTrigger>
-            <TabsTrigger value="starred">Shortlisted ({shortlisted.length})</TabsTrigger>
-            <TabsTrigger value="archived">Archived ({archived.length})</TabsTrigger>
+          <TabsList className="flex h-auto w-full max-w-full flex-wrap justify-start gap-1 sm:max-w-lg">
+            <TabsTrigger value="all" className="shrink-0 px-3">All ({active.length})</TabsTrigger>
+            <TabsTrigger value="starred" className="shrink-0 px-3">Shortlisted ({shortlisted.length})</TabsTrigger>
+            <TabsTrigger value="archived" className="shrink-0 px-3">Archived ({archived.length})</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -482,7 +509,8 @@ export function RecruiterMatchesView({ userId }: { userId: string }) {
             primaryAction={tab === "all" ? { href: "/discover", label: "Discover candidates" } : undefined}
           />
         ) : layout === "board" && tab !== "archived" ? (
-          <div className="grid grid-cols-4 gap-3">
+          <div className="-mx-1 overflow-x-auto pb-2">
+            <div className="grid min-w-[72rem] grid-cols-5 gap-3">
             {BOARD_STAGES.map((status) => {
               const column = displayed.filter((m) => (m.pipeline_status || "chatting") === status)
               return (
@@ -524,6 +552,7 @@ export function RecruiterMatchesView({ userId }: { userId: string }) {
                 </section>
               )
             })}
+            </div>
           </div>
         ) : (
           <div className="space-y-3">

@@ -1,4 +1,4 @@
-import { emptyResume, newId, type JsonResume } from "@/lib/resume/schema"
+import { emptyResume, newId, type JsonResume, type ResumeCertificate, type ResumeProject, type ResumeWork } from "@/lib/resume/schema"
 
 export type ResumeProfileSeed = {
   fullName?: string | null
@@ -11,6 +11,22 @@ export type ResumeProfileSeed = {
   linkedinUrl?: string | null
   githubUrl?: string | null
   portfolioUrl?: string | null
+  /** From student_profiles career history (lib/profile/career.ts). */
+  work?: ResumeWork[] | null
+  projects?: ResumeProject[] | null
+  certificates?: ResumeCertificate[] | null
+}
+
+function stripWork(rows: ResumeWork[] | null | undefined): ResumeWork[] {
+  return (rows || []).map((w) => ({
+    id: w.id || newId(),
+    name: w.name,
+    position: w.position,
+    startDate: w.startDate,
+    endDate: w.endDate,
+    summary: w.summary,
+    highlights: w.highlights || [],
+  }))
 }
 
 export function resumeFromProfile(seed: ResumeProfileSeed): JsonResume {
@@ -37,6 +53,9 @@ export function resumeFromProfile(seed: ResumeProfileSeed): JsonResume {
     ]
   }
   doc.skills = (seed.skills || []).filter(Boolean).map((name) => ({ name }))
+  doc.work = stripWork(seed.work)
+  doc.projects = (seed.projects || []).map((p) => ({ ...p, id: p.id || newId(), highlights: p.highlights || [] }))
+  doc.certificates = (seed.certificates || []).map((c) => ({ ...c, id: c.id || newId() }))
   return doc
 }
 
@@ -53,6 +72,9 @@ export function mergeResumeWithProfile(doc: JsonResume, seed: ResumeProfileSeed)
   if (!next.skills.length && seed.skills?.length) {
     next.skills = seed.skills.filter(Boolean).map((name) => ({ name }))
   }
+  if (!next.work.length && seed.work?.length) next.work = stripWork(seed.work)
+  if (!next.projects.length && seed.projects?.length) next.projects = resumeFromProfile(seed).projects
+  if (!next.certificates.length && seed.certificates?.length) next.certificates = resumeFromProfile(seed).certificates
   const existing = new Set((next.basics.profiles || []).map((p) => p.url))
   const extras = resumeFromProfile(seed).basics.profiles || []
   next.basics.profiles = [...(next.basics.profiles || []), ...extras.filter((p) => p.url && !existing.has(p.url))]

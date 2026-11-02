@@ -5,6 +5,8 @@ import { skillOverlap } from "@/lib/match/fit"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatSalary } from "@/lib/jobs/salary"
+import { deadlineLabel, deadlineSoon } from "@/lib/jobs/deadline"
+import { CURATED_BADGE } from "@/lib/jobs/curation"
 import { PhotoHero } from "@/components/swipe/PhotoHero"
 
 const JOB_TYPE_LABEL: Record<string, string> = {
@@ -46,6 +48,8 @@ export function JobCard({
   const shownMatched = matched.slice(0, 6)
   const shownOther = otherSkills.slice(0, Math.max(0, 6 - shownMatched.length))
   const hiddenCount = matched.length + otherSkills.length - shownMatched.length - shownOther.length
+  const deadlineText = deadlineLabel(job.application_deadline)
+  const closingSoon = deadlineSoon(job.application_deadline)
 
   return (
     <div
@@ -63,9 +67,24 @@ export function JobCard({
           <span className="rounded-full bg-white/15 px-2.5 py-0.5 font-body text-[10px] font-medium uppercase tracking-wide text-white ring-1 ring-white/20">
             {typeLabel}
           </span>
+          {job.cdc_curated ? (
+            <span className="rounded-full bg-white px-2.5 py-0.5 font-body text-[10px] font-semibold uppercase tracking-wide text-black">
+              {job.collection_label || CURATED_BADGE}
+            </span>
+          ) : null}
           {locationOrRemote ? (
             <span className="rounded-full bg-white/10 px-2.5 py-0.5 font-body text-[10px] font-medium text-white/85 ring-1 ring-white/15">
               {locationOrRemote}
+            </span>
+          ) : null}
+          {deadlineText ? (
+            <span
+              className={cn(
+                "rounded-full px-2.5 py-0.5 font-body text-[10px] font-medium ring-1",
+                closingSoon ? "bg-white text-black ring-white" : "bg-white/10 text-white/85 ring-white/15"
+              )}
+            >
+              {deadlineText}
             </span>
           ) : null}
         </div>

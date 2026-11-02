@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/lib/hooks/use-toast"
 import { defaultInterviewMessage } from "@/lib/hiring/interview-invite"
+import { requestStudentEmail } from "@/lib/email/client"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -110,7 +111,8 @@ export function InterviewInviteDialog({
       },
     })
     await supabase.from("matches").update({ pipeline_status: "interview" }).eq("id", target.matchId)
-    toast({ title: "Invite sent", description: conversationId ? "The candidate will see it in chat." : "They’ll get a notification." })
+    requestStudentEmail({ kind: "interview", matchId: target.matchId, message: body })
+    toast({ title: "Invite sent", description: conversationId ? "The candidate will see it in chat and by email." : "They’ll get a notification and an email." })
     setBusy(false)
     onOpenChange(false)
   }
@@ -124,7 +126,7 @@ export function InterviewInviteDialog({
             Send a booking note now, or skip and message them later.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button type="button" variant={mode === "default" ? "default" : "outline"} onClick={() => setMode("default")}>
             Default message
           </Button>

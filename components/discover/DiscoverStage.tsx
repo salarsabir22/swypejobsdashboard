@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { skillOverlap } from "@/lib/match/fit"
 import { formatSalary } from "@/lib/jobs/salary"
+import { CURATED_BADGE } from "@/lib/jobs/curation"
 import { cn, formatRelativeTime } from "@/lib/utils"
 import type { Job, Profile, StudentProfile } from "@/types"
 import { DiscoverHowItWorks } from "./DiscoverHowItWorks"
@@ -74,6 +75,9 @@ export function DiscoverJobRail({
           <div className="space-y-1">
             <p className="font-data text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">This role</p>
             <h2 className="font-heading text-xl font-semibold tracking-tight">{job.title}</h2>
+            {job.cdc_curated ? (
+              <Badge className="mt-2 font-normal">{job.collection_label || CURATED_BADGE}</Badge>
+            ) : null}
             <p className="font-body text-sm text-muted-foreground">
               {[company?.company_name, job.is_remote ? "Remote" : job.location, pay].filter(Boolean).join(" · ")}
             </p>

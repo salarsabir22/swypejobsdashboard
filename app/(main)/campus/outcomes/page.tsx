@@ -13,6 +13,7 @@ export default async function CampusOutcomesPage({ searchParams }: { searchParam
   return (
     <CampusFrame
       snapshot={snapshot}
+      showSources
       title="Student outcomes"
       description="NACE-style first-destination status at graduation, 3, 6, and 12 months. Until a survey file is imported, graduation uses a platform proxy from hired / seeking / inactive seniors."
     >

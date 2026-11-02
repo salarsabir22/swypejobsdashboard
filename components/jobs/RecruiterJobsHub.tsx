@@ -15,10 +15,10 @@ export function RecruiterJobsHub({
   return (
     <Tabs defaultValue={defaultTab} className="space-y-6">
       <TabsList className="grid h-auto w-full grid-cols-2">
-        <TabsTrigger value="jobs" className="py-2">
+        <TabsTrigger value="jobs" className="min-w-0 py-2">
           Your jobs
         </TabsTrigger>
-        <TabsTrigger value="pipeline" className="py-2">
+        <TabsTrigger value="pipeline" className="min-w-0 py-2">
           Matches
         </TabsTrigger>
       </TabsList>

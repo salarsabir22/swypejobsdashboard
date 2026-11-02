@@ -10,7 +10,9 @@ import type { Job, RecruiterProfile } from "@/types"
 import { StudentJobActions } from "./StudentJobActions"
 import { ShareButton } from "@/components/share/ShareButton"
 import { JobViewTracker } from "@/components/profile/JobViewTracker"
-import { parseScreeningQuestions, parseRequiredSemesters } from "@/lib/jobs/screening"
+import { parseScreeningQuestions } from "@/lib/jobs/screening"
+import { describeTargeting } from "@/lib/jobs/targeting"
+import { deadlineLabel, deadlinePassed, deadlineSoon, formatDeadline } from "@/lib/jobs/deadline"
 
 const JOB_TYPE_LABEL: Record<string, string> = {
   internship: "Internship",
@@ -32,7 +34,10 @@ export function StudentJobDetailView({ job, userId }: { job: JobRow; userId: str
   })
   const backHref = userId ? "/discover" : `/company/${job.recruiter_id}`
   const questions = parseScreeningQuestions(job.screening_questions)
-  const semesters = parseRequiredSemesters(job.required_semesters)
+  const audience = describeTargeting(job)
+  const closed = deadlinePassed(job.application_deadline)
+  const closingSoon = deadlineSoon(job.application_deadline)
+  const deadlineText = deadlineLabel(job.application_deadline)
 
   return (
     <div className="space-y-10">
@@ -120,6 +125,14 @@ export function StudentJobDetailView({ job, userId }: { job: JobRow; userId: str
                 {pay}
               </Badge>
             ) : null}
+            {deadlineText ? (
+              <Badge
+                variant={closed ? "secondary" : closingSoon ? "default" : "outline"}
+                className={closed ? "font-normal text-muted-foreground" : "font-normal"}
+              >
+                {deadlineText}
+              </Badge>
+            ) : null}
           </div>
 
           {job.description ? (
@@ -174,8 +187,19 @@ export function StudentJobDetailView({ job, userId }: { job: JobRow; userId: str
             </div>
           ) : null}
 
-          {semesters.length > 0 ? (
-            <p className="text-sm text-muted-foreground">Open to semester {semesters.join(" and ")} only.</p>
+          {audience.length > 0 ? (
+            <div>
+              <h2 className="mb-2 font-heading text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Who can apply
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {audience.map((line) => (
+                  <Badge key={line} variant="outline" className="font-normal text-muted-foreground">
+                    {line}
+                  </Badge>
+                ))}
+              </div>
+            </div>
           ) : null}
 
           {company?.description ? (
@@ -200,7 +224,10 @@ export function StudentJobDetailView({ job, userId }: { job: JobRow; userId: str
 
           <Separator />
 
-          <p className="font-body text-xs text-muted-foreground">Posted {formatDate(job.created_at)}</p>
+          <p className="font-body text-xs text-muted-foreground">
+            Posted {formatDate(job.created_at)}
+            {job.application_deadline ? ` · Apply by ${formatDeadline(job.application_deadline)}` : ""}
+          </p>
 
           {userId ? (
             <StudentJobActions
@@ -208,7 +235,10 @@ export function StudentJobDetailView({ job, userId }: { job: JobRow; userId: str
               jobId={job.id}
               jobTitle={job.title}
               screeningQuestions={job.screening_questions}
+              closed={closed}
             />
+          ) : closed ? (
+            <p className="font-body text-sm text-muted-foreground">Applications for this role have closed.</p>
           ) : (
             <Button asChild className="w-full rounded-full">
               <Link href={`/login?next=${encodeURIComponent(`/jobs/${job.id}`)}`}>Sign in to apply</Link>

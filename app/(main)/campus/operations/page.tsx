@@ -4,16 +4,19 @@ import { EventForm } from "@/components/campus/CampusActions"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { fmtSourced } from "@/lib/campus/format"
+import { departmentAlerts } from "@/lib/campus/alerts"
 import { Calendar, ClipboardList, Smile, Users } from "lucide-react"
 
 export default async function CampusOperationsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
   const snapshot = await campusPageData(campus)
   const university = snapshot.access.university || "Campus"
+  const alerts = departmentAlerts(snapshot.attention)
 
   return (
     <CampusFrame
       snapshot={snapshot}
+      showSources
       title="Career office operations"
       description="Advisor load, events, resume reviews, and student satisfaction with the office vs. the product."
     >
@@ -23,6 +26,19 @@ export default async function CampusOperationsPage({ searchParams }: { searchPar
         <DashboardKpiCard icon={ClipboardList} label="Resume reviews" value={snapshot.operations.resumeReviews} />
         <DashboardKpiCard icon={Smile} label="NPS · career office" value={fmtSourced(snapshot.operations.npsOffice)} hint={`Platform NPS ${fmtSourced(snapshot.operations.npsPlatform)}`} tone="teal" />
       </div>
+      <DashboardPanel title="At-risk departments" description="Programs with several students who have gone quiet or never applied.">
+        {alerts.length ? (
+          <ul className="space-y-2 text-[14px]">
+            {alerts.map((alert) => (
+              <li key={alert.department}>
+                <span className="font-medium">{alert.department}</span> · {alert.students} students · {alert.reasons.join("; ")}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[14px] text-muted-foreground">No department has three or more students on the attention list.</p>
+        )}
+      </DashboardPanel>
       <DashboardPanel title="Wait times & caseload">
         <p className="text-[14px] text-muted-foreground">{snapshot.operations.waitHint}</p>
         <p className="mt-2 text-[14px]">Average wait: {fmtSourced(snapshot.operations.waitHours)} hours. Caseload: {fmtSourced(snapshot.operations.caseload)} students in view.</p>

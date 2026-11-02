@@ -39,7 +39,7 @@ export function FeedReactButton({
   return (
     <div
       ref={wrapRef}
-      className="relative"
+      className="relative min-w-0"
       onPointerEnter={() => {
         hoverTimer.current = setTimeout(() => setOpen(true), 280)
       }}
@@ -72,7 +72,7 @@ export function FeedReactButton({
       <Button
         type="button"
         variant="ghost"
-        className={cn("h-11 w-full rounded-none px-1 font-heading text-xs sm:px-3 sm:text-sm", meta?.className)}
+        className={cn("h-11 min-w-0 w-full shrink rounded-none px-1 font-heading text-xs sm:px-3 sm:text-sm", meta?.className)}
         onClick={() => {
           if (holdOpened.current) {
             holdOpened.current = false

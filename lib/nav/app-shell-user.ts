@@ -19,6 +19,7 @@ export type AppShellUser = {
   shareTitle: string | null
   /** RBAC modules when role is admin */
   adminModules?: string[]
+  isAlumni?: boolean
 }
 
 /** One auth + profile round-trip per request (shared across layout/pages). */
@@ -41,6 +42,7 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
     avatarUrl: null,
     shareTitle: null,
     adminModules: undefined,
+    isAlumni: false,
   }
   if (!user) return empty
 
@@ -53,6 +55,7 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
   const role = (profile?.role as UserRole | "admin") || "student"
   let shareTitle = profile?.full_name ?? null
   let adminModules: string[] | undefined
+  let isAlumni = false
 
   if (role === "recruiter") {
     const { data: company } = await supabase
@@ -69,6 +72,8 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
       .eq("id", user.id)
       .maybeSingle()
     if (opts?.requireOnboarding && !isStudentOnboardingComplete(student)) redirect("/onboarding")
+    const alumniRes = await supabase.from("student_profiles").select("is_alumni").eq("id", user.id).maybeSingle()
+    isAlumni = alumniRes.data?.is_alumni === true
   } else if (role === "admin") {
     const { data: staff, error: staffError } = await supabase
       .from("platform_staff")
@@ -89,5 +94,6 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
     avatarUrl: profile?.avatar_url ?? null,
     shareTitle,
     adminModules,
+    isAlumni,
   }
 }

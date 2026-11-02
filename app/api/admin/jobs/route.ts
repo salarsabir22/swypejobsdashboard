@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdminApi, writeAudit } from "@/lib/admin/api-auth"
+import { emailUserInBackground } from "@/lib/email/send"
+import { jobApprovedEmail, jobRejectedEmail } from "@/lib/email/templates"
+import { pushJobToMatches } from "@/lib/jobs/push"
 
 export const runtime = "nodejs"
 
@@ -15,15 +18,31 @@ async function applyOne(
   flags: string[] = [],
 ) {
   const isActive = action === "approve" || action === "featured"
+  const { data: before } = await admin.from("jobs").select("is_active").eq("id", jobId).maybeSingle()
   const { data: updated, error } = await admin
     .from("jobs")
     .update({ is_active: isActive })
     .eq("id", jobId)
-    .select("id, title, is_active")
+    .select("id, title, is_active, recruiter_id")
     .maybeSingle()
 
   if (error) throw new Error(error.message)
   if (!updated) throw new Error("Job not found.")
+
+  // Email the posting employer when moderation changes visibility.
+  if (updated.recruiter_id) {
+    if (action === "approve" && before?.is_active !== true) {
+      emailUserInBackground(admin, updated.recruiter_id, (name) => jobApprovedEmail({ recruiterName: name, jobTitle: updated.title, jobId }), { job_id: jobId })
+      void pushJobToMatches(admin, jobId)
+    } else if (action === "reject") {
+      emailUserInBackground(
+        admin,
+        updated.recruiter_id,
+        (name) => jobRejectedEmail({ recruiterName: name, jobTitle: updated.title, jobId, flags }),
+        { job_id: jobId },
+      )
+    }
+  }
 
   await admin.from("job_moderation").upsert({
     job_id: jobId,

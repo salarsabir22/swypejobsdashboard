@@ -124,15 +124,27 @@ export function whyThisCandidate(opts: {
   return reasons.slice(0, 3)
 }
 
-export const PIPELINE_STATUSES = ["chatting", "interview", "offer", "hired", "passed"] as const
+/** Applied (student side, pre-match) → Chatting → Shortlisted → Interview → Offer → Hired. */
+export const PIPELINE_STATUSES = ["chatting", "shortlisted", "interview", "offer", "hired", "passed"] as const
 export type PipelineStatus = (typeof PIPELINE_STATUSES)[number]
 
 export const PIPELINE_LABEL: Record<PipelineStatus, string> = {
   chatting: "Chatting",
+  shortlisted: "Shortlisted",
   interview: "Interview",
   offer: "Offer",
   hired: "Hired",
   passed: "Passed",
+}
+
+/** Student-facing notification copy when a recruiter moves them to a stage. `null` = don't notify. */
+export const PIPELINE_NOTIFICATION: Record<PipelineStatus, { title: string; body: (job: string) => string } | null> = {
+  chatting: null,
+  shortlisted: { title: "You’ve been shortlisted", body: (job) => `${job}: the team moved you to their shortlist.` },
+  interview: { title: "Interview stage", body: (job) => `${job}: you’ve been moved to the interview stage.` },
+  offer: { title: "Offer stage", body: (job) => `${job}: the team has moved you to the offer stage.` },
+  hired: { title: "Marked as hired", body: (job) => `${job}: congratulations, you’ve been marked as hired.` },
+  passed: null,
 }
 
 export function applicationStatus(opts: {
@@ -145,6 +157,7 @@ export function applicationStatus(opts: {
   if (opts.pipeline === "hired") return "Hired"
   if (opts.pipeline === "offer") return "Offer"
   if (opts.pipeline === "interview") return "Interview"
+  if (opts.pipeline === "shortlisted") return "Shortlisted"
   if (opts.hasMatch) return "Chatting"
   if (opts.viewed) return "Viewed"
   return "Applied"

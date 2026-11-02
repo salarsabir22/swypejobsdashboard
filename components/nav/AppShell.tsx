@@ -10,6 +10,12 @@ export function AppShell({ user, children }: { user: AppShellUser; children: Rea
 
   return (
     <div className="min-h-screen overflow-x-hidden apple-grouped-bg text-foreground selection:bg-primary/20">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+      >
+        Skip to content
+      </a>
       <AppNav
         role={user.role}
         userId={user.userId}
@@ -18,9 +24,13 @@ export function AppShell({ user, children }: { user: AppShellUser; children: Rea
         avatarUrl={user.avatarUrl}
         shareTitle={user.shareTitle}
         adminModules={user.adminModules}
+        isAlumni={user.isAlumni}
       />
 
-      <main className={cn("min-w-0 pt-16", signedIn && user.role !== "admin" && user.role !== "university" && "lg:pb-0")}>
+      <main
+        id="main-content"
+        className={cn("min-w-0 pt-16", signedIn && user.role !== "admin" && user.role !== "university" && "lg:pb-0")}
+      >
         <AppMain>{children}</AppMain>
         {signedIn ? <AppFooter role={user.role} /> : null}
       </main>

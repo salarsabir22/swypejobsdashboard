@@ -5,6 +5,7 @@ import { employerRisk } from "@/lib/admin/flags"
 import { AdminFrame } from "@/components/admin/AdminFrame"
 import { BulkEmployerApprove } from "@/components/admin/BulkEmployerApprove"
 import { EmployerDecision } from "@/components/admin/EmployerDecision"
+import { ExportButton } from "@/components/admin/ExportButton"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -131,6 +132,7 @@ export default async function AdminEmployersPage({
           {status === "all" ? ` · ${pendingCount} pending on this page` : null}
         </p>
         <BulkEmployerApprove pendingIds={recruiters.filter((row) => !row.is_approved).map((row) => row.id)} />
+        <ExportButton dataset="employers" label="Export CSV" />
       </div>
 
       <div className="space-y-4">

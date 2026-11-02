@@ -4,6 +4,7 @@ import { formatDate } from "@/lib/utils"
 import { applicationStatus } from "@/lib/match/fit"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
 import { StudentApplicationList } from "./StudentApplicationList"
 
 type JobJoin = {
@@ -79,7 +80,7 @@ export async function StudentMatchesView({ userId }: { userId: string }) {
   }
   const matchByJob = new Map(matches.map((m) => [m.job_id, m]))
 
-  const statusCounts = { Applied: 0, Viewed: 0, Chatting: 0, Interview: 0, Offer: 0, Hired: 0, Closed: 0 }
+  const statusCounts = { Applied: 0, Viewed: 0, Chatting: 0, Shortlisted: 0, Interview: 0, Offer: 0, Hired: 0, Closed: 0 }
   const rows = applications.map((app) => {
     const match = matchByJob.get(app.job_id)
     const recruiterId = app.jobs?.recruiter_id
@@ -100,21 +101,22 @@ export async function StudentMatchesView({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-8">
-      <header className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0 space-y-1">
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-[2.25rem]">Applications</h1>
-          <p className="font-body text-sm text-muted-foreground">
-            {applications.length === 0
-              ? "Apply from Discover. Status moves from applied to chatting when a recruiter likes you back."
-              : `${applications.length} application${applications.length !== 1 ? "s" : ""} · ${matches.length} mutual match${matches.length !== 1 ? "es" : ""}.`}
-          </p>
-        </div>
-        {withChat > 0 ? (
-          <Button asChild>
-            <Link href="/chat">Open inbox</Link>
-          </Button>
-        ) : null}
-      </header>
+      <DashboardPageHeader
+        eyebrow="Hiring"
+        title="Applications"
+        description={
+          applications.length === 0
+            ? "Apply from Discover. Status moves from applied to chatting when a recruiter likes you back."
+            : `${applications.length} application${applications.length !== 1 ? "s" : ""} · ${matches.length} mutual match${matches.length !== 1 ? "es" : ""}.`
+        }
+        action={
+          withChat > 0 ? (
+            <Button asChild>
+              <Link href="/chat">Open inbox</Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
@@ -143,8 +145,10 @@ export async function StudentMatchesView({ userId }: { userId: string }) {
               { label: "Saved", value: savedCount },
               { label: "Viewed", value: statusCounts.Viewed },
               { label: "Chatting", value: statusCounts.Chatting },
+              { label: "Shortlisted", value: statusCounts.Shortlisted },
               { label: "Interview", value: statusCounts.Interview },
               { label: "Offer", value: statusCounts.Offer },
+              { label: "Hired", value: statusCounts.Hired },
             ].map(({ label, value }) => (
               <div key={label} className="min-w-[4.5rem]">
                 <p className="font-heading text-lg font-semibold tabular-nums text-foreground">{value}</p>

@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -17,16 +17,16 @@ const buttonVariants = cva(
           "border-2 border-primary bg-transparent text-primary shadow-none hover:bg-secondary hover:text-primary",
         secondary:
           "bg-secondary text-secondary-foreground shadow-none hover:bg-secondary/90",
-        ghost: "rounded-lg hover:bg-accent hover:text-accent-foreground",
-        link: "rounded-lg text-primary underline-offset-4 hover:underline",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
         gradient:
           "bg-primary text-primary-foreground shadow-none hover:bg-[var(--clearpath-navy-hover)] active:scale-[0.98] transition-all duration-300",
       },
       size: {
         default: "h-10 px-5 py-2 text-[15px]",
-        sm: "h-9 rounded-lg px-3 text-xs",
+        sm: "h-9 px-3.5 text-xs",
         lg: "h-14 px-8 text-[18px] font-medium",
-        icon: "h-10 w-10 rounded-full",
+        icon: "h-10 w-10 p-0",
       },
     },
     defaultVariants: {
@@ -66,7 +66,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size }), className)}
         ref={ref}
         disabled={isDisabled}
         aria-busy={loading || undefined}

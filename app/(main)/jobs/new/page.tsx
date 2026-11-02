@@ -1,5 +1,5 @@
-import { JobEditor } from "@/components/jobs/JobEditor"
+import { NewJobFlow } from "@/components/jobs/NewJobFlow"
 
 export default function NewJobPage() {
-  return <JobEditor />
+  return <NewJobFlow />
 }

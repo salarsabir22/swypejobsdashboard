@@ -3,6 +3,7 @@ import { loadAdminSnapshot } from "@/lib/admin/metrics"
 import { AdminFrame } from "@/components/admin/AdminFrame"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { ExportCsvButton } from "@/components/campus/CampusActions"
+import { ReportExportPanel } from "@/components/admin/ExportButton"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 
 export default async function AdminAnalyticsPage() {
@@ -35,6 +36,12 @@ export default async function AdminAnalyticsPage() {
       staffRole={admin.staffRole}
       mode="observability"
     >
+      <DashboardPanel
+        title="Reports"
+        description="Monthly, quarterly, or annual CSVs of employers, job postings, students, applications, and placements for NBEAC / HEC / internal audits."
+      >
+        <ReportExportPanel />
+      </DashboardPanel>
       <DashboardPanel title="Export current snapshot">
         <div className="flex flex-wrap gap-2">
           <ExportCsvButton filename={`platform-snapshot-${generatedAt.slice(0, 10)}.csv`} rows={rows} />

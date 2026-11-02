@@ -232,7 +232,7 @@ export async function RecruiterDashboardView({ userId, fullName }: { userId: str
             "Hiring overview"
           )
         }
-        description="Inbound interest, pipeline stages, and role performance from your live postings."
+        description="Post a job in two clicks. Partnerships control which campuses see partner-only listings."
         action={
           <Button asChild variant="outline" className="rounded-full">
             <Link href="/jobs/new">

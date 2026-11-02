@@ -9,6 +9,9 @@ import { fmtNum, fmtPct } from "@/lib/campus/format"
 import { Activity, AlertTriangle, Briefcase, Building2, GraduationCap, HeartPulse, UserPlus, Users } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { ExportButton } from "@/components/admin/ExportButton"
+import { EXPORT_DATASETS, EXPORT_LABEL, EXPORT_MODULE } from "@/lib/admin/export"
+import { canAccessModule } from "@/lib/admin/modules"
 
 export default async function AdminHomePage() {
   const admin = await requireAdminModule("home")
@@ -41,7 +44,7 @@ export default async function AdminHomePage() {
           <ul className="space-y-2">
             {needs.map((item) => (
               <li key={item.href + item.label}>
-                <Button asChild variant="outline" className="h-auto w-full justify-start rounded-2xl px-4 py-3 text-left">
+                <Button asChild variant="outline" className="h-auto w-full justify-start whitespace-normal rounded-2xl px-4 py-3 text-left">
                   <Link href={item.href}>{item.label}</Link>
                 </Button>
               </li>
@@ -113,6 +116,14 @@ export default async function AdminHomePage() {
           <Link href="/admin/safety?status=open">Safety inbox</Link>
         </Button>
       </div>
+
+      <DashboardPanel title="Export" description="One click, full dataset, CSV. Date-ranged reports live under Analytics.">
+        <div className="flex flex-wrap gap-2">
+          {EXPORT_DATASETS.filter((d) => canAccessModule(admin.modules, EXPORT_MODULE[d])).map((dataset) => (
+            <ExportButton key={dataset} dataset={dataset} label={EXPORT_LABEL[dataset]} />
+          ))}
+        </div>
+      </DashboardPanel>
 
       <DashboardFunnel title="Install → application" stages={snap.traffic.funnel} />
 

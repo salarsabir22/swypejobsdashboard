@@ -30,7 +30,7 @@ export function AppBottomNav({ role }: { role: UserRole | "admin" }) {
               asChild
               variant="ghost"
               className={cn(
-                "h-auto min-w-0 flex-1 flex-col gap-0.5 rounded-md px-0 py-1 text-[10px] font-medium leading-none tracking-tight shadow-none",
+                "h-auto min-w-0 shrink flex-1 flex-col gap-0.5 rounded-md px-0 py-1 text-[10px] font-medium leading-none tracking-tight shadow-none",
                 "[&_svg]:size-5",
                 active ? "text-primary hover:bg-accent hover:text-primary" : "text-muted-foreground"
               )}

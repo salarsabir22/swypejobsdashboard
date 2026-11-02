@@ -45,6 +45,7 @@ function getPasswordStrength(pw: string): PasswordStrength {
 }
 
 type SignupRole = "student" | "recruiter" | "university"
+type PickedRole = SignupRole | "alumni"
 
 const STAFF_ROLES = [
   { id: "director", label: "Career services director" },
@@ -52,18 +53,22 @@ const STAFF_ROLES = [
   { id: "dean", label: "Dean" },
 ] as const
 
-const ROLE_INFO: Record<SignupRole, { label: string; description: string }> = {
+const ROLE_INFO: Record<PickedRole, { label: string; description: string }> = {
   student: {
     label: "Student",
-    description: "Browse roles, get matched, message when it’s mutual.",
+    description: "Browse roles, swipe, apply, and track applications.",
+  },
+  alumni: {
+    label: "Alumni",
+    description: "Same workspace as students, plus employment history and mentorship.",
   },
   recruiter: {
-    label: "Recruiter",
-    description: "Post jobs and shortlist candidates. Account review may apply.",
+    label: "Employer",
+    description: "Post jobs for free and shortlist candidates. Account review may apply.",
   },
   university: {
-    label: "University",
-    description: "Career office outcomes, students, and employers.",
+    label: "Career office",
+    description: "Approvals, curated jobs, partnerships, and campus reports.",
   },
 }
 
@@ -73,6 +78,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState<SignupRole>("student")
+  const [alumniIntent, setAlumniIntent] = useState(false)
   const [university, setUniversity] = useState("")
   const [staffRole, setStaffRole] = useState<(typeof STAFF_ROLES)[number]["id"]>("advisor")
   const [loading, setLoading] = useState(false)
@@ -85,7 +91,13 @@ export default function SignupPage() {
 
   useEffect(() => {
     const picked = new URLSearchParams(window.location.search).get("role")
-    if (picked === "student" || picked === "recruiter" || picked === "university") setRole(picked)
+    if (picked === "alumni") {
+      setRole("student")
+      setAlumniIntent(true)
+    } else if (picked === "student" || picked === "recruiter" || picked === "university") {
+      setRole(picked)
+      setAlumniIntent(false)
+    }
   }, [])
 
   const validate = () => {
@@ -154,9 +166,13 @@ export default function SignupPage() {
         return
       }
       localStorage.setItem("pending_role", role)
+      if (alumniIntent) localStorage.setItem("pending_alumni", "1")
       const applied = await applySignupRole(supabase, userId, role, {
         fullName: fullName.trim(),
       })
+      if (alumniIntent) {
+        await supabase.from("student_profiles").upsert({ id: userId, is_alumni: true }, { onConflict: "id" })
+      }
       const { data: check } = await supabase.from("profiles").select("role").eq("id", userId).maybeSingle()
       if (check?.role !== applied) {
         await supabase.from("profiles").update({ role: applied }).eq("id", userId)
@@ -165,6 +181,7 @@ export default function SignupPage() {
     } else if (data.user) {
       // Email confirm required — keep role in metadata (already set) and pending for after verify.
       localStorage.setItem("pending_role", role)
+      if (alumniIntent) localStorage.setItem("pending_alumni", "1")
       if (role === "university") {
         localStorage.setItem("pending_university", university.trim())
         localStorage.setItem("pending_staff_role", staffRole)
@@ -183,6 +200,7 @@ export default function SignupPage() {
       return
     }
     localStorage.setItem("pending_role", role)
+    if (alumniIntent) localStorage.setItem("pending_alumni", "1")
     if (role === "university") {
       localStorage.setItem("pending_university", university.trim())
       localStorage.setItem("pending_staff_role", staffRole)
@@ -254,16 +272,24 @@ export default function SignupPage() {
       <div>
         <div className="mb-5">
           <p className="mb-2 text-sm font-medium text-foreground">I am joining as…</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {(["student", "recruiter", "university"] as SignupRole[]).map((r) => {
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {(["student", "alumni", "recruiter", "university"] as PickedRole[]).map((r) => {
               const { label, description } = ROLE_INFO[r]
-              const active = role === r
+              const active = r === "alumni" ? alumniIntent : role === r && !alumniIntent
               return (
                 <Button
                   key={r}
                   type="button"
                   variant={active ? "secondary" : "outline"}
-                  onClick={() => setRole(r)}
+                  onClick={() => {
+                    if (r === "alumni") {
+                      setRole("student")
+                      setAlumniIntent(true)
+                    } else {
+                      setRole(r)
+                      setAlumniIntent(false)
+                    }
+                  }}
                   className={cn(
                     "h-auto whitespace-normal rounded-2xl px-3.5 py-3 text-left",
                     active
@@ -306,7 +332,7 @@ export default function SignupPage() {
           loadingText="Connecting…"
         >
           <GoogleIcon />
-          Google - {ROLE_INFO[role].label}
+          Google - {ROLE_INFO[alumniIntent ? "alumni" : role].label}
         </Button>
 
         <div className="relative mb-4 flex items-center gap-3">

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { ResumeStudio } from "@/components/resume/ResumeStudio"
 import { parseCoverLetters, parseResumeLibrary } from "@/lib/resume/schema"
+import { parseCareerHistory } from "@/lib/profile/career"
 import type { ResumeTargetJob } from "@/lib/resume/insights"
 
 export default async function ResumePage({
@@ -23,11 +24,20 @@ export default async function ResumePage({
     .maybeSingle()
   if (profile?.role !== "student") redirect("/profile")
 
-  const studentQuery = await supabase
+  let studentQuery = await supabase
     .from("student_profiles")
-    .select("university, degree, graduation_year, skills, linkedin_url, github_url, portfolio_url, resume_document, cover_letters")
+    .select(
+      "university, degree, graduation_year, skills, linkedin_url, github_url, portfolio_url, resume_document, cover_letters, work_history, projects, certifications"
+    )
     .eq("id", user.id)
     .maybeSingle()
+  if (studentQuery.error) {
+    studentQuery = await supabase
+      .from("student_profiles")
+      .select("university, degree, graduation_year, skills, linkedin_url, github_url, portfolio_url, resume_document, cover_letters")
+      .eq("id", user.id)
+      .maybeSingle()
+  }
   const student = studentQuery.error
     ? (
         await supabase
@@ -37,6 +47,7 @@ export default async function ResumePage({
           .maybeSingle()
       ).data
     : studentQuery.data
+  const career = parseCareerHistory(student as { work_history?: unknown; projects?: unknown; certifications?: unknown } | null)
 
   const { data: swipes } = await supabase
     .from("job_swipes")
@@ -88,6 +99,9 @@ export default async function ResumePage({
           linkedinUrl: student?.linkedin_url,
           githubUrl: student?.github_url,
           portfolioUrl: student?.portfolio_url,
+          work: career.work,
+          projects: career.projects,
+          certificates: career.certifications,
         }}
         initialDocuments={parseResumeLibrary((student as { resume_document?: unknown } | null)?.resume_document)}
         initialLetters={parseCoverLetters((student as { cover_letters?: unknown } | null)?.cover_letters)}

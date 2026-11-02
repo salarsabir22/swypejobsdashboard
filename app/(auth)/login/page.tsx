@@ -140,7 +140,23 @@ export default function LoginPage() {
       <h1 className="text-[clamp(2rem,4vw,2.6rem)] font-semibold leading-[1.02] tracking-[-0.045em]">
         Welcome back
       </h1>
-      <p className="mt-2 text-[15px] text-muted-foreground">Sign in to swypejobs.</p>
+      <p className="mt-2 text-[15px] text-muted-foreground">Sign in to SwypeJobs.</p>
+      <div className="mt-6 grid grid-cols-2 gap-2 text-[13px]">
+        {[
+          { href: "/signup?role=student", label: "Student" },
+          { href: "/signup?role=alumni", label: "Alumni" },
+          { href: "/signup?role=recruiter", label: "Employer" },
+          { href: "/signup?role=university", label: "Career office" },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="rounded-full border border-border px-3 py-2 text-center font-medium hover:bg-secondary"
+          >
+            {item.label} signup
+          </Link>
+        ))}
+      </div>
 
       {error && (
         <Alert variant="destructive" className="mt-6">

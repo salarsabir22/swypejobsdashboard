@@ -18,11 +18,14 @@ export function StudentJobActions({
   jobId,
   jobTitle,
   screeningQuestions,
+  closed = false,
 }: {
   userId: string
   jobId: string
   jobTitle: string
   screeningQuestions?: unknown
+  /** Application deadline has passed; only existing responses are shown. */
+  closed?: boolean
 }) {
   const router = useRouter()
   const { toast } = useToast()
@@ -140,16 +143,31 @@ export function StudentJobActions({
     )
   }
 
+  if (closed) {
+    return (
+      <Card className="shadow-sm">
+        <CardContent className="space-y-4 p-5">
+          <p className="font-body text-sm text-muted-foreground">
+            Applications for this role have closed. You can still browse similar openings.
+          </p>
+          <Button className="rounded-full" asChild>
+            <Link href="/discover">Discover more roles</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const busy = loadingState === "act"
 
   return (
     <div className="space-y-4">
       <p className="font-body text-sm text-muted-foreground">Apply, save for later, or pass.</p>
-      <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
         <Button
           type="button"
           variant="outline"
-          className="h-12 flex-1 gap-2 rounded-xl"
+          className="h-12 min-w-[6.5rem] flex-1 gap-2 rounded-xl"
           disabled={busy}
           loading={pendingAction === "left"}
           loadingText="Passing…"
@@ -161,7 +179,7 @@ export function StudentJobActions({
         <Button
           type="button"
           variant="secondary"
-          className="h-12 flex-1 gap-2 rounded-xl"
+          className="h-12 min-w-[6.5rem] flex-1 gap-2 rounded-xl"
           disabled={busy}
           loading={pendingAction === "saved"}
           loadingText="Saving…"
@@ -172,7 +190,7 @@ export function StudentJobActions({
         </Button>
         <Button
           type="button"
-          className="h-12 flex-1 gap-2 rounded-xl"
+          className="h-12 min-w-[6.5rem] flex-1 gap-2 rounded-xl"
           disabled={busy}
           loading={pendingAction === "right"}
           loadingText="Applying…"

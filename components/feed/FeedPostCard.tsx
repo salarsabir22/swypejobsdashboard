@@ -510,14 +510,14 @@ export function FeedPostCard({
 
       <div className="grid grid-cols-3 border-t border-border">
         <FeedReactButton current={myReaction} onReact={onReact} />
-        <Button type="button" variant="ghost" className="h-11 rounded-none px-1 font-heading text-xs sm:px-3 sm:text-sm" onClick={onToggleComments}>
+        <Button type="button" variant="ghost" className="h-11 min-w-0 w-full shrink rounded-none px-1 font-heading text-xs sm:px-3 sm:text-sm" onClick={onToggleComments}>
           <MessageCircle className="h-4 w-4" />
           Comment
         </Button>
         <Button
           type="button"
           variant="ghost"
-          className="h-11 rounded-none px-1 font-heading text-xs sm:px-3 sm:text-sm"
+          className="h-11 min-w-0 w-full shrink rounded-none px-1 font-heading text-xs sm:px-3 sm:text-sm"
           onClick={() => setShareOpen(true)}
         >
           <Repeat2 className="h-4 w-4" />
