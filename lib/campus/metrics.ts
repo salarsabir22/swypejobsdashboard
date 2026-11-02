@@ -14,7 +14,8 @@ import {
   workMode,
 } from "@/lib/campus/helpers"
 
-const LIMIT = 4000
+const LIMIT = 800
+const IN_CAP = 400
 const OFFER = new Set(["offer", "hired"])
 const INTERVIEW = new Set(["interview", "offer", "hired"])
 
@@ -74,42 +75,8 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
   const university = universityFilter ?? access.university
   const missingTables: string[] = []
 
-  let studentsQuery = supabase
-    .from("student_profiles")
-    .select("id, university, degree, graduation_year, institution_type, skills, preferred_job_categories, resume_url, created_at, updated_at, profiles(full_name, created_at, updated_at)")
-    .limit(LIMIT)
-  if (university) studentsQuery = studentsQuery.eq("university", university)
-
-  const studentsRes = await studentsQuery
-  const students = (studentsRes.data || []) as StudentRow[]
-  const studentIds = students.map((s) => s.id)
-  const studentMap = new Map(students.map((s) => [s.id, s]))
-
-  const [swipesRes, matchesRes, jobsRes, recruitersRes] = await Promise.all([
-    studentIds.length
-      ? supabase.from("job_swipes").select("student_id, job_id, direction, created_at").in("student_id", studentIds.slice(0, 2000)).limit(LIMIT)
-      : Promise.resolve({ data: [] as SwipeRow[] }),
-    studentIds.length
-      ? supabase.from("matches").select("student_id, recruiter_id, job_id, pipeline_status, created_at").in("student_id", studentIds.slice(0, 2000)).limit(LIMIT)
-      : Promise.resolve({ data: [] as MatchRow[] }),
-    supabase
-      .from("jobs")
-      .select("id, recruiter_id, title, job_type, category, location, is_remote, is_active, required_skills, created_at")
-      .limit(LIMIT),
-    supabase
-      .from("recruiter_profiles")
-      .select("id, company_name, employee_count, industry, is_approved, created_at")
-      .eq("is_approved", true)
-      .limit(LIMIT),
-  ])
-
-  const swipes = (swipesRes.data || []) as SwipeRow[]
-  const matches = (matchesRes.data || []) as MatchRow[]
-  const jobs = (jobsRes.data || []) as JobRow[]
-  const recruiters = (recruitersRes.data || []) as RecruiterRow[]
-  const jobMap = new Map(jobs.map((j) => [j.id, j]))
-  const recruiterMap = new Map(recruiters.map((r) => [r.id, r]))
-  const activeJobs = jobs.filter((j) => j.is_active)
+  const uni = university || ""
+  const emptyId = "00000000-0000-0000-0000-000000000000"
 
   async function optional<T>(table: string, exec: () => PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
     const { data, error } = await exec()
@@ -120,43 +87,93 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
     return data || []
   }
 
-  const uni = university || ""
-  const outcomes = await optional("campus_outcomes", () => {
-    let q = supabase.from("campus_outcomes").select("*").limit(LIMIT)
-    if (uni) q = q.eq("university", uni)
-    return q
-  })
-  const demographics = await optional("campus_demographics", () =>
-    supabase.from("campus_demographics").select("*").in("student_id", studentIds.length ? studentIds.slice(0, 2000) : ["00000000-0000-0000-0000-000000000000"]).limit(LIMIT)
-  )
-  const events = await optional("campus_events", () => {
-    let q = supabase.from("campus_events").select("*").limit(200)
-    if (uni) q = q.eq("university", uni)
-    return q
-  })
-  const rsvps = await optional("campus_event_rsvps", () =>
-    supabase.from("campus_event_rsvps").select("event_id, student_id, hired_from_event").limit(LIMIT)
-  )
-  const appointments = await optional("campus_appointments", () => {
-    let q = supabase.from("campus_appointments").select("*").limit(LIMIT)
-    if (uni) q = q.eq("university", uni)
-    return q
-  })
-  const reviews = await optional("campus_resume_reviews", () => {
-    let q = supabase.from("campus_resume_reviews").select("*").limit(LIMIT)
-    if (uni) q = q.eq("university", uni)
-    return q
-  })
-  const surveys = await optional("campus_surveys", () => {
-    let q = supabase.from("campus_surveys").select("*").limit(LIMIT)
-    if (uni) q = q.eq("university", uni)
-    return q
-  })
-  const partners = await optional("campus_employer_partners", () => {
-    let q = supabase.from("campus_employer_partners").select("*").limit(200)
-    if (uni) q = q.eq("university", uni)
-    return q
-  })
+  let studentsQuery = supabase
+    .from("student_profiles")
+    .select("id, university, degree, graduation_year, institution_type, skills, preferred_job_categories, resume_url, created_at, updated_at, profiles(full_name, created_at, updated_at)")
+    .limit(LIMIT)
+  if (university) studentsQuery = studentsQuery.eq("university", university)
+
+  const [studentsRes, jobsRes, recruitersRes, outcomes, events, appointments, reviews, surveys, partners] = await Promise.all([
+    studentsQuery,
+    supabase
+      .from("jobs")
+      .select("id, recruiter_id, title, job_type, category, location, is_remote, is_active, required_skills, created_at")
+      .order("created_at", { ascending: false })
+      .limit(LIMIT),
+    supabase
+      .from("recruiter_profiles")
+      .select("id, company_name, employee_count, industry, is_approved, created_at")
+      .eq("is_approved", true)
+      .limit(LIMIT),
+    optional("campus_outcomes", () => {
+      let q = supabase
+        .from("campus_outcomes")
+        .select("student_id, checkpoint, status, internship_converted, industry, job_title, location, employer_type, requires_degree, cohort_year, salary")
+        .limit(LIMIT)
+      if (uni) q = q.eq("university", uni)
+      return q
+    }),
+    optional("campus_events", () => {
+      let q = supabase.from("campus_events").select("id, title, kind").limit(80)
+      if (uni) q = q.eq("university", uni)
+      return q
+    }),
+    optional("campus_appointments", () => {
+      let q = supabase.from("campus_appointments").select("status, created_at, starts_at, advisor_id").limit(LIMIT)
+      if (uni) q = q.eq("university", uni)
+      return q
+    }),
+    optional("campus_resume_reviews", () => {
+      let q = supabase.from("campus_resume_reviews").select("id").limit(LIMIT)
+      if (uni) q = q.eq("university", uni)
+      return q
+    }),
+    optional("campus_surveys", () => {
+      let q = supabase.from("campus_surveys").select("target, nps").limit(LIMIT)
+      if (uni) q = q.eq("university", uni)
+      return q
+    }),
+    optional("campus_employer_partners", () => {
+      let q = supabase.from("campus_employer_partners").select("recruiter_id, tier").limit(80)
+      if (uni) q = q.eq("university", uni)
+      return q
+    }),
+  ])
+
+  const students = (studentsRes.data || []) as StudentRow[]
+  const studentIds = students.map((s) => s.id)
+  const studentMap = new Map(students.map((s) => [s.id, s]))
+  const scopedIds = studentIds.length ? studentIds.slice(0, IN_CAP) : [emptyId]
+  const eventIds = events.map((e) => (e as { id: string }).id).filter(Boolean).slice(0, 80)
+
+  const [swipesRes, matchesRes, demographics, rsvps] = await Promise.all([
+    studentIds.length
+      ? supabase.from("job_swipes").select("student_id, job_id, direction, created_at").in("student_id", scopedIds).limit(LIMIT)
+      : Promise.resolve({ data: [] as SwipeRow[] }),
+    studentIds.length
+      ? supabase.from("matches").select("student_id, recruiter_id, job_id, pipeline_status, created_at").in("student_id", scopedIds).limit(LIMIT)
+      : Promise.resolve({ data: [] as MatchRow[] }),
+    optional("campus_demographics", () =>
+      supabase
+        .from("campus_demographics")
+        .select("student_id, consent_at, first_gen, disability, pell_or_low_income, international, gender, race_ethnicity, work_auth, veteran, transfer_student")
+        .in("student_id", scopedIds)
+        .limit(LIMIT)
+    ),
+    optional("campus_event_rsvps", () =>
+      eventIds.length
+        ? supabase.from("campus_event_rsvps").select("event_id, student_id, hired_from_event").in("event_id", eventIds).limit(LIMIT)
+        : Promise.resolve({ data: [], error: null })
+    ),
+  ])
+
+  const swipes = (swipesRes.data || []) as SwipeRow[]
+  const matches = (matchesRes.data || []) as MatchRow[]
+  const jobs = (jobsRes.data || []) as JobRow[]
+  const recruiters = (recruitersRes.data || []) as RecruiterRow[]
+  const jobMap = new Map(jobs.map((j) => [j.id, j]))
+  const recruiterMap = new Map(recruiters.map((r) => [r.id, r]))
+  const activeJobs = jobs.filter((j) => j.is_active)
 
   const currentYear = new Date().getFullYear()
   const seniors = students.filter((s) => s.graduation_year === currentYear || s.graduation_year === currentYear + 1)

@@ -31,7 +31,8 @@ export const getRequestUser = cache(async () => {
   return { supabase, user }
 })
 
-export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): Promise<AppShellUser> {
+/** Primitive arg so layout + page share one React cache entry per request. */
+export const loadAppShellUser = cache(async (requireOnboarding = false): Promise<AppShellUser> => {
   const { supabase, user } = await getRequestUser()
 
   const empty: AppShellUser = {
@@ -64,16 +65,15 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
       .eq("id", user.id)
       .maybeSingle()
     if (company?.company_name) shareTitle = company.company_name
-    if (opts?.requireOnboarding && !isRecruiterOnboardingComplete(company)) redirect("/onboarding")
+    if (requireOnboarding && !isRecruiterOnboardingComplete(company)) redirect("/onboarding")
   } else if (role === "student") {
     const { data: student } = await supabase
       .from("student_profiles")
-      .select(STUDENT_ONBOARDING_SELECT)
+      .select(`${STUDENT_ONBOARDING_SELECT}, is_alumni`)
       .eq("id", user.id)
       .maybeSingle()
-    if (opts?.requireOnboarding && !isStudentOnboardingComplete(student)) redirect("/onboarding")
-    const alumniRes = await supabase.from("student_profiles").select("is_alumni").eq("id", user.id).maybeSingle()
-    isAlumni = alumniRes.data?.is_alumni === true
+    if (requireOnboarding && !isStudentOnboardingComplete(student)) redirect("/onboarding")
+    isAlumni = (student as { is_alumni?: boolean } | null)?.is_alumni === true
   } else if (role === "admin") {
     const { data: staff, error: staffError } = await supabase
       .from("platform_staff")
@@ -96,4 +96,4 @@ export async function loadAppShellUser(opts?: { requireOnboarding?: boolean }): 
     adminModules,
     isAlumni,
   }
-}
+})

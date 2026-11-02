@@ -15,7 +15,7 @@ import { skillGaps } from "@/lib/profile/skill-gap"
 import { formatDate } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { daysLastN, shortDayLabel } from "@/lib/dashboard/time-series"
-import { matchRatePercent, weekOverWeekHint } from "@/lib/dashboard/period-metrics"
+import { countCreatedBetween, matchRatePercent, weekOverWeekHint } from "@/lib/dashboard/period-metrics"
 import { conversationChatHref } from "@/lib/dashboard/chat-links"
 import { coalesceRelation } from "@/lib/dashboard/relations"
 
@@ -73,13 +73,12 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
     recentMatchesRes,
     swipesTimelineRes,
     matchesTimelineRes,
-    appliedLast7Res,
-    appliedPrev7Res,
     profileViewsCountRes,
     profileViewsRes,
     profileRes,
     studentRes,
     matchStatusRes,
+    openRolesRes,
   ] = await Promise.all([
     supabase.from("job_swipes").select("id", { count: "exact", head: true }).eq("student_id", userId).eq("direction", "right"),
     supabase.from("job_swipes").select("id", { count: "exact", head: true }).eq("student_id", userId).eq("direction", "saved"),
@@ -104,21 +103,8 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
       .select("created_at, direction")
       .eq("student_id", userId)
       .gte("created_at", since)
-      .limit(500),
-    supabase.from("matches").select("created_at").eq("student_id", userId).gte("created_at", since).limit(500),
-    supabase
-      .from("job_swipes")
-      .select("id", { count: "exact", head: true })
-      .eq("student_id", userId)
-      .eq("direction", "right")
-      .gte("created_at", since7),
-    supabase
-      .from("job_swipes")
-      .select("id", { count: "exact", head: true })
-      .eq("student_id", userId)
-      .eq("direction", "right")
-      .gte("created_at", since14)
-      .lt("created_at", since7),
+      .limit(400),
+    supabase.from("matches").select("created_at").eq("student_id", userId).gte("created_at", since).limit(400),
     supabase.from("profile_views").select("id", { count: "exact", head: true }).eq("student_id", userId),
     supabase
       .from("profile_views")
@@ -132,7 +118,8 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
       .select("university, skills, preferred_job_categories, resume_url, linkedin_url")
       .eq("id", userId)
       .maybeSingle(),
-    supabase.from("matches").select("job_id, pipeline_status, is_archived").eq("student_id", userId),
+    supabase.from("matches").select("pipeline_status, is_archived").eq("student_id", userId).limit(400),
+    supabase.from("jobs").select("category, required_skills").eq("is_active", true).limit(80),
   ])
 
   const applied = appliedRes.count || 0
@@ -141,28 +128,26 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
   const savedJobs = (savedJobsRes.data || []) as SavedJobRow[]
   const recentMatches = (recentMatchesRes.data || []) as MatchRow[]
 
-  const appliedLast7 = appliedLast7Res.count || 0
-  const appliedPrev7 = appliedPrev7Res.count || 0
+  const swipes = (swipesTimelineRes.data || []) as SwipeTimelineRow[]
+  const rightSwipes = swipes.filter((row) => row.direction === "right")
+  const appliedLast7 = countCreatedBetween(rightSwipes, since7)
+  const appliedPrev7 = countCreatedBetween(rightSwipes, since14, since7)
   const wowApplications = weekOverWeekHint(appliedLast7, appliedPrev7)
   const matchRate = matchRatePercent(matches, applied)
   const profileViewCount = profileViewsCountRes.count || 0
   const profileViewRows = (profileViewsRes.data || []) as ProfileViewRow[]
   const viewerIds = [...new Set(profileViewRows.map((row) => row.viewer_id))]
-  const { data: viewerRows } = viewerIds.length
-    ? await supabase.from("profiles").select("id, full_name, avatar_url, role").in("id", viewerIds)
-    : { data: [] as ViewerProfile[] }
-  const viewers = (viewerRows || []) as ViewerProfile[]
+  const [viewerRowsRes, companyRowsRes] = viewerIds.length
+    ? await Promise.all([
+        supabase.from("profiles").select("id, full_name, avatar_url, role").in("id", viewerIds),
+        supabase.from("recruiter_profiles").select("id, company_name, logo_url").in("id", viewerIds),
+      ])
+    : [{ data: [] as ViewerProfile[] }, { data: [] as CompanyLite[] }]
+  const viewers = (viewerRowsRes.data || []) as ViewerProfile[]
   const viewerById = new Map(viewers.map((p) => [p.id, p]))
-  const recruiterIds = viewers.filter((p) => p.role === "recruiter").map((p) => p.id)
-  // Fetch companies in the same tick when we already have recruiter ids (single hop).
-  const { data: companyRows } =
-    recruiterIds.length > 0
-      ? await supabase.from("recruiter_profiles").select("id, company_name, logo_url").in("id", recruiterIds)
-      : { data: [] as CompanyLite[] }
-  const companyById = new Map(((companyRows || []) as CompanyLite[]).map((c) => [c.id, c]))
+  const companyById = new Map(((companyRowsRes.data || []) as CompanyLite[]).map((c) => [c.id, c]))
 
   const days = daysLastN(30)
-  const swipes = (swipesTimelineRes.data || []) as SwipeTimelineRow[]
   const matchTimeline = (matchesTimelineRes.data || []) as MatchTimelineRow[]
 
   const activity = days.map((day) => {
@@ -196,7 +181,7 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
     linkedin: studentRes.data?.linkedin_url,
   })
 
-  const matchStatus = (matchStatusRes.data || []) as { job_id: string; pipeline_status?: string | null; is_archived?: boolean }[]
+  const matchStatus = (matchStatusRes.data || []) as { pipeline_status?: string | null; is_archived?: boolean }[]
   const interviewPlus = matchStatus.filter((m) =>
     ["interview", "offer", "hired"].includes(m.pipeline_status || "")
   ).length
@@ -256,8 +241,7 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
                 cta: "View applications",
               }
 
-  const { data: openRoles } = await supabase.from("jobs").select("category, required_skills").eq("is_active", true).limit(200)
-  const gaps = skillGaps(studentRes.data?.skills, openRoles || [], studentRes.data?.preferred_job_categories)
+  const gaps = skillGaps(studentRes.data?.skills, openRolesRes.data || [], studentRes.data?.preferred_job_categories)
 
   return (
     <div className="space-y-8">

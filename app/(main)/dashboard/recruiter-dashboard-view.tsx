@@ -15,7 +15,7 @@ import { recruiterCompleteness } from "@/lib/profile/completeness"
 import { formatDate } from "@/lib/utils"
 import { daysLastN, shortDayLabel } from "@/lib/dashboard/time-series"
 import { Button } from "@/components/ui/button"
-import { weekOverWeekHint } from "@/lib/dashboard/period-metrics"
+import { countCreatedBetween, weekOverWeekHint } from "@/lib/dashboard/period-metrics"
 import { conversationChatHref } from "@/lib/dashboard/chat-links"
 import { coalesceRelation } from "@/lib/dashboard/relations"
 
@@ -53,69 +53,52 @@ export async function RecruiterDashboardView({ userId, fullName }: { userId: str
   const since7 = sevenDaysAgo.toISOString()
   const since14 = fourteenDaysAgo.toISOString()
 
-  const [jobsRes, matchesRes, shortlistedRes, companyRes, profileRes, pipelineRes] = await Promise.all([
-    supabase
-      .from("jobs")
-      .select("id, title, is_active, created_at")
-      .eq("recruiter_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(100),
-    supabase.from("matches").select("id", { count: "exact", head: true }).eq("recruiter_id", userId),
-    supabase.from("matches").select("id", { count: "exact", head: true }).eq("recruiter_id", userId).eq("is_shortlisted", true),
-    supabase
-      .from("recruiter_profiles")
-      .select("logo_url, description, website_url, industry")
-      .eq("id", userId)
-      .maybeSingle(),
-    supabase.from("profiles").select("profile_video_url").eq("id", userId).maybeSingle(),
-    supabase.from("matches").select("pipeline_status, is_archived").eq("recruiter_id", userId).limit(500),
-  ])
-
-  const jobs = (jobsRes.data || []) as JobRow[]
-  const jobIds = jobs.map((j) => j.id)
-
-  const [applicationsRes, recentMatchesRes, appTimelineRes, matchTimelineRes, inbLast7Res, inbPrev7Res, jobViewsRes] =
+  const [jobsRes, matchesRes, shortlistedRes, companyRes, profileRes, pipelineRes, recentMatchesRes, matchTimelineRes] =
     await Promise.all([
-      jobIds.length > 0
-        ? supabase.from("job_swipes").select("job_id").in("job_id", jobIds).eq("direction", "right").limit(1000)
-        : Promise.resolve({ data: [] as JobSwipeRow[] }),
+      supabase
+        .from("jobs")
+        .select("id, title, is_active, created_at")
+        .eq("recruiter_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(40),
+      supabase.from("matches").select("id", { count: "exact", head: true }).eq("recruiter_id", userId),
+      supabase.from("matches").select("id", { count: "exact", head: true }).eq("recruiter_id", userId).eq("is_shortlisted", true),
+      supabase
+        .from("recruiter_profiles")
+        .select("logo_url, description, website_url, industry")
+        .eq("id", userId)
+        .maybeSingle(),
+      supabase.from("profiles").select("profile_video_url").eq("id", userId).maybeSingle(),
+      supabase.from("matches").select("pipeline_status, is_archived").eq("recruiter_id", userId).limit(400),
       supabase
         .from("matches")
         .select("id, created_at, profiles!matches_student_id_fkey(full_name, avatar_url), jobs(title), conversations(id)")
         .eq("recruiter_id", userId)
         .order("created_at", { ascending: false })
         .limit(8),
-      jobIds.length > 0
-        ? supabase
-            .from("job_swipes")
-            .select("created_at")
-            .in("job_id", jobIds)
-            .eq("direction", "right")
-            .gte("created_at", since)
-            .limit(500)
-        : Promise.resolve({ data: [] as CreatedRow[] }),
-      supabase.from("matches").select("created_at").eq("recruiter_id", userId).gte("created_at", since).limit(500),
-      jobIds.length > 0
-        ? supabase
-            .from("job_swipes")
-            .select("id", { count: "exact", head: true })
-            .in("job_id", jobIds)
-            .eq("direction", "right")
-            .gte("created_at", since7)
-        : Promise.resolve({ count: 0 }),
-      jobIds.length > 0
-        ? supabase
-            .from("job_swipes")
-            .select("id", { count: "exact", head: true })
-            .in("job_id", jobIds)
-            .eq("direction", "right")
-            .gte("created_at", since14)
-            .lt("created_at", since7)
-        : Promise.resolve({ count: 0 }),
-      jobIds.length > 0
-        ? supabase.from("job_views").select("job_id").in("job_id", jobIds).limit(1000)
-        : Promise.resolve({ data: [] as JobViewRow[] }),
+      supabase.from("matches").select("created_at").eq("recruiter_id", userId).gte("created_at", since).limit(400),
     ])
+
+  const jobs = (jobsRes.data || []) as JobRow[]
+  const jobIds = jobs.map((j) => j.id)
+
+  const [applicationsRes, appTimelineRes, jobViewsRes] = await Promise.all([
+    jobIds.length > 0
+      ? supabase.from("job_swipes").select("job_id").in("job_id", jobIds).eq("direction", "right").limit(800)
+      : Promise.resolve({ data: [] as JobSwipeRow[] }),
+    jobIds.length > 0
+      ? supabase
+          .from("job_swipes")
+          .select("created_at")
+          .in("job_id", jobIds)
+          .eq("direction", "right")
+          .gte("created_at", since)
+          .limit(400)
+      : Promise.resolve({ data: [] as CreatedRow[] }),
+    jobIds.length > 0
+      ? supabase.from("job_views").select("job_id").in("job_id", jobIds).limit(800)
+      : Promise.resolve({ data: [] as JobViewRow[] }),
+  ])
 
   const matches = matchesRes.count || 0
   const shortlisted = shortlistedRes.count || 0
@@ -123,9 +106,10 @@ export async function RecruiterDashboardView({ userId, fullName }: { userId: str
   const applications = (applicationsRes.data || []).length
   const recentMatches = (recentMatchesRes.data || []) as MatchRow[]
 
-  const applications30d = (appTimelineRes.data || []).length
-  const inbLast7 = inbLast7Res.count ?? 0
-  const inbPrev7 = inbPrev7Res.count ?? 0
+  const appRows = (appTimelineRes.data || []) as CreatedRow[]
+  const applications30d = appRows.length
+  const inbLast7 = countCreatedBetween(appRows, since7)
+  const inbPrev7 = countCreatedBetween(appRows, since14, since7)
   const wowInbound = weekOverWeekHint(inbLast7, inbPrev7)
 
   const perJobApps = new Map<string, number>()
@@ -139,7 +123,6 @@ export async function RecruiterDashboardView({ userId, fullName }: { userId: str
   }
 
   const days = daysLastN(30)
-  const appRows = (appTimelineRes.data || []) as CreatedRow[]
   const matchRows = (matchTimelineRes.data || []) as CreatedRow[]
 
   const timeline = days.map((day) => ({
