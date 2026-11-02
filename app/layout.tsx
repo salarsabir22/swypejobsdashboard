@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Outfit } from "next/font/google"
 import "./globals.css"
 import { Providers } from "@/components/providers"
+import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const outfit = Outfit({
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${outfit.variable} antialiased bg-background text-foreground font-sans selection:bg-primary/15`}
       >
         <Providers>{children}</Providers>
+        <Analytics />
         <SpeedInsights />
       </body>
     </html>
