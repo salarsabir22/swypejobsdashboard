@@ -58,8 +58,8 @@ export default function IobmGoogleSsoPage() {
 
   return (
     <div className="mx-auto max-w-md text-center">
-      <h1 className="text-2xl font-semibold tracking-[-0.04em]">Connecting to IoBM SSO</h1>
-      <p className="mt-3 text-sm text-white/70">
+      <h1 className="text-2xl font-semibold tracking-[-0.04em] text-[#051C2C]">Connecting to IoBM SSO</h1>
+      <p className="mt-3 text-sm text-[#051C2C]/65">
         {error || "You will be asked for your IoBM Google account."}
       </p>
     </div>

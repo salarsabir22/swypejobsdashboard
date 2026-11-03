@@ -72,25 +72,25 @@ export const IOBM_PORTAL_COPY: Record<
   { title: string; kicker: string; body: string; ssoLabel: string }
 > = {
   student: {
-    title: "Student login",
+    title: "Student Login",
     kicker: "Current IoBM students",
     body: "Discover jobs, swipe, apply, track internships, book advising, and RSVP to campus events with your IoBM account.",
     ssoLabel: "Continue with IoBM SSO",
   },
   alumni: {
-    title: "Alumni login",
+    title: "Alumni Login",
     kicker: "IoBM graduates",
     body: "Keep your student history, update employment outcomes, browse alumni roles, and opt in to mentorship.",
     ssoLabel: "Continue with IoBM SSO",
   },
   faculty: {
-    title: "Faculty and staff login",
+    title: "Faculty/Staff Login",
     kicker: "CDC, advisors, faculty, coordinators",
     body: "Enter through campus SSO. Your IoBM role maps to CDC Super Admin, advisor, coordinator, faculty, dean, or auditor access.",
     ssoLabel: "Continue with IoBM SSO",
   },
   employer: {
-    title: "Employer login",
+    title: "Employer Login",
     kicker: "Hiring partners",
     body: "Employers do not use campus SSO. Sign in with a work email, then request or accept an IoBM CDC partnership to post roles.",
     ssoLabel: "Employer sign in",

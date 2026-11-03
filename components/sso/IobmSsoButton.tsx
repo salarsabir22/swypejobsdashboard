@@ -42,7 +42,11 @@ export function IobmSsoButton({
     <Button
       type="button"
       variant={variant}
-      className="h-12 w-full min-h-11 text-[15px] font-semibold"
+      className={
+        variant === "outline"
+          ? "h-12 min-h-11 w-full rounded-xl border-2 border-[#051C2C] bg-transparent text-[15px] font-semibold text-[#051C2C] hover:bg-[#051C2C]/[0.04]"
+          : "h-12 min-h-11 w-full rounded-xl bg-[#051C2C] text-[15px] font-semibold text-white hover:bg-[#2251FF]"
+      }
       loading={loading}
       loadingText="Redirecting to IoBM…"
       onClick={start}

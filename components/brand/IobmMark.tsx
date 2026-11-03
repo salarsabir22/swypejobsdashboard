@@ -3,19 +3,22 @@ import { cn } from "@/lib/utils"
 
 export function IobmMark({
   className,
+  size = 56,
   priority = false,
 }: {
   className?: string
+  size?: number
   priority?: boolean
 }) {
   return (
     <Image
       src="/brand/iobm-logo.png"
       alt="Institute of Business Management"
-      width={220}
-      height={56}
+      width={size}
+      height={size}
       priority={priority}
-      className={cn("h-10 w-auto object-contain object-left sm:h-12", className)}
+      className={cn("rounded-xl object-cover", className)}
+      style={{ width: size, height: size }}
     />
   )
 }
