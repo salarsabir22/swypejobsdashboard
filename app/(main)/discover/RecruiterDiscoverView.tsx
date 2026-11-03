@@ -408,6 +408,12 @@ export function RecruiterDiscoverView({
 
   const filters = (
     <DiscoverFilters
+      searchHints={[
+        "Search by name…",
+        "Python or React…",
+        "LUMS or IoBM…",
+        "Class of 2026…",
+      ]}
       fields={[
         {
           id: "role",
@@ -637,7 +643,7 @@ export function RecruiterDiscoverView({
 
             <DiscoverKeysHint>← Pass · → Shortlist · Z Undo</DiscoverKeysHint>
 
-            <div className="flex shrink-0 flex-wrap items-end justify-center gap-5 pb-1 sm:gap-6">
+            <div className="flex shrink-0 flex-wrap items-end justify-center gap-5 pb-1 max-lg:mb-[var(--discover-filters-fab)] sm:gap-6">
               <div className="flex flex-col items-center gap-1">
                 <Button
                   type="button"

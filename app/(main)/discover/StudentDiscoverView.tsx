@@ -600,6 +600,12 @@ export function StudentDiscoverView({
     <DiscoverFilters
       fields={filterFields}
       title="Refine roles"
+      searchHints={[
+        "Search internships…",
+        "Junior software engineer…",
+        "Remote in Karachi…",
+        "Unilever or Folio3…",
+      ]}
       onClear={() => {
         setJobType("all")
         setRemote("all")
@@ -776,7 +782,7 @@ export function StudentDiscoverView({
 
             <DiscoverKeysHint>← Pass · → Apply · ↑ Save · Z Undo</DiscoverKeysHint>
 
-            <div className="flex shrink-0 flex-wrap items-end justify-center gap-4 pb-1 sm:gap-6">
+            <div className="flex shrink-0 flex-wrap items-end justify-center gap-4 pb-1 max-lg:mb-[var(--discover-filters-fab)] sm:gap-6">
               <div className="flex flex-col items-center gap-1">
                 <Button
                   type="button"
