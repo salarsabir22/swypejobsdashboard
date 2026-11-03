@@ -67,11 +67,19 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
     if (company?.company_name) shareTitle = company.company_name
     if (requireOnboarding && !isRecruiterOnboardingComplete(company)) redirect("/onboarding")
   } else if (role === "student") {
-    const { data: student } = await supabase
+    let { data: student, error: studentError } = await supabase
       .from("student_profiles")
       .select(`${STUDENT_ONBOARDING_SELECT}, is_alumni`)
       .eq("id", user.id)
       .maybeSingle()
+    if (studentError) {
+      const retry = await supabase
+        .from("student_profiles")
+        .select(STUDENT_ONBOARDING_SELECT)
+        .eq("id", user.id)
+        .maybeSingle()
+      student = retry.data
+    }
     if (requireOnboarding && !isStudentOnboardingComplete(student)) redirect("/onboarding")
     isAlumni = (student as { is_alumni?: boolean } | null)?.is_alumni === true
   } else if (role === "admin") {

@@ -41,6 +41,11 @@ export default function AuthCallbackPage() {
         return
       }
 
+      if (params.get("code")) {
+        window.location.replace(`/auth/callback?${params.toString()}`)
+        return
+      }
+
       const supabase = createClient()
       const accessToken = hash.get("access_token")
       const refreshToken = hash.get("refresh_token")
@@ -53,20 +58,6 @@ export default function AuthCallbackPage() {
           fail(error.message, portal)
           return
         }
-      } else {
-        const code = params.get("code")
-        if (!code) {
-          fail("Google sign-in did not complete. Try again.", portal)
-          return
-        }
-        const exchanged = await supabase.auth.exchangeCodeForSession(code)
-        if (exchanged.error) {
-          const existing = await supabase.auth.getSession()
-          if (!existing.data.session) {
-            fail(exchanged.error.message, portal)
-            return
-          }
-        }
       }
 
       const { data: sessionData } = await supabase.auth.getSession()
@@ -78,7 +69,7 @@ export default function AuthCallbackPage() {
 
       const returnTo = params.get("returnTo")
       if (returnTo && isAllowedReturn(returnTo) && new URL(returnTo).origin !== window.location.origin) {
-        const dest = new URL("/auth/callback", returnTo)
+        const dest = new URL("/auth/finish", returnTo)
         const role = params.get("role")
         const next = params.get("next")
         if (role) dest.searchParams.set("role", role)
