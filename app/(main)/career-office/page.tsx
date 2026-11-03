@@ -2,7 +2,12 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Briefcase, Building2, Calendar, Handshake, Megaphone } from "lucide-react"
 import { getRequestUser, loadAppShellUser } from "@/lib/nav/app-shell-user"
-import { canonicalizeUniversity, loadStudentCampus, readStudentCampusMembership } from "@/lib/campus/student-campus"
+import {
+  canonicalizeUniversity,
+  loadStudentCampus,
+  readStudentCampusMembership,
+  type StudentCampusJob,
+} from "@/lib/campus/student-campus"
 import { EventRsvpButton } from "@/components/portal/EventRsvpButton"
 import { AnnouncementAck } from "@/components/portal/AnnouncementAck"
 import { Button } from "@/components/ui/button"
@@ -89,7 +94,7 @@ export default async function StudentCareerOfficePage() {
           </p>
         ) : (
           <ul className="space-y-3">
-            {campus.jobs.map((job) => (
+            {campus.jobs.map((job: StudentCampusJob) => (
               <li key={job.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border px-4 py-3">
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">

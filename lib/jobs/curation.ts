@@ -1,5 +1,3 @@
-import type { Job } from "@/types"
-
 export const CURATED_BADGE = "Campus curated"
 export const FEED_CURATED = "cdc_curated"
 export const FEED_ALL = "all"
@@ -25,7 +23,11 @@ export function sameCampus(a?: string | null, b?: string | null) {
 }
 
 export function jobVisibleOnCampus(
-  job: Pick<Job, "id" | "distribution_scope" | "target_universities">,
+  job: {
+    id: string
+    distribution_scope?: string | null
+    target_universities?: string[] | null
+  },
   university: string | null | undefined,
   reviews: Map<string, string>
 ) {
