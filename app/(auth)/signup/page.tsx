@@ -7,6 +7,7 @@ import { googleStartUrl, usesLocalGoogle } from "@/lib/auth-sites"
 import { provisionUniversityAccount } from "@/lib/campus/provision"
 import { applySignupRole } from "@/lib/profile/completeness"
 import { UniversityPicker } from "@/components/profile/UniversityPicker"
+import { IOBM_STAFF_ROLES } from "@/lib/sso/iobm"
 import { cn } from "@/lib/utils"
 import { Eye, EyeOff } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -47,11 +48,7 @@ function getPasswordStrength(pw: string): PasswordStrength {
 type SignupRole = "student" | "recruiter" | "university"
 type PickedRole = SignupRole | "alumni"
 
-const STAFF_ROLES = [
-  { id: "director", label: "Career services director" },
-  { id: "advisor", label: "Advisor" },
-  { id: "dean", label: "Dean" },
-] as const
+const STAFF_ROLES = IOBM_STAFF_ROLES
 
 const ROLE_INFO: Record<PickedRole, { label: string; description: string }> = {
   student: {

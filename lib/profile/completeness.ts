@@ -33,6 +33,10 @@ export function clearSignupIntent() {
   localStorage.removeItem("pending_role")
   localStorage.removeItem("pending_university")
   localStorage.removeItem("pending_staff_role")
+  localStorage.removeItem("pending_alumni")
+  localStorage.removeItem("pending_sso")
+  localStorage.removeItem("pending_portal")
+  localStorage.removeItem("pending_iobm_claim")
 }
 
 export type SignupIntentRole = "student" | "recruiter" | "university"

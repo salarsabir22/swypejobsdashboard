@@ -4,6 +4,7 @@ const PUBLIC_PREFIXES = [
   "/login",
   "/signup",
   "/university",
+  "/iobm",
   "/auth",
   "/forgot-password",
   "/reset-password",

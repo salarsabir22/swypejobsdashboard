@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { campusNavScope } from "@/lib/campus/staff-roles"
 import { cn } from "@/lib/utils"
 
 const PRIMARY = [
@@ -51,17 +52,25 @@ function pillClass(active: boolean) {
   )
 }
 
-export function CampusNav() {
+export function CampusNav({ staffRole }: { staffRole?: string }) {
   const pathname = usePathname()
   const params = useSearchParams()
   const campus = params.get("campus")
   const q = campus ? `?campus=${encodeURIComponent(campus)}` : ""
-  const moreActive = MORE.some((link) => isActivePath(pathname, link.href))
-  const reportsActive = REPORTS.some((link) => isActivePath(pathname, link.href))
+  const scope = campusNavScope(staffRole)
+  const primary = scope === "faculty"
+    ? PRIMARY.filter((link) => link.href === "/campus" || link.href === "/campus/appointments")
+    : scope === "reports"
+      ? PRIMARY.filter((link) => link.href === "/campus")
+      : PRIMARY
+  const more = scope === "faculty" ? MORE.filter((link) => link.href === "/campus/events") : scope === "reports" ? [] : MORE
+  const reports = scope === "faculty" ? [] : REPORTS
+  const moreActive = more.some((link) => isActivePath(pathname, link.href))
+  const reportsActive = reports.some((link) => isActivePath(pathname, link.href))
 
   return (
     <nav className="-mx-1 flex flex-wrap items-center gap-1" aria-label="Career office">
-      {PRIMARY.map((link) => (
+      {primary.map((link) => (
         <Link
           key={link.href}
           href={`${link.href}${q}`}
@@ -71,8 +80,8 @@ export function CampusNav() {
           {link.label}
         </Link>
       ))}
-      <NavMenu label="More" active={moreActive} items={MORE} query={q} pathname={pathname} />
-      <NavMenu label="Reports" active={reportsActive} items={REPORTS} query={q} pathname={pathname} />
+      {more.length ? <NavMenu label="More" active={moreActive} items={more} query={q} pathname={pathname} /> : null}
+      {reports.length ? <NavMenu label="Reports" active={reportsActive} items={reports} query={q} pathname={pathname} /> : null}
     </nav>
   )
 }

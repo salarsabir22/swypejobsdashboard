@@ -1,6 +1,6 @@
 export type DataSource = "platform" | "survey" | "self_reported" | "verified"
 
-export type CampusStaffRole = "director" | "advisor" | "dean"
+export type CampusStaffRole = "director" | "advisor" | "dean" | "coordinator" | "faculty" | "auditor"
 
 export type CampusAccess = {
   userId: string

@@ -3,17 +3,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
-
-const STAFF_ROLES = ["director", "advisor", "dean"] as const
-type StaffRole = (typeof STAFF_ROLES)[number]
-
-function staffRoleOf(value: string | null | undefined): StaffRole {
-  return STAFF_ROLES.includes(value as StaffRole) ? (value as StaffRole) : "advisor"
-}
+import { staffRoleOf } from "@/lib/sso/iobm"
 
 async function writeStaff(
   client: SupabaseClient,
-  row: { user_id: string; university: string; staff_role: StaffRole }
+  row: { user_id: string; university: string; staff_role: string }
 ) {
   const inserted = await client.from("campus_staff").insert(row)
   if (!inserted.error) return null

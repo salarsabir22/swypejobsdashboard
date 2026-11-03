@@ -4,6 +4,8 @@ import { useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { isAllowedReturn } from "@/lib/auth-sites"
 import { provisionUniversityAccount } from "@/lib/campus/provision"
+import { provisionIobmSsoAccount } from "@/lib/sso/provision"
+import { isIobmPortal } from "@/lib/sso/iobm"
 import {
   applySignupRole,
   clearSignupIntent,
@@ -18,7 +20,15 @@ import {
 
 let started = false
 
-function fail(message: string, _portal?: string | null) {
+function fail(message: string, portal?: string | null, sso?: string | null) {
+  if (sso === "iobm" && isIobmPortal(portal) && portal !== "employer") {
+    window.location.replace(`/iobm/login/${portal}?error=${encodeURIComponent(message)}`)
+    return
+  }
+  if (sso === "iobm") {
+    window.location.replace(`/iobm?error=${encodeURIComponent(message)}`)
+    return
+  }
   window.location.replace(`/login?error=${encodeURIComponent(message)}`)
 }
 
@@ -29,7 +39,8 @@ export default function AuthCallbackPage() {
 
     async function run() {
       const params = new URLSearchParams(window.location.search)
-      const portal = params.get("portal")
+      const portal = params.get("portal") || localStorage.getItem("pending_portal")
+      const sso = params.get("sso") || localStorage.getItem("pending_sso")
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""))
       const oauthError =
         params.get("error_description") ||
@@ -37,7 +48,7 @@ export default function AuthCallbackPage() {
         params.get("error") ||
         hash.get("error")
       if (oauthError) {
-        fail(oauthError, portal)
+        fail(oauthError, portal, sso)
         return
       }
 
@@ -55,7 +66,7 @@ export default function AuthCallbackPage() {
           refresh_token: refreshToken,
         })
         if (error) {
-          fail(error.message, portal)
+          fail(error.message, portal, sso)
           return
         }
       }
@@ -63,7 +74,7 @@ export default function AuthCallbackPage() {
       const { data: sessionData } = await supabase.auth.getSession()
       const session = sessionData.session
       if (!session?.user) {
-        fail("Google sign-in did not complete. Try again.", portal)
+        fail("Google sign-in did not complete. Try again.", portal, sso)
         return
       }
 
@@ -92,15 +103,49 @@ export default function AuthCallbackPage() {
       const roleParam = params.get("role")
       const pendingRole = localStorage.getItem("pending_role")
       const pendingUniversity = localStorage.getItem("pending_university") || ""
-      const pendingStaff = localStorage.getItem("pending_staff_role") || ""
+      const pendingStaff = params.get("staff_role") || localStorage.getItem("pending_staff_role") || ""
+      const identityClaim = params.get("claim") === "1" || localStorage.getItem("pending_iobm_claim") === "1"
+      const alumniIntent = portal === "alumni" || localStorage.getItem("pending_alumni") === "1"
       const meta = session.user.user_metadata || {}
       const metaRole = typeof meta.role === "string" ? meta.role : null
       const universityName = pendingUniversity || (typeof meta.university === "string" ? meta.university : "")
       const intent = signupIntentRole({
-        roleParam: portal === "university" ? "university" : roleParam,
+        roleParam: portal === "university" || portal === "faculty" ? "university" : roleParam,
         pendingRole,
         metaRole,
       })
+
+      if (sso === "iobm" && isIobmPortal(portal) && portal !== "employer") {
+        const saved = await provisionIobmSsoAccount({
+          portal,
+          staffRole: pendingStaff,
+          identityClaim,
+          fullName: typeof meta.full_name === "string" ? meta.full_name : typeof meta.name === "string" ? meta.name : null,
+        })
+        clearSignupIntent()
+        if (!saved.ok) {
+          await supabase.auth.signOut()
+          fail(saved.message, portal, sso)
+          return
+        }
+        if (saved.role === "university") {
+          window.location.replace("/campus")
+          return
+        }
+        const { data } = await supabase
+          .from("student_profiles")
+          .select(STUDENT_ONBOARDING_SELECT)
+          .eq("id", session.user.id)
+          .maybeSingle()
+        window.location.replace(
+          postAuthRedirect({
+            role: "student",
+            studentReady: isStudentOnboardingComplete(data),
+            next: params.get("next"),
+          })
+        )
+        return
+      }
 
       const { data: profile } = await supabase
         .from("profiles")
@@ -174,6 +219,12 @@ export default function AuthCallbackPage() {
           existingRole: establishedRole,
           fullName: typeof meta.full_name === "string" ? meta.full_name : null,
         })
+      }
+      if (alumniIntent && (appliedRole === "student" || intent === "student")) {
+        await supabase.from("student_profiles").upsert(
+          { id: session.user.id, is_alumni: true },
+          { onConflict: "id" }
+        )
       }
       clearSignupIntent()
 

@@ -4,6 +4,7 @@ import { CampusNav } from "@/components/campus/CampusNav"
 import { SourceBadge } from "@/components/campus/SourceBadge"
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
 import type { CampusSnapshot } from "@/lib/campus/types"
+import { formatIobmStaffRole } from "@/lib/sso/iobm"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export function CampusFrame({
@@ -25,11 +26,11 @@ export function CampusFrame({
     <div className="space-y-6">
       <header className="space-y-4">
         <DashboardPageHeader
-          eyebrow={`${campusLabel} · ${snapshot.access.staffRole}`}
+          eyebrow={`${campusLabel} · ${formatIobmStaffRole(snapshot.access.staffRole)}`}
           title={title}
           description={description}
         />
-        <CampusNav />
+        <CampusNav staffRole={snapshot.access.staffRole} />
         {snapshot.access.role === "admin" ? <CampusFilter current={snapshot.access.university} /> : null}
       </header>
       {snapshot.missingTables.length ? (

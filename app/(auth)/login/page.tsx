@@ -141,6 +141,16 @@ export default function LoginPage() {
         Welcome back
       </h1>
       <p className="mt-2 text-[15px] text-muted-foreground">Sign in to SwypeJobs.</p>
+      <Link
+        href="/iobm"
+        className="mt-5 flex min-h-11 items-center justify-between gap-3 rounded-2xl border border-border bg-secondary/60 px-4 py-3 text-left hover:bg-secondary"
+      >
+        <span>
+          <span className="block text-[13px] font-semibold text-foreground">IoBM Career Development Center</span>
+          <span className="block text-[12px] text-muted-foreground">Campus SSO for students, alumni, faculty, and employers</span>
+        </span>
+        <span className="text-[13px] font-semibold text-primary">Open</span>
+      </Link>
       <div className="mt-6 grid grid-cols-2 gap-2 text-[13px]">
         {[
           { href: "/signup?role=student", label: "Student" },
