@@ -43,7 +43,12 @@ export async function GET(request: NextRequest) {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
-    const login = new URL("/login", request.nextUrl.origin)
+    const sso = request.nextUrl.searchParams.get("sso")
+    const portal = request.nextUrl.searchParams.get("portal")
+    const login = new URL(
+      sso === "iobm" ? `/iobm/login/${portal === "alumni" || portal === "faculty" ? portal : "student"}` : "/login",
+      request.nextUrl.origin
+    )
     const message = error.message.toLowerCase().includes("code verifier")
       ? "Google sign-in expired. Start it again from this page, in the same browser."
       : error.message

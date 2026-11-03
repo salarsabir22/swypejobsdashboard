@@ -8,6 +8,7 @@ const TASKS = [
   { href: "/matches", title: "Track applications", body: "Students see status on Applications. Employers manage people in Pipeline." },
   { href: "/chat", title: "Message a match", body: "Chat unlocks when both sides show interest. Interview times can be proposed in the thread." },
   { href: "/campus", title: "Career office", body: "Approve jobs, curate the student feed, invite employers, and book advising from Campus Home." },
+  { href: "/iobm", title: "IoBM campus SSO", body: "IoBM students, alumni, faculty, and CDC staff sign in at /iobm with the IoBM and swypejobs marks. Employers use a work email, then partner with the CDC." },
 ]
 
 export default function HelpPage() {
