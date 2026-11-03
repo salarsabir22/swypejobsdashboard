@@ -1,6 +1,6 @@
 import { parseAcademicHistory, primaryAcademicFields } from "@/lib/profile/academics"
 import { IOBM_SHORT_NAME, IOBM_UNIVERSITY_NAME } from "@/lib/sso/iobm"
-import { sameCampus } from "@/lib/jobs/curation"
+import { jobVisibleOnCampus, reviewKey, sameCampus } from "@/lib/jobs/curation"
 
 export function canonicalizeUniversity(name: string | null | undefined) {
   const value = name?.trim() || ""
@@ -91,13 +91,23 @@ export type StudentCampusAnnouncement = {
   requires_ack: boolean | null
 }
 
+export type StudentCampusJob = {
+  id: string
+  title: string
+  job_type: string | null
+  location: string | null
+  is_remote: boolean | null
+  company: string | null
+  collection: string | null
+}
+
 export async function loadStudentCampus(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: { from: (table: string) => any },
   opts: { userId: string; university: string | null; isAlumni: boolean }
 ) {
   const audience = opts.isAlumni ? "alumni" : "students"
-  const [eventsRes, announcementsRes] = await Promise.all([
+  const [eventsRes, announcementsRes, collectionRes, reviewRes, jobsRes] = await Promise.all([
     supabase
       .from("campus_events")
       .select("id, title, kind, summary, location, starts_at, university")
@@ -108,6 +118,19 @@ export async function loadStudentCampus(
       .select("id, title, body, audience, requires_ack, expires_at, university")
       .order("created_at", { ascending: false })
       .limit(24),
+    supabase
+      .from("job_collection_items")
+      .select("job_id, job_collections!inner(name, university, is_active)")
+      .eq("job_collections.is_active", true),
+    supabase.from("campus_job_reviews").select("job_id, university, status"),
+    supabase
+      .from("jobs")
+      .select(
+        "id, title, job_type, location, is_remote, distribution_scope, target_universities, recruiter_id, recruiter_profiles(company_name, is_approved)"
+      )
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(80),
   ])
 
   const events = ((eventsRes.error ? [] : eventsRes.data) || [])
@@ -126,10 +149,55 @@ export async function loadStudentCampus(
     })
     .slice(0, 4) as StudentCampusAnnouncement[]
 
+  const curated = new Map<string, string>()
+  for (const row of collectionRes.error ? [] : collectionRes.data || []) {
+    const col = Array.isArray(row.job_collections) ? row.job_collections[0] : row.job_collections
+    if (!col || col.is_active === false) continue
+    if (opts.university && col.university && !sameCampus(col.university, opts.university)) continue
+    if (!curated.has(row.job_id)) curated.set(row.job_id, col.name)
+  }
+  const reviews = new Map<string, string>()
+  for (const row of reviewRes.error ? [] : reviewRes.data || []) {
+    if (row.job_id && row.university) reviews.set(reviewKey(row.job_id, row.university), row.status)
+  }
+  const jobs = ((jobsRes.error ? [] : jobsRes.data) || [])
+    .filter((job: {
+      id: string
+      distribution_scope?: string | null
+      target_universities?: string[] | null
+      recruiter_profiles?: { company_name?: string | null; is_approved?: boolean | null } | { company_name?: string | null; is_approved?: boolean | null }[] | null
+    }) => {
+      if (!curated.has(job.id)) return false
+      const company = Array.isArray(job.recruiter_profiles) ? job.recruiter_profiles[0] : job.recruiter_profiles
+      if (company && company.is_approved === false) return false
+      return jobVisibleOnCampus(job, opts.university, reviews)
+    })
+    .slice(0, 8)
+    .map((job: {
+      id: string
+      title: string
+      job_type?: string | null
+      location?: string | null
+      is_remote?: boolean | null
+      recruiter_profiles?: { company_name?: string | null } | { company_name?: string | null }[] | null
+    }) => {
+      const company = Array.isArray(job.recruiter_profiles) ? job.recruiter_profiles[0] : job.recruiter_profiles
+      return {
+        id: job.id,
+        title: job.title,
+        job_type: job.job_type || null,
+        location: job.location || null,
+        is_remote: job.is_remote ?? null,
+        company: company?.company_name || null,
+        collection: curated.get(job.id) || null,
+      } satisfies StudentCampusJob
+    })
+
   return {
     title: careerOfficeTitle(opts.university),
     university: opts.university,
     events,
     announcements,
+    jobs,
   }
 }

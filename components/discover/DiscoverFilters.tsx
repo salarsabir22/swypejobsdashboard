@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { SlidersHorizontal, X } from "lucide-react"
+import { ChevronDown, ChevronUp, SlidersHorizontal, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -181,8 +181,12 @@ export function DiscoverFilters({
   title?: string
 }) {
   const [open, setOpen] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const count = fields.filter(isActive).length
   const pinned = fields.filter((field) => field.pin)
+  const extras = fields.filter((field) => !field.pin)
+  const desktopFields =
+    showAll || extras.length === 0 ? fields : pinned.length ? pinned : fields.slice(0, Math.min(4, fields.length))
 
   return (
     <div className="space-y-2">
@@ -197,20 +201,35 @@ export function DiscoverFilters({
               </Badge>
             ) : null}
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 rounded-full px-2 text-xs"
-            onClick={onClear}
-            disabled={count === 0}
-          >
-            Clear
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            {extras.length > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 rounded-full px-2 text-xs"
+                onClick={() => setShowAll((openAll) => !openAll)}
+                aria-expanded={showAll}
+              >
+                {showAll ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                {showAll ? "Show fewer filters" : "Show all filters"}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-full px-2 text-xs"
+              onClick={onClear}
+              disabled={count === 0}
+            >
+              Clear
+            </Button>
+          </div>
         </div>
         <div className="space-y-3 p-4">
-          <FilterGrid fields={fields} idPrefix="discover-desktop" />
-          <ActiveChips fields={fields} onClear={onClear} />
+          <FilterGrid fields={desktopFields} idPrefix="discover-desktop" />
+          {showAll ? null : <ActiveChips fields={fields} onClear={onClear} />}
         </div>
       </div>
 

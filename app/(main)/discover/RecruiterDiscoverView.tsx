@@ -426,6 +426,7 @@ export function RecruiterDiscoverView({
           id: "keyword",
           label: "Search",
           kind: "text",
+          pin: true,
           value: keyword,
           placeholder: "Name, skill, degree…",
           inputMode: "search",

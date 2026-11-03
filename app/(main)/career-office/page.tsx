@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { Building2, Calendar, Handshake, Megaphone } from "lucide-react"
+import { Briefcase, Building2, Calendar, Handshake, Megaphone } from "lucide-react"
 import { getRequestUser, loadAppShellUser } from "@/lib/nav/app-shell-user"
 import { canonicalizeUniversity, loadStudentCampus, readStudentCampusMembership } from "@/lib/campus/student-campus"
 import { EventRsvpButton } from "@/components/portal/EventRsvpButton"
@@ -57,8 +57,9 @@ export default async function StudentCareerOfficePage() {
         />
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
+          { href: "/discover", label: "Curated jobs", icon: Briefcase },
           { href: "/events", label: "Events", icon: Calendar },
           { href: "/announcements", label: "Announcements", icon: Megaphone },
           { href: "/appointments", label: "Advising", icon: Handshake },
@@ -74,6 +75,45 @@ export default async function StudentCareerOfficePage() {
           </Link>
         ))}
       </div>
+
+      <DashboardPanel
+        title="Campus curated jobs"
+        description="Roles your career office approved for this campus. Open Discover to swipe them."
+        badge={campus.jobs.length ? String(campus.jobs.length) : undefined}
+      >
+        {!campus.jobs.length ? (
+          <p className="text-sm text-muted-foreground">
+            {university
+              ? "No curated roles yet. When CDC adds a collection, those jobs appear here and in Discover."
+              : "Add your university to see jobs your career office has curated."}
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {campus.jobs.map((job) => (
+              <li key={job.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border px-4 py-3">
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {job.job_type ? <StatusBadge value={job.job_type} /> : null}
+                    {job.collection ? <span className="text-xs font-medium text-primary">{job.collection}</span> : null}
+                  </div>
+                  <p className="font-medium">{job.title}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {[job.company, job.is_remote ? "Remote" : job.location].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/jobs/${job.id}`}>View</Link>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-4 text-sm">
+          <Link href="/discover" className="text-primary hover:underline">
+            Open Discover
+          </Link>
+        </p>
+      </DashboardPanel>
 
       <DashboardPanel title="Upcoming events" description="Fairs, workshops, and employer sessions from your career office.">
         {!campus.events.length ? (

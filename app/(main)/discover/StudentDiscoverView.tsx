@@ -491,6 +491,7 @@ export function StudentDiscoverView({
       id: "type",
       label: "Type",
       kind: "select" as const,
+      pin: true,
       value: jobType,
       onChange: setJobType,
       options: [
@@ -505,6 +506,7 @@ export function StudentDiscoverView({
       id: "remote",
       label: "Location",
       kind: "select" as const,
+      pin: true,
       value: remote,
       onChange: setRemote,
       options: [
