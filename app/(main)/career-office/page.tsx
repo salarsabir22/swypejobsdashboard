@@ -1,8 +1,8 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Building2, Calendar, Handshake, Megaphone } from "lucide-react"
-import { getRequestUser } from "@/lib/nav/app-shell-user"
-import { loadStudentCampus } from "@/lib/campus/student-campus"
+import { getRequestUser, loadAppShellUser } from "@/lib/nav/app-shell-user"
+import { canonicalizeUniversity, loadStudentCampus, readStudentCampusMembership } from "@/lib/campus/student-campus"
 import { EventRsvpButton } from "@/components/portal/EventRsvpButton"
 import { AnnouncementAck } from "@/components/portal/AnnouncementAck"
 import { Button } from "@/components/ui/button"
@@ -11,21 +11,19 @@ import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { StatusBadge } from "@/components/ui/status-badge"
 
+export const dynamic = "force-dynamic"
+
 export default async function StudentCareerOfficePage() {
   const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login?next=/career-office")
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
-  if (profile?.role === "university") redirect("/campus")
-  if (profile?.role === "recruiter") redirect("/partnerships")
+  const shell = await loadAppShellUser(true)
+  if (shell.role === "university") redirect("/campus")
+  if (shell.role === "recruiter") redirect("/partnerships")
 
-  const { data: student } = await supabase
-    .from("student_profiles")
-    .select("university, is_alumni")
-    .eq("id", user.id)
-    .maybeSingle()
-  const university = student?.university || null
-  const isAlumni = student?.is_alumni === true
+  const membership = await readStudentCampusMembership(supabase, user)
+  const university = canonicalizeUniversity(membership.university || shell.university) || null
+  const isAlumni = membership.isAlumni || Boolean(shell.isAlumni)
   const campus = await loadStudentCampus(supabase, { userId: user.id, university, isAlumni })
 
   const { data: rsvps } = await supabase.from("campus_event_rsvps").select("event_id").eq("student_id", user.id)

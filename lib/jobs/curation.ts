@@ -11,9 +11,17 @@ export function parseFeedMode(value: string | null | undefined): DiscoverFeedMod
   return value === FEED_ALL ? FEED_ALL : FEED_CURATED
 }
 
+function campusKey(value: string) {
+  const name = value.trim().toLowerCase()
+  if (name.includes("iobm") || name.includes("institute of business management")) {
+    return "iobm"
+  }
+  return name
+}
+
 export function sameCampus(a?: string | null, b?: string | null) {
   if (!a || !b) return false
-  return a.trim().toLowerCase() === b.trim().toLowerCase()
+  return campusKey(a) === campusKey(b)
 }
 
 export function jobVisibleOnCampus(

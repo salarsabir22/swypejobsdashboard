@@ -1,13 +1,15 @@
 import { redirect } from "next/navigation"
 import { getRequestUser } from "@/lib/nav/app-shell-user"
+import { readStudentCampusMembership } from "@/lib/campus/student-campus"
 import { MentorshipStudentView, MentorshipAlumniView } from "@/components/portal/MentorshipViews"
 
 export default async function MentorshipPage() {
   const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login?next=/mentorship")
 
-  const { data: student } = await supabase.from("student_profiles").select("is_alumni, mentorship_opt_in, university").eq("id", user.id).maybeSingle()
-  const alumni = student?.is_alumni === true
+  const membership = await readStudentCampusMembership(supabase, user)
+  const { data: student } = await supabase.from("student_profiles").select("mentorship_opt_in, university").eq("id", user.id).maybeSingle()
+  const alumni = membership.isAlumni
 
   const { data: mentors } = await supabase
     .from("mentorship_profiles")
@@ -20,9 +22,9 @@ export default async function MentorshipPage() {
     : { data: [] }
   const schoolById = new Map((mentorSchools || []).map((row) => [row.id, row.university]))
   const campusMentors = (mentors || []).filter((m) => {
-    if (!student?.university) return true
+    if (!membership.university) return true
     const school = schoolById.get(m.user_id)
-    return !school || school.toLowerCase() === student.university.toLowerCase()
+    return !school || school.toLowerCase() === membership.university.toLowerCase()
   })
   const { data: names } = campusMentors.length
     ? await supabase.from("profiles").select("id, full_name").in("id", campusMentors.map((m) => m.user_id))

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { Calendar } from "lucide-react"
 import { getRequestUser } from "@/lib/nav/app-shell-user"
+import { belongsToCampus, readStudentCampusMembership } from "@/lib/campus/student-campus"
 import { EventRsvpButton } from "@/components/portal/EventRsvpButton"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
@@ -12,16 +13,13 @@ export default async function EventsPage() {
   if (!user) redirect("/login?next=/events")
 
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
-  const { data: student } = await supabase.from("student_profiles").select("university").eq("id", user.id).maybeSingle()
-  const university = student?.university || null
+  const { university } = await readStudentCampusMembership(supabase, user)
 
   const { data, error } = await supabase
     .from("campus_events")
     .select("id, title, kind, summary, location, starts_at, university")
     .order("starts_at", { ascending: true })
-  const rows = (error ? [] : data || []).filter(
-    (row) => !university || !row.university || row.university.toLowerCase() === university.toLowerCase()
-  )
+  const rows = (error ? [] : data || []).filter((row) => belongsToCampus(row.university, university))
 
   const { data: rsvps } = await supabase.from("campus_event_rsvps").select("event_id").eq("student_id", user.id)
   const going = new Set((rsvps || []).map((r) => r.event_id))

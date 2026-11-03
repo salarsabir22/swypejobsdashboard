@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { Megaphone } from "lucide-react"
 import { getRequestUser } from "@/lib/nav/app-shell-user"
+import { belongsToCampus, readStudentCampusMembership } from "@/lib/campus/student-campus"
 import { AnnouncementAck } from "@/components/portal/AnnouncementAck"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
@@ -11,16 +12,16 @@ export default async function AnnouncementsPage() {
   const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login?next=/announcements")
 
-  const { data: student } = await supabase.from("student_profiles").select("university, is_alumni").eq("id", user.id).maybeSingle()
+  const student = await readStudentCampusMembership(supabase, user)
   const { data, error } = await supabase
     .from("campus_announcements")
     .select("id, title, body, audience, requires_ack, expires_at, created_at, university")
     .order("created_at", { ascending: false })
     .limit(50)
-  const audience = student?.is_alumni ? "alumni" : "students"
+  const audience = student.isAlumni ? "alumni" : "students"
   const rows = (error ? [] : data || []).filter((row) => {
     if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return false
-    if (student?.university && row.university && row.university.toLowerCase() !== student.university.toLowerCase()) return false
+    if (!belongsToCampus(row.university, student.university)) return false
     return row.audience === "all" || row.audience === audience
   })
   const { data: acks } = await supabase.from("announcement_acks").select("announcement_id").eq("user_id", user.id)

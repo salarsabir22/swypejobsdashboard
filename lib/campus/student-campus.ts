@@ -1,5 +1,15 @@
+import { parseAcademicHistory, primaryAcademicFields } from "@/lib/profile/academics"
 import { IOBM_SHORT_NAME, IOBM_UNIVERSITY_NAME } from "@/lib/sso/iobm"
 import { sameCampus } from "@/lib/jobs/curation"
+
+export function canonicalizeUniversity(name: string | null | undefined) {
+  const value = name?.trim() || ""
+  if (!value) return ""
+  if (value.toLowerCase().includes("iobm") || value.toLowerCase().includes("institute of business management")) {
+    return IOBM_UNIVERSITY_NAME
+  }
+  return value
+}
 
 export function careerOfficeTitle(university: string | null | undefined) {
   const name = university?.trim()
@@ -8,6 +18,50 @@ export function careerOfficeTitle(university: string | null | undefined) {
     return `${IOBM_SHORT_NAME} Career Development Center`
   }
   return `${name} career office`
+}
+
+export async function readStudentCampusMembership(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: { from: (table: string) => any },
+  user: { id: string; user_metadata?: Record<string, unknown> | null }
+) {
+  let row: {
+    university?: string | null
+    is_alumni?: boolean | null
+    academic_history?: unknown
+  } | null = null
+  for (const columns of ["university", "university, academic_history", "university, is_alumni, academic_history"]) {
+    const { data, error } = await supabase.from("student_profiles").select(columns).eq("id", user.id).maybeSingle()
+    if (error) continue
+    row = { ...row, ...data }
+    if (row.university) break
+  }
+  const alumni = await supabase.from("student_profiles").select("is_alumni").eq("id", user.id).maybeSingle()
+  if (!alumni.error && alumni.data) {
+    row = { ...row, is_alumni: alumni.data.is_alumni }
+  }
+
+  const history = parseAcademicHistory(row?.academic_history)
+  const fromHistory = primaryAcademicFields(history)?.university?.trim() || ""
+  const fromRow = row?.university?.trim() || ""
+  const fromMeta =
+    typeof user.user_metadata?.university === "string" ? user.user_metadata.university.trim() : ""
+  const ssoIobm =
+    user.user_metadata?.sso === "iobm" ||
+    (typeof fromMeta === "string" && fromMeta.toLowerCase().includes("iobm"))
+  const raw = fromRow || fromHistory || fromMeta || (ssoIobm ? IOBM_UNIVERSITY_NAME : "") || ""
+  const university = canonicalizeUniversity(raw) || null
+  const isAlumni = row?.is_alumni === true || user.user_metadata?.alumni === true
+
+  if (university && university !== fromRow) {
+    const payload = { id: user.id, university }
+    const updated = await supabase.from("student_profiles").update({ university }).eq("id", user.id).select("id")
+    if (updated.error || !updated.data?.length) {
+      await supabase.from("student_profiles").upsert(payload, { onConflict: "id" })
+    }
+  }
+
+  return { university: university || null, isAlumni }
 }
 
 export function belongsToCampus(

@@ -10,6 +10,8 @@ import {
   type StudentOnboardingFields,
 } from "@/lib/profile/completeness"
 import { normalizeModules, type AdminStaffRole } from "@/lib/admin/modules"
+import { canonicalizeUniversity } from "@/lib/campus/student-campus"
+import { IOBM_UNIVERSITY_NAME } from "@/lib/sso/iobm"
 
 export type AppShellUser = {
   userId: string | null
@@ -87,7 +89,10 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
     }
     if (requireOnboarding && !isStudentOnboardingComplete(student)) redirect("/onboarding")
     isAlumni = student?.is_alumni === true
-    university = student?.university?.trim() || null
+    const metaUni = typeof user.user_metadata?.university === "string" ? user.user_metadata.university : ""
+    university =
+      canonicalizeUniversity(student?.university || metaUni) ||
+      (user.user_metadata?.sso === "iobm" ? IOBM_UNIVERSITY_NAME : null)
   } else if (role === "admin") {
     const { data: staff, error: staffError } = await supabase
       .from("platform_staff")

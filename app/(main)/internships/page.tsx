@@ -2,6 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { GraduationCap } from "lucide-react"
 import { getRequestUser } from "@/lib/nav/app-shell-user"
+import { readStudentCampusMembership } from "@/lib/campus/student-campus"
 import { InternshipRecordForm } from "@/components/portal/InternshipRecordForm"
 import { Button } from "@/components/ui/button"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
@@ -13,15 +14,26 @@ export default async function InternshipsPage() {
   const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login?next=/internships")
 
-  const { data: student } = await supabase.from("student_profiles").select("university").eq("id", user.id).maybeSingle()
-  const university = student?.university || null
-  const { data: jobs } = await supabase
+  const { university } = await readStudentCampusMembership(supabase, user)
+  const internshipFields =
+    "id, title, location, is_remote, application_deadline, distribution_scope, target_universities, recruiter_id, recruiter_profiles(company_name, is_approved)"
+  const withDeadline = await supabase
     .from("jobs")
-    .select("id, title, location, is_remote, application_deadline, distribution_scope, target_universities, recruiter_id, recruiter_profiles(company_name, is_approved)")
+    .select(internshipFields)
     .eq("is_active", true)
     .eq("job_type", "internship")
     .order("created_at", { ascending: false })
     .limit(40)
+  const listed = withDeadline.error
+    ? await supabase
+        .from("jobs")
+        .select("id, title, location, is_remote, distribution_scope, target_universities, recruiter_id, recruiter_profiles(company_name, is_approved)")
+        .eq("is_active", true)
+        .eq("job_type", "internship")
+        .order("created_at", { ascending: false })
+        .limit(40)
+    : withDeadline
+  const jobs = listed.data
   const { data: reviews } = await supabase.from("campus_job_reviews").select("job_id, university, status")
   const reviewMap = new Map(
     (reviews || [])

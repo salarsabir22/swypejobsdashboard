@@ -27,19 +27,17 @@ export function AcademicHistoryEditor({ userId, initial }: { userId: string; ini
     setSaving(true)
     const supabase = createClient()
     const primary = primaryAcademicFields(clean)
-    const payload: Record<string, unknown> = { academic_history: clean, ...primary }
-    let { error } = await supabase.from("student_profiles").update(payload).eq("id", userId)
+    const payload: Record<string, unknown> = { id: userId, academic_history: clean, ...primary }
+    let { data, error } = await supabase.from("student_profiles").update(payload).eq("id", userId).select("id")
     if (error && /academic_history|department/i.test(error.message)) {
       delete payload.academic_history
       delete payload.department
-      ;({ error } = await supabase.from("student_profiles").update(payload).eq("id", userId))
-      setSaving(false)
-      toast({
-        variant: "destructive",
-        title: "Saved the current degree only",
-        description: "Academic history isn’t available on this workspace yet.",
-      })
-      return
+      ;({ data, error } = await supabase.from("student_profiles").update(payload).eq("id", userId).select("id"))
+    }
+    if (!error && (!data || data.length === 0)) {
+      const inserted = await supabase.from("student_profiles").upsert(payload, { onConflict: "id" }).select("id")
+      error = inserted.error
+      data = inserted.data
     }
     setSaving(false)
     if (error) {

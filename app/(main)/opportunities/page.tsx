@@ -2,6 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { Globe } from "lucide-react"
 import { getRequestUser } from "@/lib/nav/app-shell-user"
+import { belongsToCampus, readStudentCampusMembership } from "@/lib/campus/student-campus"
 import { deadlineLabel } from "@/lib/jobs/deadline"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
@@ -37,7 +38,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
   const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login?next=/opportunities")
 
-  const { data: student } = await supabase.from("student_profiles").select("university").eq("id", user.id).maybeSingle()
+  const { university: studentUniversity } = await readStudentCampusMembership(supabase, user)
   const withCampus = await supabase
     .from("international_opportunities")
     .select(`${OPPORTUNITY_FIELDS}, university`)
@@ -51,13 +52,9 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
         .order("deadline", { ascending: true })
     : withCampus
   const current = kind || "all"
-  const uni = student?.university?.trim().toLowerCase()
-  const rows = ((listed.data || []) as OpportunityRow[]).filter((row) => {
-    if (listed.error) return false
+  const rows = (listed.error ? [] : ((listed.data || []) as OpportunityRow[])).filter((row) => {
     if (current !== "all" && row.kind !== current) return false
-    const campus = row.university?.trim().toLowerCase()
-    if (uni && campus && campus !== uni) return false
-    return true
+    return belongsToCampus(row.university, studentUniversity)
   })
 
   return (
@@ -87,14 +84,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
           )
         })}
       </div>
-      {listed.error ? (
-        <DashboardEmptyState
-          icon={Globe}
-          title="Listings aren’t available yet"
-          description="Your career office will publish study-abroad and scholarship options here."
-          primaryAction={{ href: "/discover", label: "Browse jobs" }}
-        />
-      ) : !rows.length ? (
+      {!rows.length ? (
         <DashboardEmptyState
           icon={Globe}
           title="Nothing listed yet"

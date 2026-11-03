@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed:dry": "node --env-file=.env.local scripts/seed-real-data.mjs",
-    "seed:real": "node --env-file=.env.local scripts/seed-real-data.mjs --confirm"
+    "seed:real": "node --env-file=.env.local scripts/seed-real-data.mjs --confirm",
+    "seed:iobm": "node --env-file=.env.local scripts/seed-iobm-campus.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

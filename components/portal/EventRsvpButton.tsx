@@ -28,7 +28,12 @@ export function EventRsvpButton({ eventId, going }: { eventId: string; going: bo
       else setIsGoing(false)
       return
     }
-    const { error } = await supabase.from("campus_event_rsvps").upsert({ event_id: eventId, student_id: user.id, status: "going" })
+    const row = { event_id: eventId, student_id: user.id }
+    let { error } = await supabase.from("campus_event_rsvps").upsert(row, { onConflict: "event_id,student_id" })
+    if (error) {
+      const inserted = await supabase.from("campus_event_rsvps").insert(row)
+      error = inserted.error
+    }
     setBusy(false)
     if (error) toast({ variant: "destructive", title: "Couldn’t RSVP", description: error.message })
     else {
