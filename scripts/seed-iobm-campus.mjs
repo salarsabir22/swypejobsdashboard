@@ -1,6 +1,6 @@
 /**
- * Idempotent IoBM campus demo content for events, announcements,
- * employer partners, and CDC-approved internships.
+ * Idempotent IoBM campus demo content: events, announcements,
+ * employer partners, CDC-approved jobs, and curated collections.
  *
  *   node --env-file=.env.local scripts/seed-iobm-campus.mjs
  */
@@ -169,9 +169,9 @@ const JOBS = [
   {
     id: "a1b31000-0000-4000-8000-000000000001",
     recruiter_id: CAREEM,
-    title: "Campus Business Analyst Intern — IoBM CDC",
+    title: "Business Analyst Intern",
     description:
-      "Join Careem’s Karachi city team for a 10-week winter internship. You will build weekly demand snapshots, sit with ops leads, and present one improvement brief to CDC at the end of the term. This listing is approved for IoBM students only.",
+      "10-week winter internship on Careem’s Karachi city team. Build the weekly demand snapshot, sit with ops leads, and present one improvement brief to IoBM CDC at the end of term. Open to BBA, BSAF, and CS students in semester 4+.",
     job_type: "internship",
     required_skills: ["Excel", "SQL"],
     nice_to_have_skills: ["Tableau", "Python"],
@@ -184,9 +184,9 @@ const JOBS = [
   {
     id: "a1b31000-0000-4000-8000-000000000002",
     recruiter_id: FOLIO3,
-    title: "Software Engineering Intern — IoBM pipeline",
+    title: "Software Engineering Intern",
     description:
-      "Pair with a Folio3 squad in PECHS. You will ship a small feature behind a flag, write tests, and demo to your manager in week eight. CDC will verify the experiential record if you log the offer.",
+      "Pair with a Folio3 squad in PECHS. Ship a small feature behind a flag, write tests, and demo in week eight. CDC will verify the experiential record if you log the offer under Internships.",
     job_type: "internship",
     required_skills: ["JavaScript", "Git"],
     nice_to_have_skills: ["React", "TypeScript"],
@@ -201,7 +201,7 @@ const JOBS = [
     recruiter_id: MOTIVE,
     title: "Operations Intern — Fleet insights",
     description:
-      "Support Motive’s Pakistan customer team. You will reconcile onboarding checklists, tag support themes, and sit in one customer call each week. Open to BBA and BSAF students in semester 5+.",
+      "Support Motive’s Pakistan customer team. Reconcile onboarding checklists, tag support themes, and sit in one customer call each week. Open to BBA and BSAF students in semester 5+.",
     job_type: "internship",
     required_skills: ["Excel", "Writing"],
     nice_to_have_skills: ["SQL", "Customer research"],
@@ -214,9 +214,9 @@ const JOBS = [
   {
     id: "a1b31000-0000-4000-8000-000000000004",
     recruiter_id: SYSTEMS,
-    title: "Finance intern — IoBM campus hire",
+    title: "Finance Intern — FP&A",
     description:
-      "Rotate through FP&A at Systems Limited. Build a monthly variance pack, sit with the controller, and close the internship with a one-page recommendation for CDC’s employer file.",
+      "Rotate through FP&A at Systems Limited. Build a monthly variance pack, sit with the controller, and close with a one-page recommendation for the IoBM CDC employer file.",
     job_type: "internship",
     required_skills: ["Excel", "Accounting"],
     nice_to_have_skills: ["Power BI", "Financial modelling"],
@@ -225,6 +225,132 @@ const JOBS = [
     salary_min: 35000,
     salary_max: 50000,
     compensation_note: "Monthly stipend",
+  },
+  {
+    id: "a1b31000-0000-4000-8000-000000000005",
+    recruiter_id: CAREEM,
+    title: "Brand Marketing Intern",
+    description:
+      "Support Careem’s Karachi brand calendar through the Spring 2027 fair cycle. Draft social copy, pull campaign numbers, and sit in the weekly brand huddle. CDC-nominated IoBM students only.",
+    job_type: "internship",
+    required_skills: ["Writing", "Excel"],
+    nice_to_have_skills: ["Canva", "Social media"],
+    location: "Karachi — Careem HQ",
+    category: "Marketing",
+    salary_min: 30000,
+    salary_max: 45000,
+    compensation_note: "Monthly stipend",
+  },
+  {
+    id: "a1b31000-0000-4000-8000-000000000006",
+    recruiter_id: FOLIO3,
+    title: "QA / Test Engineer Intern",
+    description:
+      "Write test cases for a live client build, log bugs in Jira, and join stand-up with the Folio3 QA lead. Suited to CS and software engineering students who have shipped a class project.",
+    job_type: "internship",
+    required_skills: ["Attention to detail", "Writing"],
+    nice_to_have_skills: ["Playwright", "JavaScript"],
+    location: "Karachi — PECHS",
+    category: "Software Engineering",
+    salary_min: 30000,
+    salary_max: 48000,
+    compensation_note: "Monthly stipend",
+  },
+  {
+    id: "a1b31000-0000-4000-8000-000000000007",
+    recruiter_id: CAREEM,
+    title: "Associate Product Analyst",
+    description:
+      "Graduate role on Careem’s rider-growth squad. Own a weekly metric, partner with a PM, and present one experiment write-up a month. IoBM class of 2026–2027. CDC has already approved this listing for campus.",
+    job_type: "full_time",
+    required_skills: ["SQL", "Excel", "Product sense"],
+    nice_to_have_skills: ["Python", "Amplitude"],
+    location: "Karachi — Careem HQ",
+    category: "Product",
+    salary_min: 120000,
+    salary_max: 160000,
+    compensation_note: "Base + medical",
+  },
+  {
+    id: "a1b31000-0000-4000-8000-000000000008",
+    recruiter_id: SYSTEMS,
+    title: "Graduate Financial Analyst",
+    description:
+      "Join Systems Limited’s Karachi FP&A graduate intake. Build the monthly pack, support the half-year forecast, and rotate through one business unit in year one. Open to BSAF and BBA Finance.",
+    job_type: "full_time",
+    required_skills: ["Excel", "Accounting", "Financial modelling"],
+    nice_to_have_skills: ["Power BI", "IFRS"],
+    location: "Karachi",
+    category: "Finance",
+    salary_min: 90000,
+    salary_max: 130000,
+    compensation_note: "Base + provident fund",
+  },
+  {
+    id: "a1b31000-0000-4000-8000-000000000009",
+    recruiter_id: FOLIO3,
+    title: "Junior Software Engineer",
+    description:
+      "First engineering seat after graduation. You will own a service slice, review pull requests with a senior, and ship to a US client on a two-week cadence. CS and SE graduates from IoBM.",
+    job_type: "full_time",
+    required_skills: ["JavaScript", "TypeScript", "Git"],
+    nice_to_have_skills: ["React", "Node.js"],
+    location: "Karachi — PECHS",
+    category: "Software Engineering",
+    salary_min: 110000,
+    salary_max: 150000,
+    compensation_note: "Base + medical",
+  },
+  {
+    id: "a1b31000-0000-4000-8000-00000000000a",
+    recruiter_id: MOTIVE,
+    title: "Customer Operations Associate",
+    description:
+      "Full-time ops seat supporting Motive’s Pakistan customers. Triage tickets, keep onboarding SLAs, and write the Friday ops note. BBA and BSAF graduates; Urdu and English required.",
+    job_type: "full_time",
+    required_skills: ["Excel", "Writing", "Customer research"],
+    nice_to_have_skills: ["SQL", "Zendesk"],
+    location: "Hybrid — Karachi",
+    category: "Operations",
+    salary_min: 80000,
+    salary_max: 110000,
+    compensation_note: "Base",
+  },
+  {
+    id: "a1b31000-0000-4000-8000-00000000000b",
+    recruiter_id: SYSTEMS,
+    title: "Risk Advisory Associate",
+    description:
+      "Graduate programme in Systems Limited’s risk and controls practice. Walk through process maps, test a control, and draft findings for the manager. CDC will introduce shortlisted IoBM candidates to the partner.",
+    job_type: "full_time",
+    required_skills: ["Excel", "Accounting", "Writing"],
+    nice_to_have_skills: ["Internal audit", "PowerPoint"],
+    location: "Karachi",
+    category: "Business / Consulting",
+    salary_min: 95000,
+    salary_max: 125000,
+    compensation_note: "Base + exam support",
+  },
+]
+
+const COLLECTIONS = [
+  {
+    id: "a1b51000-0000-4000-8000-000000000001",
+    name: "Spring 2027 career fair",
+    description: "Roles CDC approved for the Korangi Creek fair. Students see these first in Campus curated.",
+    jobIds: JOBS.map((job) => job.id),
+  },
+  {
+    id: "a1b51000-0000-4000-8000-000000000002",
+    name: "IoBM internships",
+    description: "Winter and summer internships verified for IoBM credit.",
+    jobIds: JOBS.filter((job) => job.job_type === "internship").map((job) => job.id),
+  },
+  {
+    id: "a1b51000-0000-4000-8000-000000000003",
+    name: "Graduate programmes",
+    description: "Full-time seats for the 2026–2027 graduating class.",
+    jobIds: JOBS.filter((job) => job.job_type === "full_time").map((job) => job.id),
   },
 ]
 
@@ -300,6 +426,26 @@ async function main() {
   const { error: reviewError } = await sb.from("campus_job_reviews").insert(reviews)
   if (reviewError) throw new Error(`reviews: ${reviewError.message}`)
   console.log("reviews", reviews.length)
+
+  const collections = COLLECTIONS.map((row) => ({
+    id: row.id,
+    university: UNI,
+    name: row.name,
+    description: row.description,
+    is_active: true,
+    created_by: null,
+  }))
+  console.log("collections", await upsert(sb, "job_collections", collections, "id"))
+  await sb.from("job_collection_items").delete().in(
+    "collection_id",
+    COLLECTIONS.map((row) => row.id)
+  )
+  const items = COLLECTIONS.flatMap((col) =>
+    col.jobIds.map((jobId) => ({ collection_id: col.id, job_id: jobId, added_by: null }))
+  )
+  const { error: itemError } = await sb.from("job_collection_items").insert(items)
+  if (itemError) throw new Error(`collection items: ${itemError.message}`)
+  console.log("collection items", items.length)
 
   const { data: loose } = await sb.from("student_profiles").select("id, university").ilike("university", "%iobm%")
   const stale = (loose || []).filter((row) => row.university !== UNI)

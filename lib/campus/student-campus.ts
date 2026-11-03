@@ -25,20 +25,21 @@ export async function readStudentCampusMembership(
   supabase: { from: (table: string) => any },
   user: { id: string; user_metadata?: Record<string, unknown> | null }
 ) {
-  let row: {
+  type MembershipRow = {
     university?: string | null
     is_alumni?: boolean | null
     academic_history?: unknown
-  } | null = null
+  }
+  let row: MembershipRow = {}
   for (const columns of ["university", "university, academic_history", "university, is_alumni, academic_history"]) {
     const { data, error } = await supabase.from("student_profiles").select(columns).eq("id", user.id).maybeSingle()
-    if (error) continue
-    row = { ...row, ...data }
+    if (error || !data || typeof data !== "object") continue
+    row = { ...row, ...(data as MembershipRow) }
     if (row.university) break
   }
   const alumni = await supabase.from("student_profiles").select("is_alumni").eq("id", user.id).maybeSingle()
-  if (!alumni.error && alumni.data) {
-    row = { ...row, is_alumni: alumni.data.is_alumni }
+  if (!alumni.error && alumni.data && typeof alumni.data === "object") {
+    row = { ...row, is_alumni: (alumni.data as MembershipRow).is_alumni }
   }
 
   const history = parseAcademicHistory(row?.academic_history)

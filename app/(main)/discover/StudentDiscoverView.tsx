@@ -47,6 +47,7 @@ import {
   jobVisibleOnCampus,
   parseFeedMode,
   reviewKey,
+  sameCampus,
   type DiscoverFeedMode,
 } from "@/lib/jobs/curation"
 
@@ -251,7 +252,7 @@ export function StudentDiscoverView({
       for (const row of collectionRes.data || []) {
         const col = Array.isArray(row.job_collections) ? row.job_collections[0] : row.job_collections
         if (!col || col.is_active === false) continue
-        if (university && col.university && col.university.toLowerCase() !== university.toLowerCase()) continue
+        if (university && col.university && !sameCampus(col.university, university)) continue
         if (!curated.has(row.job_id)) curated.set(row.job_id, col.name)
       }
       const reviews = new Map<string, string>()
