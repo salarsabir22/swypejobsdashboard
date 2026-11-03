@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { format, parse } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
+import { Calendar as CalendarIcon, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -65,11 +65,11 @@ export function DatePicker({
           disabled={disabled}
           className={cn(triggerClass, !selected && "text-muted-foreground", className)}
         >
-          <CalendarIcon />
+          <CalendarIcon className="size-4 shrink-0" strokeWidth={1.75} />
           {selected ? format(selected, "PPP") : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
         <Calendar
           mode="single"
           selected={selected}
@@ -130,11 +130,11 @@ export function DateTimePicker({
           disabled={disabled}
           className={cn(triggerClass, !selected && "text-muted-foreground", className)}
         >
-          <CalendarIcon />
+          <CalendarIcon className="size-4 shrink-0" strokeWidth={1.75} />
           {selected ? format(selected, "PPP p") : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
         <Calendar
           mode="single"
           selected={selected}
@@ -146,6 +146,7 @@ export function DateTimePicker({
           disabled={(date) => isOutOfRange(date, min, max)}
         />
         <div className="flex items-center gap-2 border-t border-border p-3">
+          <Clock className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} aria-hidden />
           <Select
             value={hour}
             onValueChange={(nextHour) => {

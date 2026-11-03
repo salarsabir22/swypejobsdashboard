@@ -105,7 +105,13 @@ export async function loadStudentCampus(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: { from: (table: string) => any },
   opts: { userId: string; university: string | null; isAlumni: boolean }
-) {
+): Promise<{
+  title: string
+  university: string | null
+  events: StudentCampusEvent[]
+  announcements: StudentCampusAnnouncement[]
+  jobs: StudentCampusJob[]
+}> {
   const audience = opts.isAlumni ? "alumni" : "students"
   const [eventsRes, announcementsRes, collectionRes, reviewRes, jobsRes] = await Promise.all([
     supabase
@@ -191,7 +197,7 @@ export async function loadStudentCampus(
         company: company?.company_name || null,
         collection: curated.get(job.id) || null,
       } satisfies StudentCampusJob
-    })
+    }) as StudentCampusJob[]
 
   return {
     title: careerOfficeTitle(opts.university),
