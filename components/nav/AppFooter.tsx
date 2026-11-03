@@ -136,8 +136,9 @@ function columnsFor(role: UserRole | "admin"): { cols: FooterCol[]; cta: FooterL
       {
         title: "Campus",
         links: [
-          { href: "/feed", label: "Student feed" },
-          { href: "/community", label: "Topic rooms" },
+          { href: "/career-office", label: "Career office" },
+          { href: "/events", label: "Events" },
+          { href: "/appointments", label: "Advising" },
           { href: "/dashboard", label: "Your insights" },
         ],
       },

@@ -18,6 +18,7 @@ import { daysLastN, shortDayLabel } from "@/lib/dashboard/time-series"
 import { countCreatedBetween, matchRatePercent, weekOverWeekHint } from "@/lib/dashboard/period-metrics"
 import { conversationChatHref } from "@/lib/dashboard/chat-links"
 import { coalesceRelation } from "@/lib/dashboard/relations"
+import { loadStudentCampus } from "@/lib/campus/student-campus"
 
 type SavedJobRow = {
   id: string
@@ -51,7 +52,15 @@ type ProfileViewRow = { id: string; created_at: string; viewer_id: string }
 type ViewerProfile = { id: string; full_name: string | null; avatar_url: string | null; role: string | null }
 type CompanyLite = { id: string; company_name: string | null; logo_url: string | null }
 
-export async function StudentDashboardView({ userId, fullName }: { userId: string; fullName: string | null }) {
+export async function StudentDashboardView({
+  userId,
+  fullName,
+  isAlumni = false,
+}: {
+  userId: string
+  fullName: string | null
+  isAlumni?: boolean
+}) {
   const supabase = await createClient()
 
   const thirtyDaysAgo = new Date()
@@ -242,6 +251,11 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
               }
 
   const gaps = skillGaps(studentRes.data?.skills, openRolesRes.data || [], studentRes.data?.preferred_job_categories)
+  const campus = await loadStudentCampus(supabase, {
+    userId,
+    university: studentRes.data?.university || null,
+    isAlumni,
+  })
 
   return (
     <div className="space-y-8">
@@ -269,6 +283,54 @@ export async function StudentDashboardView({ userId, fullName }: { userId: strin
       />
 
       <DashboardFocusBanner {...focus} />
+
+      {campus.university ? (
+        <DashboardPanel
+          title={campus.title}
+          description={
+            isAlumni
+              ? "Events, notices, advising, and mentorship from your campus."
+              : "Events, internships, advising, and notices from your career office."
+          }
+        >
+          {campus.events[0] ? (
+            <p className="text-[14px]">
+              Next event: <span className="font-medium">{campus.events[0].title}</span>
+              {campus.events[0].starts_at
+                ? ` · ${new Date(campus.events[0].starts_at).toLocaleDateString()}`
+                : ""}
+            </p>
+          ) : (
+            <p className="text-[14px] text-muted-foreground">No upcoming campus events yet.</p>
+          )}
+          {campus.announcements[0] ? (
+            <p className="mt-2 text-[14px] text-muted-foreground">Latest notice: {campus.announcements[0].title}</p>
+          ) : null}
+          <div className="mt-4 flex flex-wrap gap-3 text-sm">
+            <Link href="/career-office" className="text-primary hover:underline">
+              Open campus hub
+            </Link>
+            <Link href="/events" className="text-primary hover:underline">
+              Events
+            </Link>
+            <Link href="/appointments" className="text-primary hover:underline">
+              Book advising
+            </Link>
+            <Link href="/announcements" className="text-primary hover:underline">
+              Announcements
+            </Link>
+            {isAlumni ? (
+              <Link href="/mentorship" className="text-primary hover:underline">
+                Mentorship
+              </Link>
+            ) : (
+              <Link href="/internships" className="text-primary hover:underline">
+                Internships
+              </Link>
+            )}
+          </div>
+        </DashboardPanel>
+      ) : null}
 
       <section aria-labelledby="kpi-heading">
         <h2 id="kpi-heading" className="sr-only">

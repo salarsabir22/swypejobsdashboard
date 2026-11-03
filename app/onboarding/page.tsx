@@ -13,6 +13,7 @@ import { isCompanySchemaMissing } from "@/lib/companies"
 import { UniversityPicker } from "@/components/profile/UniversityPicker"
 import { COMPANY_INDUSTRIES, EMPLOYEE_RANGES } from "@/lib/company-options"
 import { normalizeCalendlyUrl } from "@/lib/hiring/interview-invite"
+import { IOBM_UNIVERSITY_NAME } from "@/lib/sso/iobm"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { UserRole } from "@/types"
@@ -1102,6 +1103,7 @@ export default function OnboardingPage() {
   /* Student fields */
   const [bio, setBio] = useState("")
   const [university, setUniversity] = useState("")
+  const [campusLocked, setCampusLocked] = useState(false)
   const [degree, setDegree] = useState("")
   const [graduationYear, setGraduationYear] = useState("")
   const [institutionType, setInstitutionType] = useState<"university" | "college">("university")
@@ -1137,8 +1139,13 @@ export default function OnboardingPage() {
       if (!user) { window.location.href = "/login"; return }
 
       const pendingRole = localStorage.getItem("pending_role") as UserRole | null
+      const pendingUniversity = localStorage.getItem("pending_university") || ""
       const metaRole = user.user_metadata?.role as UserRole | undefined
-      if (localStorage.getItem("pending_alumni") === "1") {
+      const iobmSso =
+        localStorage.getItem("pending_sso") === "iobm" ||
+        user.user_metadata?.sso === "iobm" ||
+        pendingUniversity === IOBM_UNIVERSITY_NAME
+      if (localStorage.getItem("pending_alumni") === "1" || user.user_metadata?.alumni === true) {
         setIsAlumni(true)
         setStillEnrolled(false)
         localStorage.removeItem("pending_alumni")
@@ -1243,6 +1250,10 @@ export default function OnboardingPage() {
         if (student.github_url) setGithubUrl(student.github_url)
         if (student.portfolio_url) setPortfolioUrl(student.portfolio_url)
         if (student.resume_url) setExistingResumeUrl(student.resume_url)
+      }
+      if (iobmSso || student?.university === IOBM_UNIVERSITY_NAME) {
+        setUniversity(IOBM_UNIVERSITY_NAME)
+        setCampusLocked(true)
       }
 
       const { data: recruiter } = await supabase
@@ -1512,7 +1523,10 @@ export default function OnboardingPage() {
             }
           }
         }
-        window.location.href = "/company"
+        window.location.href =
+          localStorage.getItem("pending_sso") === "iobm" || user.user_metadata?.sso === "iobm"
+            ? "/partnerships"
+            : "/company"
       }
     } catch {
       setStepError("Something went wrong saving your profile. Please try again.")
@@ -1685,8 +1699,19 @@ export default function OnboardingPage() {
                 <div className="space-y-4">
                   <div>
                     <Label className={labelClass}>University / Institution</Label>
-                    <UniversityPicker value={university} onChange={setUniversity} />
-                    <HelpText>All HEC-recognized universities in Pakistan. Type to search, or pick Other to enter your own.</HelpText>
+                    {campusLocked ? (
+                      <>
+                        <p className="mt-1.5 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm">
+                          {IOBM_UNIVERSITY_NAME}
+                        </p>
+                        <HelpText>Your school is set from IoBM campus sign-in.</HelpText>
+                      </>
+                    ) : (
+                      <>
+                        <UniversityPicker value={university} onChange={setUniversity} />
+                        <HelpText>All HEC-recognized universities in Pakistan. Type to search, or pick Other to enter your own.</HelpText>
+                      </>
+                    )}
                   </div>
                   <div>
                     <Label className={labelClass}>Degree & Field of Study</Label>
@@ -1705,7 +1730,7 @@ export default function OnboardingPage() {
                         <SelectValue placeholder="Select year…" />
                       </SelectTrigger>
                       <SelectContent>
-                        {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
+                        {Array.from({ length: 16 }, (_, i) => 2015 + i).map((y) => (
                           <SelectItem key={y} value={String(y)}>
                             {y}
                           </SelectItem>

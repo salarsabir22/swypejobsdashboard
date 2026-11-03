@@ -20,13 +20,27 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
   const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login?next=/opportunities")
 
-  const { data, error } = await supabase
+  const { data: student } = await supabase.from("student_profiles").select("university").eq("id", user.id).maybeSingle()
+  let listed = await supabase
     .from("international_opportunities")
-    .select("id, kind, title, country, organization, summary, eligibility, visa_url, apply_url, deadline")
+    .select("id, kind, title, country, organization, summary, eligibility, visa_url, apply_url, deadline, university")
     .eq("is_active", true)
     .order("deadline", { ascending: true })
+  if (listed.error) {
+    listed = await supabase
+      .from("international_opportunities")
+      .select("id, kind, title, country, organization, summary, eligibility, visa_url, apply_url, deadline")
+      .eq("is_active", true)
+      .order("deadline", { ascending: true })
+  }
   const current = kind || "all"
-  const rows = (error ? [] : data || []).filter((row) => current === "all" || row.kind === current)
+  const uni = student?.university?.trim().toLowerCase()
+  const rows = (listed.error ? [] : listed.data || []).filter((row) => {
+    if (current !== "all" && row.kind !== current) return false
+    const campus = "university" in row ? (row as { university?: string | null }).university : null
+    if (uni && campus && campus.toLowerCase() !== uni) return false
+    return true
+  })
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -55,7 +69,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
           )
         })}
       </div>
-      {error ? (
+      {listed.error ? (
         <DashboardEmptyState
           icon={Globe}
           title="Listings aren’t available yet"

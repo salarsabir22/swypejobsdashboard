@@ -21,6 +21,7 @@ export type AppShellUser = {
   /** RBAC modules when role is admin */
   adminModules?: string[]
   isAlumni?: boolean
+  university?: string | null
 }
 
 /** One auth + profile round-trip per request (shared across layout/pages). */
@@ -45,6 +46,7 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
     shareTitle: null,
     adminModules: undefined,
     isAlumni: false,
+    university: null,
   }
   if (!user) return empty
 
@@ -58,6 +60,7 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
   let shareTitle = profile?.full_name ?? null
   let adminModules: string[] | undefined
   let isAlumni = false
+  let university: string | null = null
 
   if (role === "recruiter") {
     const { data: company } = await supabase
@@ -84,6 +87,7 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
     }
     if (requireOnboarding && !isStudentOnboardingComplete(student)) redirect("/onboarding")
     isAlumni = student?.is_alumni === true
+    university = student?.university?.trim() || null
   } else if (role === "admin") {
     const { data: staff, error: staffError } = await supabase
       .from("platform_staff")
@@ -105,5 +109,6 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
     shareTitle,
     adminModules,
     isAlumni,
+    university,
   }
 })

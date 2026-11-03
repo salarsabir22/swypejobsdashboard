@@ -11,7 +11,7 @@ export default async function DashboardPage() {
   if (!user.userId) redirect("/login")
 
   if (user.role === "student") {
-    return <StudentDashboardView userId={user.userId} fullName={user.fullName} />
+    return <StudentDashboardView userId={user.userId} fullName={user.fullName} isAlumni={user.isAlumni} />
   }
   if (user.role === "recruiter") {
     return <RecruiterDashboardView userId={user.userId} fullName={user.fullName} />

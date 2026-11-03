@@ -21,7 +21,7 @@ export default async function AnnouncementsPage() {
   const rows = (error ? [] : data || []).filter((row) => {
     if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return false
     if (student?.university && row.university && row.university.toLowerCase() !== student.university.toLowerCase()) return false
-    return row.audience === "all" || row.audience === audience || row.audience === "students"
+    return row.audience === "all" || row.audience === audience
   })
   const { data: acks } = await supabase.from("announcement_acks").select("announcement_id").eq("user_id", user.id)
   const done = new Set((acks || []).map((a) => a.announcement_id))

@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Loader2 } from "lucide-react"
+import { IobmMark } from "@/components/brand/IobmMark"
 import { createClient } from "@/lib/supabase/client"
 import { googleStartUrl, usesLocalGoogle } from "@/lib/auth-sites"
 import { isIobmPortal, iobmGoogleHostedDomain } from "@/lib/sso/iobm"
@@ -59,8 +61,10 @@ export default function IobmGoogleSsoPage() {
 
   return (
     <div className="mx-auto max-w-md text-center">
-      <h1 className="text-2xl font-semibold tracking-[-0.04em]">Connecting to IoBM SSO</h1>
-      <p className="mt-3 text-sm text-white/70">
+      <IobmMark size={72} className="mx-auto" />
+      <h1 className="mt-5 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">Connecting to IoBM SSO</h1>
+      <p className="mt-3 inline-flex items-center justify-center gap-2 text-sm text-[#5C6370]">
+        {error ? null : <Loader2 className="size-4 animate-spin" aria-hidden />}
         {error || "You will be asked for your IoBM Google account."}
       </p>
     </div>

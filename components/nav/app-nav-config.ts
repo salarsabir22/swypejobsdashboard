@@ -1,6 +1,7 @@
 import {
   Bookmark,
   Briefcase,
+  Building2,
   Calendar,
   CircleHelp,
   Columns3,
@@ -38,6 +39,7 @@ export const recruiterTabs: TabItem[] = [
 
 export const studentMoreLinks: MoreLink[] = [
   { href: "/dashboard", label: "Insights", icon: LayoutDashboard },
+  { href: "/career-office", label: "Career office", icon: Building2 },
   { href: "/internships", label: "Internships", icon: GraduationCap },
   { href: "/events", label: "Events", icon: Calendar },
   { href: "/opportunities", label: "International", icon: Globe },

@@ -1,5 +1,4 @@
 import { IobmMark } from "@/components/brand/IobmMark"
-import { Logo } from "@/components/brand/Logo"
 import { cn } from "@/lib/utils"
 
 export function CoBrand({
@@ -10,20 +9,14 @@ export function CoBrand({
   priority?: boolean
 }) {
   return (
-    <div
-      className={cn(
-        "inline-flex flex-wrap items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_12px_40px_-24px_rgba(5,28,44,0.45)] sm:gap-4 sm:px-5",
-        className
-      )}
-    >
-      <IobmMark priority={priority} />
-      <span
-        className="text-[13px] font-medium uppercase tracking-[0.18em] text-[#051C2C]/45"
-        aria-hidden
-      >
-        with
-      </span>
-      <Logo size={28} />
+    <div className={cn("flex items-center gap-3", className)}>
+      <IobmMark size={48} priority={priority} />
+      <div className="min-w-0">
+        <p className="truncate text-[15px] font-semibold leading-tight tracking-[-0.02em] text-[#111111]">
+          Institute of Business Management
+        </p>
+        <p className="mt-0.5 text-[12px] text-[#5C6370]">Career Development Center</p>
+      </div>
     </div>
   )
 }

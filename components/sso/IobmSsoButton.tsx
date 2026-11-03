@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { iobmOutlineBtn, iobmPrimaryBtn } from "@/lib/sso/brand"
 import type { IobmPortal } from "@/lib/sso/iobm"
 
 export function IobmSsoButton({
@@ -41,12 +43,13 @@ export function IobmSsoButton({
   return (
     <Button
       type="button"
-      variant={variant}
-      className="h-12 w-full min-h-11 text-[15px] font-semibold"
+      variant="ghost"
+      className={variant === "outline" ? iobmOutlineBtn : iobmPrimaryBtn}
       loading={loading}
       loadingText="Redirecting to IoBM…"
       onClick={start}
     >
+      <LogIn className="size-4" aria-hidden />
       {label}
     </Button>
   )

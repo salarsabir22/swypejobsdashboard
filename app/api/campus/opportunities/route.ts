@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Title and kind are required." }, { status: 400 })
   }
   const admin = createAdminClient()
-  const { error } = await admin.from("international_opportunities").insert({
+  const payload: Record<string, unknown> = {
     kind,
     title,
     country: body?.country?.trim() || null,
@@ -34,7 +34,14 @@ export async function POST(request: Request) {
     apply_url: body?.applyUrl?.trim() || null,
     deadline: body?.deadline?.trim() || null,
     created_by: user.id,
-  })
+  }
+  if (staff?.university) payload.university = staff.university
+  let { error } = await admin.from("international_opportunities").insert(payload)
+  if (error && payload.university) {
+    delete payload.university
+    const retry = await admin.from("international_opportunities").insert(payload)
+    error = retry.error
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

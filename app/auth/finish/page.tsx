@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { isAllowedReturn } from "@/lib/auth-sites"
 import { provisionUniversityAccount } from "@/lib/campus/provision"
 import { provisionIobmSsoAccount } from "@/lib/sso/provision"
-import { isIobmPortal } from "@/lib/sso/iobm"
+import { IOBM_UNIVERSITY_NAME, isIobmPortal } from "@/lib/sso/iobm"
 import {
   applySignupRole,
   clearSignupIntent,
@@ -122,25 +122,26 @@ export default function AuthCallbackPage() {
           identityClaim,
           fullName: typeof meta.full_name === "string" ? meta.full_name : typeof meta.name === "string" ? meta.name : null,
         })
-        clearSignupIntent()
         if (!saved.ok) {
+          clearSignupIntent()
           await supabase.auth.signOut()
           fail(saved.message, portal, sso)
           return
         }
-        if (saved.role === "university") {
-          window.location.replace("/campus")
-          return
+        let studentReady = false
+        if (saved.role === "student") {
+          const { data } = await supabase
+            .from("student_profiles")
+            .select(STUDENT_ONBOARDING_SELECT)
+            .eq("id", session.user.id)
+            .maybeSingle()
+          studentReady = isStudentOnboardingComplete(data)
         }
-        const { data } = await supabase
-          .from("student_profiles")
-          .select(STUDENT_ONBOARDING_SELECT)
-          .eq("id", session.user.id)
-          .maybeSingle()
+        clearSignupIntent()
         window.location.replace(
           postAuthRedirect({
-            role: "student",
-            studentReady: isStudentOnboardingComplete(data),
+            role: saved.role,
+            studentReady,
             next: params.get("next"),
           })
         )
@@ -218,6 +219,11 @@ export default function AuthCallbackPage() {
         appliedRole = await applySignupRole(supabase, session.user.id, intent, {
           existingRole: establishedRole,
           fullName: typeof meta.full_name === "string" ? meta.full_name : null,
+        })
+      }
+      if (sso === "iobm" && (intent === "recruiter" || appliedRole === "recruiter" || pendingRole === "recruiter")) {
+        await supabase.auth.updateUser({
+          data: { sso: "iobm", university: pendingUniversity || IOBM_UNIVERSITY_NAME },
         })
       }
       if (alumniIntent && (appliedRole === "student" || intent === "student")) {

@@ -46,7 +46,7 @@ const studentLinks: NavLink[] = [
   { href: "/resume", label: "Resume" },
   { href: "/chat", label: "Chat" },
   { href: "/dashboard", label: "Insights" },
-  { href: "/events", label: "Events" },
+  { href: "/career-office", label: "Campus" },
   { href: "/community", label: "Community" },
 ]
 

@@ -74,7 +74,7 @@ export const IOBM_PORTAL_COPY: Record<
   student: {
     title: "Student Login",
     kicker: "Current IoBM students",
-    body: "Discover jobs, swipe, apply, track internships, book advising, and RSVP to campus events with your IoBM account.",
+    body: "Find jobs and internships, apply, book advising, and RSVP to campus events with your IoBM account.",
     ssoLabel: "Continue with IoBM SSO",
   },
   alumni: {
