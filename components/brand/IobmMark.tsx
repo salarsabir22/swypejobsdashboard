@@ -17,7 +17,7 @@ export function IobmMark({
       width={size}
       height={size}
       priority={priority}
-      className={cn("rounded-xl object-cover", className)}
+      className={cn("rounded-full object-cover", className)}
       style={{ width: size, height: size }}
     />
   )

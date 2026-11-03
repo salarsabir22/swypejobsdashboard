@@ -106,5 +106,10 @@ export function iobmAppRole(portal: IobmPortal): "student" | "university" | "rec
 export function campusSsoRequiresIobmEmail(portal: IobmPortal, identityClaim = false) {
   if (portal === "employer") return false
   if (portal === "alumni" && identityClaim) return false
-  return true
+  return process.env.NEXT_PUBLIC_IOBM_REQUIRE_CAMPUS_EMAIL === "true"
+}
+
+export function iobmGoogleHostedDomain() {
+  if (process.env.NEXT_PUBLIC_IOBM_GOOGLE_HD === "true") return IOBM_HOSTED_DOMAIN
+  return null
 }

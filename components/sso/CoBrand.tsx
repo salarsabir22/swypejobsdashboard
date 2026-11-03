@@ -10,19 +10,20 @@ export function CoBrand({
   priority?: boolean
 }) {
   return (
-    <div className={cn("flex items-center gap-3 sm:gap-4", className)}>
-      <IobmMark size={56} priority={priority} />
-      <div className="min-w-0">
-        <p className="truncate text-[15px] font-semibold leading-tight tracking-[-0.02em] text-[#051C2C] sm:text-[17px]">
-          Institute of Business Management
-        </p>
-        <p className="mt-0.5 text-[12px] text-[#051C2C]/60">Career Development Center</p>
-      </div>
-      <span className="hidden h-10 w-px bg-[#051C2C]/15 sm:block" aria-hidden />
-      <div className="hidden sm:block">
-        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-[#051C2C]/45">Powered by</p>
-        <Logo size={26} />
-      </div>
+    <div
+      className={cn(
+        "inline-flex flex-wrap items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_12px_40px_-24px_rgba(5,28,44,0.45)] sm:gap-4 sm:px-5",
+        className
+      )}
+    >
+      <IobmMark priority={priority} />
+      <span
+        className="text-[13px] font-medium uppercase tracking-[0.18em] text-[#051C2C]/45"
+        aria-hidden
+      >
+        with
+      </span>
+      <Logo size={28} />
     </div>
   )
 }
