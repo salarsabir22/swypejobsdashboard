@@ -7,6 +7,7 @@ import {
   isStudentOnboardingComplete,
   RECRUITER_ONBOARDING_SELECT,
   STUDENT_ONBOARDING_SELECT,
+  type StudentOnboardingFields,
 } from "@/lib/profile/completeness"
 import { normalizeModules, type AdminStaffRole } from "@/lib/admin/modules"
 
@@ -67,21 +68,22 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
     if (company?.company_name) shareTitle = company.company_name
     if (requireOnboarding && !isRecruiterOnboardingComplete(company)) redirect("/onboarding")
   } else if (role === "student") {
-    let { data: student, error: studentError } = await supabase
+    const first = await supabase
       .from("student_profiles")
       .select(`${STUDENT_ONBOARDING_SELECT}, is_alumni`)
       .eq("id", user.id)
       .maybeSingle()
-    if (studentError) {
+    let student = first.data as (StudentOnboardingFields & { is_alumni?: boolean | null }) | null
+    if (first.error) {
       const retry = await supabase
         .from("student_profiles")
         .select(STUDENT_ONBOARDING_SELECT)
         .eq("id", user.id)
         .maybeSingle()
-      student = retry.data
+      student = retry.data as typeof student
     }
     if (requireOnboarding && !isStudentOnboardingComplete(student)) redirect("/onboarding")
-    isAlumni = (student as { is_alumni?: boolean } | null)?.is_alumni === true
+    isAlumni = student?.is_alumni === true
   } else if (role === "admin") {
     const { data: staff, error: staffError } = await supabase
       .from("platform_staff")
