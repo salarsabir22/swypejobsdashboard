@@ -1,23 +1,26 @@
 import { campusPageData } from "@/lib/campus/page-data"
+import { canCampus } from "@/lib/campus/rbac"
 import { CampusFrame } from "@/components/campus/CampusFrame"
+import { CampusTrendChart } from "@/components/campus/CampusTrendChart"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { SourceBadge } from "@/components/campus/SourceBadge"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
 import { DashboardFunnel } from "@/components/dashboard/DashboardFunnel"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { fmtSourced } from "@/lib/campus/format"
-import { AlertTriangle, Briefcase, Building2, Flag, GraduationCap, Users } from "lucide-react"
+import { AlertTriangle, Briefcase, Building2, Flag, GraduationCap, Send, Users } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
 export default async function CampusHomePage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_home")
 
   return (
     <CampusFrame
       snapshot={snapshot}
       showSources
+      exportDataset="overview"
       title="Career office"
       description="Placement, engagement, and swipe-level demand for your students. Headline numbers mix live platform activity with survey records when those exist."
     >
@@ -40,8 +43,17 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
           icon={Briefcase}
           label="Open jobs matched to our students"
           value={fmtSourced(snapshot.kpis.openJobsMatched)}
-          hint={`${snapshot.market.internships} internships on the board`}
+          hint={`${snapshot.market.dailyJobPosts.at(-1)?.value ?? 0} posted today · ${snapshot.market.internships} internships`}
+          trend={snapshot.market.dailyJobPosts.map((row) => row.value)}
           tone="violet"
+        />
+        <DashboardKpiCard
+          icon={Send}
+          label="Student applications"
+          value={snapshot.engagement.applicationsWeek}
+          hint={`${snapshot.engagement.applicationsMonth} this month · ${snapshot.engagement.applicants} applicants`}
+          trend={snapshot.engagement.dailyApplications.map((row) => row.value)}
+          tone="teal"
         />
         <DashboardKpiCard
           icon={Building2}
@@ -68,9 +80,11 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
 
       <div className="flex flex-wrap items-center gap-2">
         <SourceBadge source={snapshot.kpis.placementRate.source} />
-        <Button asChild className="rounded-full">
-          <Link href="/campus/actions">Open action queue</Link>
-        </Button>
+        {canCampus(snapshot.access, "view_actions") ? (
+          <Button asChild className="rounded-full">
+            <Link href="/campus/actions">Open action queue</Link>
+          </Button>
+        ) : null}
       </div>
 
       {snapshot.alerts.length ? (
@@ -90,6 +104,16 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
           </ul>
         </DashboardPanel>
       ) : null}
+
+      <CampusTrendChart
+        title="Daily job posts and student applications"
+        description="New listings on the board vs right-swipes from your students."
+        points={snapshot.market.dailyJobPosts.map((row, i) => ({
+          label: row.label,
+          jobs: row.value,
+          applications: snapshot.engagement.dailyApplications[i]?.value ?? 0,
+        }))}
+      />
 
       <DashboardFunnel title="Signup → offer funnel" stages={snapshot.engagement.funnel} />
 

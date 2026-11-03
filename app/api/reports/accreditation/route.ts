@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { toExcel, toPdf } from "@/lib/export/formats"
+import { readCampusAccess } from "@/lib/campus/access"
+import { canCampus } from "@/lib/campus/rbac"
 import { buildAccreditation, type AccreditationTemplate } from "@/lib/reports/accreditation"
 
 export const runtime = "nodejs"
@@ -20,17 +22,14 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 })
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
-  const role = profile?.role
-  let university: string | null = null
-  if (role === "university") {
-    const { data: staff } = await supabase.from("campus_staff").select("university").eq("user_id", user.id).maybeSingle()
-    university = staff?.university || null
-    if (!university) return NextResponse.json({ error: "No campus is assigned to this account." }, { status: 403 })
-  } else if (role !== "admin") {
-    const { data: staff } = await supabase.from("campus_staff").select("university").eq("user_id", user.id).maybeSingle()
-    if (!staff?.university) return NextResponse.json({ error: "Campus or admin access required." }, { status: 403 })
-    university = staff.university
+  const access = await readCampusAccess()
+  if (!access) return NextResponse.json({ error: "Campus or admin access required." }, { status: 403 })
+  if (!canCampus(access, "export")) {
+    return NextResponse.json({ error: "You don’t have access to campus exports." }, { status: 403 })
+  }
+  const university = access.role === "admin" ? null : access.university
+  if (access.role !== "admin" && !university) {
+    return NextResponse.json({ error: "No campus is assigned to this account." }, { status: 403 })
   }
 
   const url = new URL(request.url)

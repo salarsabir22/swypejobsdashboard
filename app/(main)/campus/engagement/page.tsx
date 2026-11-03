@@ -9,12 +9,13 @@ import { FileText, Sparkles, UserCheck, Users } from "lucide-react"
 
 export default async function CampusEngagementPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_reports")
 
   return (
     <CampusFrame
       snapshot={snapshot}
       showSources
+      exportDataset="engagement"
       title="Student engagement"
       description="Who is on the platform, who is complete, and where the class drops off between signup and offer."
     >

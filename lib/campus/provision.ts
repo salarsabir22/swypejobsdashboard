@@ -3,7 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
-import { staffRoleOf } from "@/lib/sso/iobm"
+import { selfAssignableStaffRole } from "@/lib/sso/iobm"
 
 async function writeStaff(
   client: SupabaseClient,
@@ -15,7 +15,7 @@ async function writeStaff(
   if (!duplicate) return inserted.error.message
   const updated = await client
     .from("campus_staff")
-    .update({ university: row.university, staff_role: row.staff_role })
+    .update({ university: row.university })
     .eq("user_id", row.user_id)
   return updated.error?.message || null
 }
@@ -65,7 +65,7 @@ export async function provisionUniversityAccount(input: {
     await supabase.from("profiles").update({ full_name: fullName }).eq("id", user.id)
   }
 
-  const row = { user_id: user.id, university, staff_role: staffRoleOf(input.staffRole) }
+  const row = { user_id: user.id, university, staff_role: selfAssignableStaffRole(input.staffRole) }
   const roleWrite = await supabase.from("profiles").update({ role: "university" }).eq("id", user.id)
   const { data: after } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
   let roleOk = after?.role === "university"

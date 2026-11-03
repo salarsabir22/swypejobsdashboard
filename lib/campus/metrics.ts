@@ -7,12 +7,14 @@ import {
   daysBetween,
   degreeLevel,
   employerType,
+  fillDaySeries,
   hoursBetween,
   inLastDays,
   median,
   pct,
   workMode,
 } from "@/lib/campus/helpers"
+import { sameCampus } from "@/lib/jobs/curation"
 
 const LIMIT = 800
 const IN_CAP = 400
@@ -140,7 +142,14 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
     }),
   ])
 
-  const students = (studentsRes.data || []) as StudentRow[]
+  let students = (studentsRes.data || []) as StudentRow[]
+  if (university && students.length === 0) {
+    const retry = await supabase
+      .from("student_profiles")
+      .select("id, university, degree, graduation_year, institution_type, skills, preferred_job_categories, resume_url, created_at, updated_at, profiles(full_name, created_at, updated_at)")
+      .limit(LIMIT)
+    students = ((retry.data || []) as StudentRow[]).filter((row) => sameCampus(row.university, university))
+  }
   const studentIds = students.map((s) => s.id)
   const studentMap = new Map(students.map((s) => [s.id, s]))
   const scopedIds = studentIds.length ? studentIds.slice(0, IN_CAP) : [emptyId]
@@ -246,6 +255,47 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
   const attention = [...quietSeniors, ...goingQuiet, ...zeroActivity]
     .filter((row, i, arr) => arr.findIndex((r) => r.id === row.id) === i)
     .slice(0, 50)
+
+  const dailyJobPosts = fillDaySeries(jobs.map((j) => j.created_at), 14)
+  const dailyApplications = fillDaySeries(apps.map((a) => a.created_at), 14)
+  const applicationsWeek = apps.filter((a) => inLastDays(a.created_at, 7)).length
+  const applicationsMonth = apps.filter((a) => inLastDays(a.created_at, 30)).length
+  const applicants = new Set(apps.map((a) => a.student_id)).size
+  const applicationsByMajor = countBy(apps.map((a) => studentMap.get(a.student_id)?.degree)).slice(0, 12)
+  const applicationsByEmployer = countBy(
+    apps.map((a) => recruiterMap.get(jobMap.get(a.job_id)?.recruiter_id || "")?.company_name)
+  ).slice(0, 12)
+
+  const applicantsByStudent = new Set(apps.map((a) => a.student_id))
+  const deptBuckets = new Map<string, StudentRow[]>()
+  for (const student of students) {
+    const department = (student.degree || student.institution_type || "Undeclared").trim() || "Undeclared"
+    const list = deptBuckets.get(department) || []
+    list.push(student)
+    deptBuckets.set(department, list)
+  }
+  const atRiskDepartments = [...deptBuckets.entries()]
+    .map(([department, members]) => {
+      const active = members.filter((s) => inLastDays(lastActivity(s.id), 30)).length
+      const applied = members.filter((s) => applicantsByStudent.has(s.id)).length
+      const activityRate = pct(active, members.length)
+      const appRate = pct(applied, members.length)
+      const noApps = applied === 0
+      const lowActivity = (activityRate ?? 0) < 35
+      if (members.length < 2 || (!noApps && !lowActivity)) return null
+      return {
+        department,
+        students: members.length,
+        activeMonth: active,
+        applications: applied,
+        activityRate,
+        appRate,
+        reason: noApps ? "No applications from this programme" : "Low activity this month",
+      }
+    })
+    .filter(Boolean)
+    .sort((a, b) => b!.students - a!.students)
+    .slice(0, 12) as CampusSnapshot["engagement"]["atRiskDepartments"]
 
   const slices: OutcomeSlice[] = (["graduation", "3mo", "6mo", "12mo"] as const).map((checkpoint) => {
     const rows = outcomes.filter((o) => (o as { checkpoint: string }).checkpoint === checkpoint)
@@ -490,6 +540,16 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
     supplyGaps.some((g) => g.gap > 10)
       ? { id: "gaps", severity: "low" as const, title: "Demand gaps vs. student majors", detail: "Employer outreach lists are ready.", href: "/campus/market", count: supplyGaps.filter((g) => g.gap > 0).length }
       : null,
+    atRiskDepartments.length
+      ? {
+          id: "depts",
+          severity: "high" as const,
+          title: "At-risk departments",
+          detail: "Programmes with no applications or low monthly activity.",
+          href: "/campus/actions?segment=departments",
+          count: atRiskDepartments.length,
+        }
+      : null,
   ].filter(Boolean) as CampusSnapshot["alerts"]
 
   const signup = students.length
@@ -581,12 +641,20 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
       rsvps: rsvps.length,
       appointments: appointments.length,
       resumeReviews: reviews.length,
+      dailyApplications,
+      applicationsWeek,
+      applicationsMonth,
+      applicants,
+      applicationsByMajor,
+      applicationsByEmployer,
+      atRiskDepartments,
     },
     market: {
       activeEmployers: recruiters.length,
       newEmployers: recruiters.filter((r) => inLastDays(r.created_at, 30)).length,
       openJobs: activeJobs.filter((j) => j.job_type !== "internship").length,
       internships: internships.length,
+      dailyJobPosts,
       byMajor: jobsByCat.slice(0, 12),
       byLocation: countBy(activeJobs.map((j) => j.location)).slice(0, 12),
       byWorkMode: countBy(activeJobs.map((j) => workMode(j))),

@@ -8,7 +8,7 @@ import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 
 export default async function CampusCollectionsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_actions")
   const university = snapshot.access.university || snapshot.attention[0]?.university || "Campus"
   const supabase = await createClient()
   const { data: collections, error } = await supabase

@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
-import { IOBM_UNIVERSITY_NAME, iobmAppRole, staffRoleOf, type IobmPortal } from "@/lib/sso/iobm"
+import { IOBM_UNIVERSITY_NAME, iobmAppRole, isIobmStaffRole, selfAssignableStaffRole, staffRoleOf, type IobmPortal } from "@/lib/sso/iobm"
 
 export type SsoProvider = "iobm_saml" | "iobm_oidc" | "google"
 export type SsoStatus = "active" | "inactive" | "deprovisioned"
@@ -216,15 +216,29 @@ export async function listCampusIdentities() {
   return { rows: (data || []) as SsoIdentityRow[], missingTable: false }
 }
 
-async function writeCampusStaff(userId: string, staffRole: string) {
+async function writeCampusStaff(userId: string, staffRole: string, trusted: boolean) {
   const client = admin()
-  const row = { user_id: userId, university: IOBM_UNIVERSITY_NAME, staff_role: staffRoleOf(staffRole) }
+  const { data: existing } = await client.from("campus_staff").select("staff_role").eq("user_id", userId).maybeSingle()
+  const nextRole = trusted
+    ? staffRoleOf(staffRole)
+    : existing?.staff_role && isIobmStaffRole(existing.staff_role)
+      ? existing.staff_role
+      : selfAssignableStaffRole(staffRole)
+  const row = { user_id: userId, university: IOBM_UNIVERSITY_NAME, staff_role: nextRole }
+  if (existing) {
+    const patch = trusted ? { university: row.university, staff_role: nextRole } : { university: row.university }
+    const updated = await client.from("campus_staff").update(patch).eq("user_id", userId)
+    if (updated.error) throw new Error(updated.error.message)
+    return nextRole
+  }
   const inserted = await client.from("campus_staff").insert(row)
-  if (!inserted.error) return
+  if (!inserted.error) return nextRole
   const duplicate = inserted.error.code === "23505" || /duplicate|unique/i.test(inserted.error.message)
   if (!duplicate) throw new Error(inserted.error.message)
-  const updated = await client.from("campus_staff").update({ university: row.university, staff_role: row.staff_role }).eq("user_id", userId)
+  const patch = trusted ? { university: row.university, staff_role: nextRole } : { university: row.university }
+  const updated = await client.from("campus_staff").update(patch).eq("user_id", userId)
   if (updated.error) throw new Error(updated.error.message)
+  return nextRole
 }
 
 export async function applyCampusPortal(input: {
@@ -232,6 +246,7 @@ export async function applyCampusPortal(input: {
   portal: IobmPortal
   staffRole?: string | null
   fullName?: string | null
+  trusted?: boolean
 }) {
   const client = admin()
   const fullName = input.fullName?.trim()
@@ -241,12 +256,12 @@ export async function applyCampusPortal(input: {
       { onConflict: "id" }
     )
     if (roleWrite.error) throw new Error(roleWrite.error.message)
-    await writeCampusStaff(input.userId, input.staffRole || "advisor")
+    const staffRole = await writeCampusStaff(input.userId, input.staffRole || "faculty", Boolean(input.trusted))
     await client.auth.admin.updateUserById(input.userId, {
       user_metadata: {
         role: "university",
         university: IOBM_UNIVERSITY_NAME,
-        staff_role: staffRoleOf(input.staffRole),
+        staff_role: staffRole,
         sso: "iobm",
         ...(fullName ? { full_name: fullName } : {}),
       },
@@ -388,6 +403,7 @@ export async function overrideSsoRole(input: {
     userId: input.userId,
     portal: input.portal,
     staffRole: input.staffRole,
+    trusted: true,
   })
   if (input.conflictId) {
     await admin()
@@ -431,7 +447,7 @@ export async function mergeSsoAccounts(input: {
     }
   }
   if (input.portal) {
-    await applyCampusPortal({ userId: input.keepUserId, portal: input.portal, staffRole: input.staffRole })
+    await applyCampusPortal({ userId: input.keepUserId, portal: input.portal, staffRole: input.staffRole, trusted: true })
   }
   await client.from("user_moderation").upsert({
     user_id: input.absorbUserId,

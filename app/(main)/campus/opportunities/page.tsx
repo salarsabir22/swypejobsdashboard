@@ -4,7 +4,7 @@ import { OpportunityForm } from "@/components/campus/OpportunityForm"
 
 export default async function CampusOpportunitiesPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_actions")
   return (
     <CampusFrame
       snapshot={snapshot}

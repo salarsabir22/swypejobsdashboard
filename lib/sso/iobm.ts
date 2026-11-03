@@ -63,6 +63,14 @@ export function staffRoleOf(value: string | null | undefined): IobmStaffRoleId {
   return isIobmStaffRole(value) ? value : "advisor"
 }
 
+/** Roles a person may claim on the faculty/staff login. CDC Super Admin is assigned, not self-selected. */
+export const IOBM_SELF_STAFF_ROLES = IOBM_STAFF_ROLES.filter((role) => role.id !== "director")
+
+export function selfAssignableStaffRole(value: string | null | undefined): IobmStaffRoleId {
+  const id = staffRoleOf(value)
+  return id === "director" ? "faculty" : id
+}
+
 export function formatIobmStaffRole(id: string | null | undefined) {
   return IOBM_STAFF_ROLES.find((role) => role.id === id)?.label || id || "Career office"
 }

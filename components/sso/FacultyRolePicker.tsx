@@ -3,13 +3,13 @@
 import { useMemo, useState } from "react"
 import { IobmSsoButton } from "@/components/sso/IobmSsoButton"
 import { IOBM_STAFF_ICONS } from "@/lib/sso/iobm-icons"
-import { IOBM_STAFF_ROLES, isIobmStaffRole, staffRoleOf } from "@/lib/sso/iobm"
+import { IOBM_SELF_STAFF_ROLES, selfAssignableStaffRole } from "@/lib/sso/iobm"
 
 export function FacultyRolePicker({ initialRole }: { initialRole?: string }) {
-  const start = staffRoleOf(initialRole)
+  const start = selfAssignableStaffRole(initialRole)
   const [staffRole, setStaffRole] = useState(start)
   const selected = useMemo(
-    () => IOBM_STAFF_ROLES.find((role) => role.id === staffRole) || IOBM_STAFF_ROLES[1],
+    () => IOBM_SELF_STAFF_ROLES.find((role) => role.id === staffRole) || IOBM_SELF_STAFF_ROLES[0],
     [staffRole]
   )
 
@@ -18,7 +18,7 @@ export function FacultyRolePicker({ initialRole }: { initialRole?: string }) {
       <fieldset>
         <legend className="mb-2 text-[12px] font-medium text-[#5C6370]">Your campus role</legend>
         <div className="grid gap-1.5">
-          {IOBM_STAFF_ROLES.map((role) => {
+          {IOBM_SELF_STAFF_ROLES.map((role) => {
             const active = role.id === staffRole
             const Icon = IOBM_STAFF_ICONS[role.id]
             return (
@@ -35,7 +35,7 @@ export function FacultyRolePicker({ initialRole }: { initialRole?: string }) {
                   name="staff_role"
                   value={role.id}
                   checked={active}
-                  onChange={() => setStaffRole(isIobmStaffRole(role.id) ? role.id : "advisor")}
+                  onChange={() => setStaffRole(selfAssignableStaffRole(role.id))}
                   className="size-3.5 accent-[#C41E3A]"
                 />
                 <Icon className={`size-3.5 shrink-0 ${active ? "text-[#C41E3A]" : "text-[#5C6370]"}`} aria-hidden />

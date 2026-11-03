@@ -10,7 +10,7 @@ export default async function CampusActionsPage({
   searchParams: Promise<{ campus?: string; segment?: string }>
 }) {
   const { campus, segment } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_actions")
   const university = snapshot.access.university || snapshot.attention[0]?.university || "Campus"
 
   const seniors = snapshot.attention.filter((s) => s.reason.includes("Senior"))
@@ -41,9 +41,28 @@ export default async function CampusActionsPage({
     <CampusFrame
       snapshot={snapshot}
       showSources
+      exportDataset="departments"
       title="Action tools"
       description="Alerts, nudges, job moderation, events, and employer outreach — what the office can do, not just see."
     >
+      <DashboardPanel title="At-risk departments" description="Programmes with no applications or low monthly activity.">
+        {snapshot.engagement.atRiskDepartments.length ? (
+          <ul className="space-y-2 text-[14px]">
+            {snapshot.engagement.atRiskDepartments.map((row) => (
+              <li key={row.department}>
+                {row.department}
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {row.students} students · {row.applications} apps · {row.reason}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[14px] text-muted-foreground">No department is flagged for low activity.</p>
+        )}
+      </DashboardPanel>
+
       <DashboardPanel title="Students needing attention" description="Seniors with no applications, quiet accounts, zero activity.">
         <ul className="mb-4 max-h-64 space-y-2 overflow-auto text-[14px]">
           {list.length ? (

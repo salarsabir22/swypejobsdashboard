@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation"
 import { campusPageData } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { SsoDesk } from "@/components/campus/SsoDesk"
@@ -7,11 +6,7 @@ import { listCampusIdentities, listOpenConflicts } from "@/lib/sso/identity"
 
 export default async function CampusSsoPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
-  const role = snapshot.access.staffRole
-  if (snapshot.access.role !== "admin" && role !== "director" && role !== "advisor" && role !== "dean") {
-    redirect("/campus")
-  }
+  const snapshot = await campusPageData(campus, "view_sso")
   const [identities, conflicts] = await Promise.all([listCampusIdentities(), listOpenConflicts()])
 
   return (

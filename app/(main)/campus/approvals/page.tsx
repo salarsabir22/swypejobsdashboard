@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 
 export default async function CampusApprovalsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_actions")
   const university = snapshot.access.university
   const supabase = await createClient()
   const { data: reviews, error } = await supabase

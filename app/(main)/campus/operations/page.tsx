@@ -1,4 +1,5 @@
 import { campusPageData } from "@/lib/campus/page-data"
+import { canCampus } from "@/lib/campus/rbac"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { EventForm } from "@/components/campus/CampusActions"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
@@ -9,7 +10,7 @@ import { Calendar, ClipboardList, Smile, Users } from "lucide-react"
 
 export default async function CampusOperationsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_reports")
   const university = snapshot.access.university || "Campus"
   const alerts = departmentAlerts(snapshot.attention)
 
@@ -55,9 +56,11 @@ export default async function CampusOperationsPage({ searchParams }: { searchPar
         ) : (
           <p className="mb-4 text-[14px] text-muted-foreground">No events yet. Create one to start RSVP tracking.</p>
         )}
-        <div className="mt-4 max-w-lg">
-          <EventForm university={university} />
-        </div>
+        {canCampus(snapshot.access, "mutate") ? (
+          <div className="mt-4 max-w-lg">
+            <EventForm university={university} />
+          </div>
+        ) : null}
       </DashboardPanel>
       <DashboardPanel title="ROI per program" badge={`${fmtSourced(snapshot.operations.programRoi)} hires / event`}>
         <p className="text-[14px] text-muted-foreground">

@@ -3,12 +3,12 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import type { CampusAccess, CampusStaffRole } from "@/lib/campus/types"
 
-export const getCampusAccess = cache(async (): Promise<CampusAccess> => {
+export async function readCampusAccess(): Promise<CampusAccess | null> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) redirect("/login?next=/campus")
+  if (!user) return null
 
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
   const role = profile?.role
@@ -30,17 +30,27 @@ export const getCampusAccess = cache(async (): Promise<CampusAccess> => {
     .maybeSingle()
   const staff = staffRes.error ? null : staffRes.data
 
-  if (role === "university" || staff?.university) {
-    const university = staff?.university || "__unassigned__"
+  if (staff?.university) {
     return {
       userId: user.id,
       role: "university",
-      staffRole: (staff?.staff_role as CampusStaffRole) || "advisor",
-      university,
-      universities: staff?.university ? [staff.university] : [],
+      staffRole: (staff.staff_role as CampusStaffRole) || "faculty",
+      university: staff.university,
+      universities: [staff.university],
     }
   }
 
+  return null
+}
+
+export const getCampusAccess = cache(async (): Promise<CampusAccess> => {
+  const access = await readCampusAccess()
+  if (access) return access
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) redirect("/login?next=/campus")
   redirect("/discover")
 })
 

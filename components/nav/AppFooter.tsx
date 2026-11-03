@@ -64,6 +64,7 @@ function columnsFor(role: UserRole | "admin"): { cols: FooterCol[]; cta: FooterL
             { href: "/campus", label: "Home" },
             { href: "/campus/outcomes", label: "Outcomes" },
             { href: "/campus/engagement", label: "Engagement" },
+            { href: "/campus/applications", label: "Applications" },
             { href: "/campus/equity", label: "Equity" },
           ],
         },

@@ -23,7 +23,7 @@ const ACTIONS = [
   { status: "cancelled", label: "Cancel" },
 ] as const
 
-export function AppointmentDesk() {
+export function AppointmentDesk({ canMutate = true }: { canMutate?: boolean }) {
   const [rows, setRows] = useState<Row[]>([])
   const [error, setError] = useState("")
 
@@ -72,13 +72,15 @@ export function AppointmentDesk() {
             </div>
             {row.note ? <p className="text-sm text-muted-foreground">{row.note}</p> : null}
             <p className="text-[12px] text-muted-foreground">{row.university || "University not set"}</p>
-            <div className="flex flex-wrap gap-2">
-              {ACTIONS.map((action) => (
-                <Button key={action.status} type="button" size="sm" variant="outline" className="rounded-full" onClick={() => void setStatus(row.id, action.status)}>
-                  {action.label}
-                </Button>
-              ))}
-            </div>
+            {canMutate ? (
+              <div className="flex flex-wrap gap-2">
+                {ACTIONS.map((action) => (
+                  <Button key={action.status} type="button" size="sm" variant="outline" className="rounded-full" onClick={() => void setStatus(row.id, action.status)}>
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
           </li>
         ))}
         {!rows.length && !error ? (

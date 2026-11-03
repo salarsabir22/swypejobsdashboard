@@ -7,7 +7,7 @@ import { fmtSourced } from "@/lib/campus/format"
 
 export default async function CampusEquityPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_equity")
   await writeCampusAudit(snapshot.access.userId, "view_equity", "campus_demographics", snapshot.access.university || "all")
 
   return (

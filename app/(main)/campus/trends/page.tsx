@@ -6,7 +6,7 @@ import { fmtSourced } from "@/lib/campus/format"
 
 export default async function CampusTrendsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_reports")
   const seniors = snapshot.engagement.byYear[0]
   const projected = snapshot.kpis.placementRate.value
 
@@ -14,6 +14,7 @@ export default async function CampusTrendsPage({ searchParams }: { searchParams:
     <CampusFrame
       snapshot={snapshot}
       showSources
+      exportDataset="overview"
       title="Comparisons and trends"
       description="Year-over-year and cohort views. Peer benchmarks stay anonymous and only unlock after enough partner campuses share NACE files."
     >

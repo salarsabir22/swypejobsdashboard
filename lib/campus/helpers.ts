@@ -66,6 +66,40 @@ export function inLastDays(iso: string | null | undefined, days: number) {
   return new Date(iso).getTime() >= Date.now() - days * 86400000
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+export function lastDayKeys(days: number) {
+  const keys: string[] = []
+  const now = new Date()
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = new Date(now)
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() - i)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, "0")
+    const day = String(d.getDate()).padStart(2, "0")
+    keys.push(`${y}-${m}-${day}`)
+  }
+  return keys
+}
+
+export function shortDayLabel(isoDate: string) {
+  const parts = isoDate.split("-").map(Number)
+  const month = MONTHS[(parts[1] || 1) - 1] || isoDate
+  return `${parts[2] || ""} ${month}`.trim()
+}
+
+export function fillDaySeries(isoTimestamps: string[], days = 14) {
+  const keys = lastDayKeys(days)
+  const map = new Map<string, number>()
+  for (const iso of isoTimestamps) {
+    const key = (iso || "").slice(0, 10)
+    if (!key) continue
+    map.set(key, (map.get(key) || 0) + 1)
+  }
+  return keys.map((date) => ({ date, label: shortDayLabel(date), value: map.get(date) || 0 }))
+}
+
 export function csvEscape(value: unknown) {
   const s = value == null ? "" : String(value)
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`

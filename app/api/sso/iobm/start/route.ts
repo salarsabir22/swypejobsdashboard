@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { isIobmPortal, staffRoleOf } from "@/lib/sso/iobm"
+import { isIobmPortal, selfAssignableStaffRole } from "@/lib/sso/iobm"
 import { newNonce, writeIobmSsoState } from "@/lib/sso/state"
 
 export const dynamic = "force-dynamic"
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/iobm/login/employer", request.nextUrl.origin))
   }
 
-  const staffRole = portalRaw === "faculty" ? staffRoleOf(request.nextUrl.searchParams.get("staff_role")) : undefined
+  const staffRole = portalRaw === "faculty" ? selfAssignableStaffRole(request.nextUrl.searchParams.get("staff_role")) : undefined
   const identityClaim = request.nextUrl.searchParams.get("claim") === "1"
   const nonce = newNonce()
   await writeIobmSsoState({

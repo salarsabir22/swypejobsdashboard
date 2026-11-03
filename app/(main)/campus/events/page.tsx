@@ -1,5 +1,6 @@
 import { Calendar } from "lucide-react"
 import { campusPageData } from "@/lib/campus/page-data"
+import { canCampus } from "@/lib/campus/rbac"
 import { createClient } from "@/lib/supabase/server"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { EventForm } from "@/components/campus/CampusActions"
@@ -9,7 +10,7 @@ import { StatusBadge } from "@/components/ui/status-badge"
 
 export default async function CampusEventsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_events")
   const university = snapshot.access.university || snapshot.attention[0]?.university || "Campus"
   const supabase = await createClient()
   const { data: events } = await supabase
@@ -21,9 +22,11 @@ export default async function CampusEventsPage({ searchParams }: { searchParams:
 
   return (
     <CampusFrame snapshot={snapshot} title="Events" description="Publish fairs, workshops, and info sessions. Students RSVP from Events in their app.">
-      <DashboardPanel title="Create event">
-        <EventForm university={university} />
-      </DashboardPanel>
+      {canCampus(snapshot.access, "mutate") ? (
+        <DashboardPanel title="Create event">
+          <EventForm university={university} />
+        </DashboardPanel>
+      ) : null}
       <DashboardPanel title="Upcoming">
         {events?.length ? (
           <ul className="space-y-2">

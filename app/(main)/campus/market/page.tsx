@@ -1,5 +1,6 @@
 import { campusPageData } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
+import { CampusTrendChart } from "@/components/campus/CampusTrendChart"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
@@ -9,21 +10,34 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export default async function CampusMarketPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_reports")
 
   return (
     <CampusFrame
       snapshot={snapshot}
       showSources
+      exportDataset="jobs"
       title="Employer and job market"
       description="Who is hiring, what they post, and where student supply does not meet demand."
     >
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardKpiCard icon={Building2} label="Employers recruiting" value={snapshot.market.activeEmployers} hint={`${snapshot.market.newEmployers} joined this month`} />
-        <DashboardKpiCard icon={Briefcase} label="Open full-time jobs" value={snapshot.market.openJobs} />
+        <DashboardKpiCard
+          icon={Briefcase}
+          label="Open full-time jobs"
+          value={snapshot.market.openJobs}
+          hint={`${snapshot.market.dailyJobPosts.at(-1)?.value ?? 0} posted today`}
+          trend={snapshot.market.dailyJobPosts.map((row) => row.value)}
+        />
         <DashboardKpiCard icon={Briefcase} label="Open internships" value={snapshot.market.internships} tone="teal" />
         <DashboardKpiCard icon={Repeat} label="Repeat employers" value={snapshot.market.repeatEmployers} hint="More than one hire" />
       </div>
+      <CampusTrendChart
+        title="Daily job posts"
+        description="New listings posted to the board."
+        points={snapshot.market.dailyJobPosts.map((row) => ({ label: row.label, jobs: row.value }))}
+        jobsKey="Job posts"
+      />
       <div className="grid gap-3 sm:grid-cols-2">
         <DashboardKpiCard icon={Clock} label="Employer response rate" value={fmtSourced(snapshot.market.responseRate, "pct")} />
         <DashboardKpiCard icon={Clock} label="Hours to respond" value={fmtSourced(snapshot.market.timeToRespondHours)} tone="amber" />

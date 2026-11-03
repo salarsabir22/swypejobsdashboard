@@ -1,4 +1,5 @@
 import { campusPageData } from "@/lib/campus/page-data"
+import { canCampus } from "@/lib/campus/rbac"
 import { createClient } from "@/lib/supabase/server"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { ExportCsvButton, SavedViewForm } from "@/components/campus/CampusActions"
@@ -8,7 +9,7 @@ import { Download } from "lucide-react"
 
 export default async function CampusReportsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_reports")
   const supabase = await createClient()
   const [{ data: audits }, { data: views }] = await Promise.all([
     supabase.from("campus_audit_log").select("action, entity, created_at").order("created_at", { ascending: false }).limit(12),
@@ -33,6 +34,7 @@ export default async function CampusReportsPage({ searchParams }: { searchParams
     <CampusFrame
       snapshot={snapshot}
       showSources
+      exportDataset="overview"
       title="Reporting and compliance"
       description="Exportable NACE-style first-destination tables for the provost, deans, and trustees. Every column is labeled platform, survey, self-reported, or verified."
     >
@@ -95,7 +97,7 @@ export default async function CampusReportsPage({ searchParams }: { searchParams
               ))}
             </ul>
           ) : null}
-          <SavedViewForm path="/campus/reports" />
+          {canCampus(snapshot.access, "mutate") ? <SavedViewForm path="/campus/reports" /> : null}
         </DashboardPanel>
         <DashboardPanel title="Audit log">
           {(audits || []).length ? (

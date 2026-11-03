@@ -34,6 +34,7 @@ const MORE = [
 const REPORTS = [
   { href: "/campus/outcomes", label: "Outcomes" },
   { href: "/campus/engagement", label: "Engagement" },
+  { href: "/campus/applications", label: "Applications" },
   { href: "/campus/market", label: "Market" },
   { href: "/campus/quality", label: "Match quality" },
   { href: "/campus/equity", label: "Equity" },

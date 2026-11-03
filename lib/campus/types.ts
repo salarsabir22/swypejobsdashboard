@@ -55,6 +55,18 @@ export type AttentionStudent = {
   reason: string
 }
 
+export type DayPoint = { date: string; label: string; value: number }
+
+export type DepartmentRisk = {
+  department: string
+  students: number
+  activeMonth: number
+  applications: number
+  activityRate: number | null
+  appRate: number | null
+  reason: string
+}
+
 export type CampusSnapshot = {
   access: CampusAccess
   missingTables: string[]
@@ -103,12 +115,20 @@ export type CampusSnapshot = {
     rsvps: number
     appointments: number
     resumeReviews: number
+    dailyApplications: DayPoint[]
+    applicationsWeek: number
+    applicationsMonth: number
+    applicants: number
+    applicationsByMajor: CountRow[]
+    applicationsByEmployer: CountRow[]
+    atRiskDepartments: DepartmentRisk[]
   }
   market: {
     activeEmployers: number
     newEmployers: number
     openJobs: number
     internships: number
+    dailyJobPosts: DayPoint[]
     byMajor: CountRow[]
     byLocation: CountRow[]
     byWorkMode: CountRow[]

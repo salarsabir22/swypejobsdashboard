@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server"
 import { sendMail, siteUrl } from "@/lib/email/mailer"
 import { employerInviteEmail } from "@/lib/email/templates"
-import { requireCampusStaff } from "@/lib/campus/staff-api"
+import { requireCampusCapabilityApi } from "@/lib/campus/staff-api"
 
 export const runtime = "nodejs"
 
 export async function POST(request: Request) {
-  const staff = await requireCampusStaff()
+  const staff = await requireCampusCapabilityApi("mutate")
   if ("error" in staff) return staff.error
 
   const body = (await request.json().catch(() => null)) as Record<string, string | undefined> | null
   const companyName = body?.companyName?.trim()
   const contactEmail = body?.contactEmail?.trim().toLowerCase()
-  const university = (body?.university?.trim() || staff.university || "").trim()
+  const university = (staff.isAdmin ? body?.university?.trim() || staff.university : staff.university || "").trim()
   if (!companyName || !contactEmail || !university) {
     return NextResponse.json({ error: "Company, email, and university are required." }, { status: 400 })
   }

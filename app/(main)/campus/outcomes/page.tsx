@@ -8,12 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export default async function CampusOutcomesPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
-  const snapshot = await campusPageData(campus)
+  const snapshot = await campusPageData(campus, "view_reports")
 
   return (
     <CampusFrame
       snapshot={snapshot}
       showSources
+      exportDataset="outcomes"
       title="Student outcomes"
       description="NACE-style first-destination status at graduation, 3, 6, and 12 months. Until a survey file is imported, graduation uses a platform proxy from hired / seeking / inactive seniors."
     >
