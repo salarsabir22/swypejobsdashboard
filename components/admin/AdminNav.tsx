@@ -6,6 +6,7 @@ import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { canAccessModule } from "@/lib/admin/modules"
 import { ADMIN_NAV_GROUPS } from "@/lib/admin/nav-groups"
+import { NavGroupMenu } from "@/components/nav/NavGroupMenu"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -33,7 +34,7 @@ export function AdminNavDropdowns({ modules = ["all"] }: { modules?: string[] })
         if (!links.length) return null
         const active = groupActive(pathname, links)
         return (
-          <DropdownMenu key={group.label}>
+          <DropdownMenu key={group.label} modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 type="button"
@@ -69,7 +70,7 @@ export function AdminNavDropdowns({ modules = ["all"] }: { modules?: string[] })
   )
 }
 
-/** Mobile sheet: flat grouped list. */
+/** Drawer: grouped dropdowns for every screen. */
 export function AdminNavMobileLinks({
   modules = ["all"],
   onNavigate,
@@ -80,41 +81,25 @@ export function AdminNavMobileLinks({
   const pathname = usePathname()
 
   return (
-    <div className="grid gap-4 p-3">
+    <div className="grid gap-1">
       {ADMIN_NAV_GROUPS.map((group) => {
         const links = group.links.filter((link) => canAccessModule(modules, link.module))
         if (!links.length) return null
         return (
-          <div key={group.label} className="space-y-1">
-            <p className="px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
-            <div className="grid gap-0.5">
-              {links.map((link) => {
-                const active = linkActive(pathname, link.href, link.exact)
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={onNavigate}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "rounded-xl px-3 py-2.5 text-[15px] font-medium tracking-[-0.01em] transition-colors",
-                      active
-                        ? "bg-secondary font-semibold text-primary"
-                        : "text-foreground/80 hover:bg-secondary/70 hover:text-foreground",
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
+          <NavGroupMenu
+            key={group.label}
+            label={group.label}
+            items={links}
+            pathname={pathname}
+            variant="drawer"
+            onNavigate={onNavigate}
+          />
         )
       })}
       <Link
         href="/campus"
         onClick={onNavigate}
-        className="rounded-xl px-3 py-2.5 text-[15px] font-medium text-foreground/80 hover:bg-secondary/70"
+        className="flex min-h-11 items-center rounded-xl px-3 text-[15px] font-medium text-foreground/80 hover:bg-secondary/70"
       >
         Campus
       </Link>

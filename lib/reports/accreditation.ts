@@ -7,6 +7,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Sheet } from "@/lib/export/formats"
 import { EMPLOYMENT_LABEL, EMPLOYMENT_STATUSES, type EmploymentStatus } from "@/lib/profile/survey"
+import { listCareerSurveysByYear } from "@/lib/profile/career-survey-store"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any, any, any>
@@ -81,15 +82,7 @@ export async function buildAccreditation(
   let surveyReady = true
   if (ids.length) {
     try {
-      surveys = await inChunks(ids, async (chunk) => {
-        const surveyRes = await admin
-          .from("career_surveys")
-          .select("student_id, employment_status, employer, designation, industry, salary_pkr, related_to_degree, satisfaction, further_study")
-          .eq("survey_year", year)
-          .in("student_id", chunk)
-        if (surveyRes.error) throw new Error(surveyRes.error.message)
-        return (surveyRes.data || []) as SurveyRow[]
-      })
+      surveys = await inChunks(ids, async (chunk) => listCareerSurveysByYear(admin, { year, studentIds: chunk }))
     } catch {
       surveyReady = false
       surveys = []

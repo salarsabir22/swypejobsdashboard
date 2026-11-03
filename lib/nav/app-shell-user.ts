@@ -24,6 +24,7 @@ export type AppShellUser = {
   adminModules?: string[]
   isAlumni?: boolean
   university?: string | null
+  staffRole?: string | null
 }
 
 /** One auth + profile round-trip per request (shared across layout/pages). */
@@ -49,6 +50,7 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
     adminModules: undefined,
     isAlumni: false,
     university: null,
+    staffRole: null,
   }
   if (!user) return empty
 
@@ -63,6 +65,7 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
   let adminModules: string[] | undefined
   let isAlumni = false
   let university: string | null = null
+  let staffRole: string | null = null
 
   if (role === "recruiter") {
     const { data: company } = await supabase
@@ -103,6 +106,14 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
       ? "super_admin"
       : (staff?.staff_role as AdminStaffRole) || "moderator"
     adminModules = normalizeModules(staffError ? ["all"] : (staff?.modules as string[] | null), staffRole)
+  } else if (role === "university") {
+    const { data: campusStaff } = await supabase
+      .from("campus_staff")
+      .select("staff_role, university")
+      .eq("user_id", user.id)
+      .maybeSingle()
+    staffRole = campusStaff?.staff_role || null
+    university = campusStaff?.university || university
   }
 
   return {
@@ -115,5 +126,6 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
     adminModules,
     isAlumni,
     university,
+    staffRole,
   }
 })

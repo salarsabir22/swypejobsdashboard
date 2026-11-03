@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/lib/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -58,7 +57,6 @@ export function CareerSurveyForm({
     }
     const satisfaction = form.satisfaction.trim() ? Number(form.satisfaction) : null
     setSaving(true)
-    const supabase = createClient()
     const payload = {
       student_id: userId,
       survey_year: year,
@@ -73,18 +71,22 @@ export function CareerSurveyForm({
       comments: form.comments.trim() || null,
       submitted_at: new Date().toISOString(),
     }
-    const { error } = await supabase.from("career_surveys").upsert(payload, { onConflict: "student_id,survey_year" })
+    const res = await fetch("/api/profile/survey", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+    const json = (await res.json().catch(() => null)) as { error?: string; row?: Record<string, unknown> } | null
     setSaving(false)
-    if (error) {
-      const missing = /career_surveys/i.test(error.message) && /relation|schema|does not exist/i.test(error.message)
+    if (!res.ok) {
       toast({
         variant: "destructive",
         title: "Couldn’t save survey",
-        description: missing ? "Run the career_surveys migration in Supabase first." : error.message,
+        description: json?.error || "Try again in a moment.",
       })
       return
     }
-    setRows((prev) => [...prev.filter((row) => Number(row.survey_year) !== year), payload])
+    setRows((prev) => [...prev.filter((row) => Number(row.survey_year) !== year), json?.row || payload])
     toast({ title: `${year} survey saved` })
   }
 

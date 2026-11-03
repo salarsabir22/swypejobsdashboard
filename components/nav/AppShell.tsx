@@ -25,6 +25,7 @@ export function AppShell({ user, children }: { user: AppShellUser; children: Rea
         shareTitle={user.shareTitle}
         adminModules={user.adminModules}
         isAlumni={user.isAlumni}
+        staffRole={user.staffRole}
       />
 
       <main

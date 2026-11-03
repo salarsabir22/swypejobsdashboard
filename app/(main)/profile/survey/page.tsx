@@ -2,7 +2,9 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { getRequestUser } from "@/lib/nav/app-shell-user"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { studentIsAlumni } from "@/lib/jobs/targeting"
+import { listCareerSurveysForStudent } from "@/lib/profile/career-survey-store"
 import { CareerSurveyForm } from "@/components/profile/CareerSurveyForm"
 import { Button } from "@/components/ui/button"
 
@@ -24,8 +26,12 @@ export default async function CareerSurveyPage() {
   const student = studentRes.error ? null : studentRes.data
   if (!studentIsAlumni(student)) redirect("/profile")
 
-  const surveyRes = await supabase.from("career_surveys").select("*").eq("student_id", user.id)
-  const rows = (surveyRes.error ? [] : surveyRes.data || []) as Record<string, unknown>[]
+  let rows: Record<string, unknown>[] = []
+  try {
+    rows = await listCareerSurveysForStudent(createAdminClient(), user.id)
+  } catch {
+    rows = []
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">

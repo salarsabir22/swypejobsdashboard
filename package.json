@@ -9,7 +9,9 @@
     "lint": "eslint",
     "seed:dry": "node --env-file=.env.local scripts/seed-real-data.mjs",
     "seed:real": "node --env-file=.env.local scripts/seed-real-data.mjs --confirm",
-    "seed:iobm": "node --env-file=.env.local scripts/seed-iobm-campus.mjs"
+    "seed:iobm": "node --env-file=.env.local scripts/seed-iobm-campus.mjs",
+    "seed:iobm-dashboards": "node --env-file=.env.local scripts/seed-iobm-dashboard-data.mjs",
+    "seed:career-surveys": "node --env-file=.env.local scripts/apply-career-surveys.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -57,6 +59,7 @@
     "tailwind-merge": "^3.5.0",
     "three": "^0.183.2",
     "tw-animate-css": "^1.4.0",
+    "vaul": "^1.1.2",
     "zod": "^4.3.6",
     "zustand": "^5.0.11"
   },

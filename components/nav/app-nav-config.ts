@@ -70,3 +70,88 @@ export const recruiterMoreLinks: MoreLink[] = [
   { href: "/help", label: "Help", icon: CircleHelp },
   { href: "/feedback", label: "Feedback", icon: MessageSquareText },
 ]
+
+export type NavGroup = { label: string; items: MoreLink[] }
+
+export const studentNavGroups: NavGroup[] = [
+  {
+    label: "Career",
+    items: [
+      { href: "/matches", label: "Applications", icon: Briefcase },
+      { href: "/resume", label: "Resume", icon: FileText },
+      { href: "/dashboard", label: "Insights", icon: LayoutDashboard },
+      { href: "/internships", label: "Internships", icon: GraduationCap },
+      { href: "/profile#saved", label: "Saved roles", icon: Bookmark },
+      { href: "/profile", label: "Profile", icon: User },
+    ],
+  },
+  {
+    label: "Campus",
+    items: [
+      { href: "/career-office", label: "Career office", icon: Building2 },
+      { href: "/events", label: "Events", icon: Calendar },
+      { href: "/appointments", label: "Advising", icon: Handshake },
+      { href: "/announcements", label: "Announcements", icon: MessageSquareText },
+      { href: "/opportunities", label: "International", icon: Globe },
+    ],
+  },
+  {
+    label: "Community",
+    items: [
+      { href: "/feed", label: "Feed", icon: Newspaper },
+      { href: "/chat", label: "Chat", icon: MessageCircle },
+      { href: "/community", label: "Community", icon: Users },
+      { href: "/help", label: "Help", icon: CircleHelp },
+      { href: "/feedback", label: "Feedback", icon: MessageSquareText },
+    ],
+  },
+]
+
+export const alumniNavGroups: NavGroup[] = [
+  {
+    label: "Career",
+    items: [
+      ...studentNavGroups[0].items,
+      { href: "/profile/experience", label: "Employment history", icon: Briefcase },
+    ],
+  },
+  {
+    label: "Campus",
+    items: [
+      ...studentNavGroups[1].items,
+      { href: "/mentorship", label: "Mentorship", icon: Handshake },
+    ],
+  },
+  studentNavGroups[2],
+]
+
+export const recruiterNavGroups: NavGroup[] = [
+  {
+    label: "Hire",
+    items: [
+      { href: "/jobs", label: "Jobs", icon: Briefcase },
+      { href: "/matches", label: "Pipeline", icon: Columns3 },
+      { href: "/jobs/new", label: "Post a job", icon: Briefcase },
+    ],
+  },
+  {
+    label: "Company",
+    items: [
+      { href: "/company", label: "Company", icon: User },
+      { href: "/dashboard", label: "Insights", icon: LayoutDashboard },
+      { href: "/partnerships", label: "Campus partnerships", icon: Handshake },
+      { href: "/profile", label: "Profile", icon: User },
+    ],
+  },
+  {
+    label: "Community",
+    items: [
+      { href: "/feed", label: "Feed", icon: Newspaper },
+      { href: "/chat", label: "Chat", icon: MessageCircle },
+      { href: "/community", label: "Community", icon: Users },
+      { href: "/events", label: "Events", icon: Calendar },
+      { href: "/help", label: "Help", icon: CircleHelp },
+      { href: "/feedback", label: "Feedback", icon: MessageSquareText },
+    ],
+  },
+]
