@@ -15,30 +15,48 @@ const KIND_LABEL: Record<string, string> = {
   scholarship: "Scholarship",
 }
 
+type OpportunityRow = {
+  id: string
+  kind: string
+  title: string
+  country: string | null
+  organization: string | null
+  summary: string | null
+  eligibility: string | null
+  visa_url: string | null
+  apply_url: string | null
+  deadline: string | null
+  university?: string | null
+}
+
+const OPPORTUNITY_FIELDS =
+  "id, kind, title, country, organization, summary, eligibility, visa_url, apply_url, deadline"
+
 export default async function OpportunitiesPage({ searchParams }: { searchParams: Promise<{ kind?: string }> }) {
   const { kind } = await searchParams
   const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login?next=/opportunities")
 
   const { data: student } = await supabase.from("student_profiles").select("university").eq("id", user.id).maybeSingle()
-  let listed = await supabase
+  const withCampus = await supabase
     .from("international_opportunities")
-    .select("id, kind, title, country, organization, summary, eligibility, visa_url, apply_url, deadline, university")
+    .select(`${OPPORTUNITY_FIELDS}, university`)
     .eq("is_active", true)
     .order("deadline", { ascending: true })
-  if (listed.error) {
-    listed = await supabase
-      .from("international_opportunities")
-      .select("id, kind, title, country, organization, summary, eligibility, visa_url, apply_url, deadline")
-      .eq("is_active", true)
-      .order("deadline", { ascending: true })
-  }
+  const listed = withCampus.error
+    ? await supabase
+        .from("international_opportunities")
+        .select(OPPORTUNITY_FIELDS)
+        .eq("is_active", true)
+        .order("deadline", { ascending: true })
+    : withCampus
   const current = kind || "all"
   const uni = student?.university?.trim().toLowerCase()
-  const rows = (listed.error ? [] : listed.data || []).filter((row) => {
+  const rows = ((listed.data || []) as OpportunityRow[]).filter((row) => {
+    if (listed.error) return false
     if (current !== "all" && row.kind !== current) return false
-    const campus = "university" in row ? (row as { university?: string | null }).university : null
-    if (uni && campus && campus.toLowerCase() !== uni) return false
+    const campus = row.university?.trim().toLowerCase()
+    if (uni && campus && campus !== uni) return false
     return true
   })
 
