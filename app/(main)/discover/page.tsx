@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { readStudentCampusMembership } from "@/lib/campus/student-campus"
 import { StudentDiscoverView } from "./StudentDiscoverView"
 import { RecruiterDiscoverView } from "./RecruiterDiscoverView"
 
@@ -34,6 +35,7 @@ export default async function DiscoverPage() {
     )
   }
 
+  const membership = await readStudentCampusMembership(supabase, user)
   let studentRes = await supabase
     .from("student_profiles")
     .select("skills, preferred_job_categories, still_enrolled, current_semester, degree, graduation_year, cgpa, is_alumni, gender, department, preferred_locations, university")
@@ -43,7 +45,7 @@ export default async function DiscoverPage() {
     // cgpa / is_alumni columns may not exist until the migrations run.
     studentRes = await supabase
       .from("student_profiles")
-      .select("skills, preferred_job_categories, still_enrolled, current_semester, degree, graduation_year")
+      .select("skills, preferred_job_categories, still_enrolled, current_semester, degree, graduation_year, university")
       .eq("id", user.id)
       .maybeSingle()
   }
@@ -72,11 +74,11 @@ export default async function DiscoverPage() {
       degree={student?.degree ?? null}
       graduationYear={student?.graduation_year ?? null}
       cgpa={student?.cgpa ?? null}
-      isAlumni={student?.is_alumni ?? null}
+      isAlumni={student?.is_alumni ?? membership.isAlumni}
       gender={student?.gender ?? null}
       department={student?.department ?? null}
       preferredLocations={student?.preferred_locations ?? []}
-      university={student?.university ?? null}
+      university={membership.university || student?.university || null}
       selfImageUrl={profile.avatar_url}
       selfName={profile.full_name || "You"}
     />

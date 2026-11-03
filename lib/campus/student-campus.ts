@@ -1,6 +1,6 @@
 import { parseAcademicHistory, primaryAcademicFields } from "@/lib/profile/academics"
 import { IOBM_SHORT_NAME, IOBM_UNIVERSITY_NAME } from "@/lib/sso/iobm"
-import { jobVisibleOnCampus, reviewKey, sameCampus } from "@/lib/jobs/curation"
+import { jobCuratedForCampus, jobVisibleOnCampus, reviewKey, sameCampus } from "@/lib/jobs/curation"
 
 export function canonicalizeUniversity(name: string | null | undefined) {
   const value = name?.trim() || ""
@@ -173,7 +173,7 @@ export async function loadStudentCampus(
       target_universities?: string[] | null
       recruiter_profiles?: { company_name?: string | null; is_approved?: boolean | null } | { company_name?: string | null; is_approved?: boolean | null }[] | null
     }) => {
-      if (!curated.has(job.id)) return false
+      if (!jobCuratedForCampus(job, opts.university, curated)) return false
       const company = Array.isArray(job.recruiter_profiles) ? job.recruiter_profiles[0] : job.recruiter_profiles
       if (company && company.is_approved === false) return false
       return jobVisibleOnCampus(job, opts.university, reviews)
@@ -195,7 +195,7 @@ export async function loadStudentCampus(
         location: job.location || null,
         is_remote: job.is_remote ?? null,
         company: company?.company_name || null,
-        collection: curated.get(job.id) || null,
+        collection: jobCuratedForCampus(job, opts.university, curated),
       } satisfies StudentCampusJob
     }) as StudentCampusJob[]
 

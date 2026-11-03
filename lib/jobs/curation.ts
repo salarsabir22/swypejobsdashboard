@@ -37,10 +37,22 @@ export function jobVisibleOnCampus(
   if (!university) return false
   const allowed = targets.some((name) => sameCampus(name, university))
   if (!allowed) return false
-  const status = reviews.get(`${job.id}:${university.trim().toLowerCase()}`)
-  return status === "approved"
+  const status = reviews.get(reviewKey(job.id, university))
+  if (status === "rejected" || status === "held") return false
+  return true
 }
 
 export function reviewKey(jobId: string, university: string) {
-  return `${jobId}:${university.trim().toLowerCase()}`
+  return `${jobId}:${campusKey(university)}`
+}
+
+export function jobCuratedForCampus(
+  job: { id: string; target_universities?: string[] | null },
+  university: string | null | undefined,
+  collections: Map<string, string>
+) {
+  if (collections.has(job.id)) return collections.get(job.id) || CURATED_BADGE
+  const targets = Array.isArray(job.target_universities) ? job.target_universities : []
+  if (university && targets.some((name) => sameCampus(name, university))) return CURATED_BADGE
+  return null
 }

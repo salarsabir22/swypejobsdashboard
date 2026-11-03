@@ -44,6 +44,7 @@ import {
   FEED_ALL,
   FEED_CURATED,
   FEED_STORAGE_KEY,
+  jobCuratedForCampus,
   jobVisibleOnCampus,
   parseFeedMode,
   reviewKey,
@@ -240,7 +241,7 @@ export function StudentDiscoverView({
         return
       }
 
-      const fetched = (data || []) as Job[]
+      let fetched = (data || []) as Job[]
       const [collectionRes, reviewRes] = await Promise.all([
         supabase
           .from("job_collection_items")
@@ -259,11 +260,33 @@ export function StudentDiscoverView({
       for (const row of reviewRes.data || []) {
         if (row.job_id && row.university) reviews.set(reviewKey(row.job_id, row.university), row.status)
       }
-      const tagged = fetched.map((job) => ({
-        ...job,
-        cdc_curated: curated.has(job.id),
-        collection_label: curated.get(job.id) || null,
-      }))
+
+      const extraIds = [...curated.keys()].filter((id) => !fetched.some((job) => job.id === id))
+      const campusJobs = university
+        ? await supabase
+            .from("jobs")
+            .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved)")
+            .eq("is_active", true)
+            .contains("target_universities", [university])
+            .limit(40)
+        : { data: [] as Job[], error: null }
+      const missing = extraIds.length
+        ? await supabase
+            .from("jobs")
+            .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved)")
+            .in("id", extraIds)
+            .eq("is_active", true)
+        : { data: [] as Job[], error: null }
+      const extras = [...(campusJobs.error ? [] : campusJobs.data || []), ...(missing.error ? [] : missing.data || [])] as Job[]
+      if (extras.length) {
+        const seen = new Set(fetched.map((job) => job.id))
+        fetched = [...extras.filter((job) => !seen.has(job.id)), ...fetched]
+      }
+
+      const tagged = fetched.map((job) => {
+        const label = jobCuratedForCampus(job, university, curated)
+        return { ...job, cdc_curated: Boolean(label), collection_label: label }
+      })
       const rows = rankJobs(
         tagged.filter(
           (j) =>
