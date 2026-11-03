@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
-import { IobmMark } from "@/components/brand/IobmMark"
+import { CoBrand } from "@/components/sso/CoBrand"
 import { createClient } from "@/lib/supabase/client"
 import { googleStartUrl, usesLocalGoogle } from "@/lib/auth-sites"
 import { isIobmPortal, iobmGoogleHostedDomain } from "@/lib/sso/iobm"
@@ -60,12 +60,12 @@ export default function IobmGoogleSsoPage() {
   }, [])
 
   return (
-    <div className="mx-auto max-w-md text-center">
-      <IobmMark size={72} className="mx-auto" />
-      <h1 className="mt-5 text-2xl font-semibold tracking-[-0.04em] text-[#111111]">Connecting to IoBM SSO</h1>
-      <p className="mt-3 inline-flex items-center justify-center gap-2 text-sm text-[#5C6370]">
+    <div className="w-full max-w-[400px] rounded-[28px] border border-[#111111]/10 bg-white px-7 py-8 text-center shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+      <CoBrand size={32} className="justify-center" />
+      <h1 className="mt-5 text-[24px] font-normal leading-8 tracking-[-0.02em] text-[#111111]">Sign in</h1>
+      <p className="mt-3 inline-flex items-center justify-center gap-2 text-[14px] leading-5 text-[#5C6370]">
         {error ? null : <Loader2 className="size-4 animate-spin" aria-hidden />}
-        {error || "You will be asked for your IoBM Google account."}
+        {error || "Continue with your IoBM Google account"}
       </p>
     </div>
   )

@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { isAllowedReturn } from "@/lib/auth-sites"
 import { provisionUniversityAccount } from "@/lib/campus/provision"
+import { googleSubjectOf } from "@/lib/sso/identity"
 import { provisionIobmSsoAccount } from "@/lib/sso/provision"
 import { IOBM_UNIVERSITY_NAME, isIobmPortal } from "@/lib/sso/iobm"
 import {
@@ -121,6 +122,10 @@ export default function AuthCallbackPage() {
           staffRole: pendingStaff,
           identityClaim,
           fullName: typeof meta.full_name === "string" ? meta.full_name : typeof meta.name === "string" ? meta.name : null,
+          subject: typeof meta.sso_subject === "string" ? meta.sso_subject : googleSubjectOf(session.user),
+          provider: typeof meta.sso_provider === "string" && meta.sso_provider.startsWith("iobm_")
+            ? (meta.sso_provider as "iobm_saml" | "iobm_oidc")
+            : "google",
         })
         if (!saved.ok) {
           clearSignupIntent()

@@ -62,6 +62,8 @@ export async function GET(request: NextRequest) {
       portal: saved.portal,
       staffRole: saved.staffRole,
       identityClaim: saved.identityClaim,
+      subject: claims.subject,
+      provider: "iobm_oidc",
     })
     return NextResponse.redirect(dest)
   } catch (err) {

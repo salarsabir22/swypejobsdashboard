@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { CoBrand } from "@/components/sso/CoBrand"
 
 export const metadata: Metadata = {
   title: "Sign in | IoBM Career Development Center",
@@ -9,25 +8,18 @@ export const metadata: Metadata = {
 
 export default function IobmLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-white text-[#111111]">
-      <header className="border-b border-[#111111]/10 bg-white">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-5 sm:px-8">
-          <Link href="/iobm" aria-label="IoBM Career Development Center home">
-            <CoBrand priority />
-          </Link>
-          <Link
-            href="/login"
-            className="inline-flex min-h-11 items-center text-[13px] text-[#5C6370] underline-offset-4 hover:text-[#111111] hover:underline"
-          >
-            Not IoBM?
-          </Link>
-        </div>
+    <div className="flex min-h-screen flex-col bg-[#F5F5F5] text-[#111111]">
+      <header className="flex h-12 items-center justify-end px-4">
+        <Link
+          href="/login"
+          className="inline-flex min-h-10 items-center text-[13px] text-[#5C6370] underline-offset-4 hover:text-[#111111] hover:underline"
+        >
+          Not IoBM?
+        </Link>
       </header>
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-5 py-10 sm:px-8 sm:py-14">{children}</main>
-      <footer className="border-t border-[#111111]/10 bg-white">
-        <div className="mx-auto max-w-5xl px-5 py-6 text-[12px] text-[#5C6370] sm:px-8">
-          Institute of Business Management · Career Development Center · Korangi Creek, Karachi
-        </div>
+      <main className="flex flex-1 items-center justify-center px-4 py-6">{children}</main>
+      <footer className="px-4 py-4 text-center text-[11px] text-[#5C6370]">
+        IoBM × swypejobs · Career Development Center · Korangi Creek, Karachi
       </footer>
     </div>
   )

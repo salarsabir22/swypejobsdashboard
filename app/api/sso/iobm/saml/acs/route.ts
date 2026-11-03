@@ -50,6 +50,8 @@ export async function POST(request: NextRequest) {
       portal,
       staffRole: state?.staffRole,
       identityClaim: state?.identityClaim,
+      subject: claims.subject,
+      provider: "iobm_saml",
     })
     return NextResponse.redirect(dest)
   } catch (err) {

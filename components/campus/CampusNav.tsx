@@ -28,6 +28,7 @@ const MORE = [
   { href: "/campus/events", label: "Events" },
   { href: "/campus/opportunities", label: "International" },
   { href: "/campus/actions", label: "Actions" },
+  { href: "/campus/sso", label: "SSO" },
 ]
 
 const REPORTS = [
@@ -63,7 +64,14 @@ export function CampusNav({ staffRole }: { staffRole?: string }) {
     : scope === "reports"
       ? PRIMARY.filter((link) => link.href === "/campus")
       : PRIMARY
-  const more = scope === "faculty" ? MORE.filter((link) => link.href === "/campus/events") : scope === "reports" ? [] : MORE
+  const more =
+    scope === "faculty"
+      ? MORE.filter((link) => link.href === "/campus/events")
+      : scope === "reports"
+        ? []
+        : scope === "department"
+          ? MORE.filter((link) => link.href !== "/campus/sso")
+          : MORE
   const reports = scope === "faculty" ? [] : REPORTS
   const moreActive = more.some((link) => isActivePath(pathname, link.href))
   const reportsActive = reports.some((link) => isActivePath(pathname, link.href))
