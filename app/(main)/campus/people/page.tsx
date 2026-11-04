@@ -20,19 +20,6 @@ export default async function CampusPeoplePage({
   const supabase = await createClient()
   const view = kind === "alumni" ? "alumni" : "students"
 
-  const loadPeople = (columns: string) => {
-    const query = supabase.from("student_profiles").select(columns)
-    return (university ? query.eq("university", university) : query).limit(120)
-  }
-  const primary = await loadPeople(
-    "id, degree, graduation_year, skills, resume_url, still_enrolled, is_alumni, linkedin_url, profiles(full_name)"
-  )
-  const peopleRes = primary.error
-    ? await loadPeople(
-        "id, degree, graduation_year, skills, resume_url, still_enrolled, linkedin_url, profiles(full_name)"
-      )
-    : primary
-
   type PeopleRow = {
     id: string
     degree: string | null
@@ -45,7 +32,20 @@ export default async function CampusPeoplePage({
     profiles: { full_name: string | null } | { full_name: string | null }[] | null
   }
 
-  const rows = ((peopleRes.data || []) as PeopleRow[])
+  const primaryQuery = supabase
+    .from("student_profiles")
+    .select("id, degree, graduation_year, skills, resume_url, still_enrolled, is_alumni, linkedin_url, profiles(full_name)")
+  const primary = await (university ? primaryQuery.eq("university", university) : primaryQuery).limit(120)
+  let people: unknown = primary.data
+  if (primary.error) {
+    const fallbackQuery = supabase
+      .from("student_profiles")
+      .select("id, degree, graduation_year, skills, resume_url, still_enrolled, linkedin_url, profiles(full_name)")
+    const fallback = await (university ? fallbackQuery.eq("university", university) : fallbackQuery).limit(120)
+    people = fallback.data
+  }
+
+  const rows = (Array.isArray(people) ? people : []) as unknown as PeopleRow[]
     .filter((row) => (view === "alumni" ? studentIsAlumni(row) : !studentIsAlumni(row)))
     .map((row) => {
       const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
