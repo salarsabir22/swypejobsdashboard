@@ -45,7 +45,8 @@ export default async function CampusPeoplePage({
     people = fallback.data
   }
 
-  const rows = (Array.isArray(people) ? people : []) as unknown as PeopleRow[]
+  const peopleRows: PeopleRow[] = Array.isArray(people) ? (people as PeopleRow[]) : []
+  const rows = peopleRows
     .filter((row) => (view === "alumni" ? studentIsAlumni(row) : !studentIsAlumni(row)))
     .map((row) => {
       const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
