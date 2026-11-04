@@ -17,4 +17,10 @@ export function campusNavScope(staffRole: string | null | undefined) {
   return STAFF_NAV[id]
 }
 
+/** Auditor is reports-only and must not search student records. */
+export function campusStaffCanSearch(staffRole?: string | null, isPlatformAdmin = false) {
+  if (isPlatformAdmin) return true
+  return campusNavScope(staffRole) !== "reports"
+}
+
 export { staffRoleOf }

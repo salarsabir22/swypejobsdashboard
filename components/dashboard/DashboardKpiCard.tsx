@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import type { LucideIcon } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { KpiSparkline } from "@/components/dashboard/KpiSparkline"
@@ -17,9 +18,10 @@ type DashboardKpiCardProps = {
   hint?: string | null
   trend?: number[]
   tone?: keyof typeof TONE
+  footer?: ReactNode
 }
 
-export function DashboardKpiCard({ icon: Icon, label, value, hint, trend, tone = "blue" }: DashboardKpiCardProps) {
+export function DashboardKpiCard({ icon: Icon, label, value, hint, trend, tone = "blue", footer }: DashboardKpiCardProps) {
   const t = TONE[tone]
   return (
     <Card className="group relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_22px_48px_-24px_rgba(90,72,255,0.55)]">
@@ -42,6 +44,7 @@ export function DashboardKpiCard({ icon: Icon, label, value, hint, trend, tone =
           {value}
         </p>
         {hint ? <p className="mt-3 text-[13px] leading-snug text-muted-foreground">{hint}</p> : null}
+        {footer ? <div className="relative z-10 mt-4 border-t border-border/60 pt-3">{footer}</div> : null}
       </CardContent>
     </Card>
   )

@@ -9,6 +9,7 @@
   --app-tabbar-height: 3.25rem;
   --app-tabbar-offset: calc(var(--app-tabbar-height) + env(safe-area-inset-bottom, 0px));
   --app-tabbar-clearance: calc(var(--app-tabbar-offset) + 0.5rem);
+  --app-sidebar-width: 0px;
   --discover-filters-fab: 4rem;
 
   /* Clearpath palette */

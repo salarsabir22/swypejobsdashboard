@@ -4,10 +4,12 @@ import { CampusFrame } from "@/components/campus/CampusFrame"
 import { CampusTrendChart } from "@/components/campus/CampusTrendChart"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { SourceBadge } from "@/components/campus/SourceBadge"
+import { CampusExportButtons } from "@/components/campus/CampusExportButtons"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
 import { DashboardFunnel } from "@/components/dashboard/DashboardFunnel"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { fmtSourced } from "@/lib/campus/format"
+import type { CampusExportDataset } from "@/lib/campus/export"
 import { AlertTriangle, Briefcase, Building2, Flag, GraduationCap, Send, Users } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -15,14 +17,18 @@ import { Button } from "@/components/ui/button"
 export default async function CampusHomePage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
   const { campus } = await searchParams
   const snapshot = await campusPageData(campus, "view_home")
+  const canExport = canCampus(snapshot.access, "export")
+  const uni = snapshot.access.university
+  const report = (dataset: CampusExportDataset) =>
+    canExport ? <CampusExportButtons dataset={dataset} campus={uni} compact /> : null
 
   return (
     <CampusFrame
       snapshot={snapshot}
       showSources
       exportDataset="overview"
-      title="Career office"
-      description="Placement, engagement, and swipe-level demand for your students. Headline numbers mix live platform activity with survey records when those exist."
+      title="CDC dashboard"
+      description="Daily job posts, student applications, employer activity, placement trends, and low-activity department alerts. Figures come from live platform and survey records — not mockup placeholders."
     >
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <DashboardKpiCard
@@ -31,6 +37,7 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
           value={fmtSourced(snapshot.kpis.placementRate, "pct")}
           hint={snapshot.kpis.placementRate.note || "Employed + continuing education"}
           tone="blue"
+          footer={report("placement")}
         />
         <DashboardKpiCard
           icon={Users}
@@ -38,6 +45,7 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
           value={fmtSourced(snapshot.kpis.activeStudentsMonth)}
           hint={`${snapshot.engagement.registered} registered · ${snapshot.engagement.inactive} inactive`}
           tone="teal"
+          footer={report("active_students")}
         />
         <DashboardKpiCard
           icon={Briefcase}
@@ -46,6 +54,7 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
           hint={`${snapshot.market.dailyJobPosts.at(-1)?.value ?? 0} posted today · ${snapshot.market.internships} internships`}
           trend={snapshot.market.dailyJobPosts.map((row) => row.value)}
           tone="violet"
+          footer={report("open_jobs")}
         />
         <DashboardKpiCard
           icon={Send}
@@ -54,6 +63,7 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
           hint={`${snapshot.engagement.applicationsMonth} this month · ${snapshot.engagement.applicants} applicants`}
           trend={snapshot.engagement.dailyApplications.map((row) => row.value)}
           tone="teal"
+          footer={report("applications")}
         />
         <DashboardKpiCard
           icon={Building2}
@@ -61,6 +71,7 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
           value={fmtSourced(snapshot.kpis.employersEngaged)}
           hint={`${snapshot.market.newEmployers} new this month`}
           tone="blue"
+          footer={report("employers")}
         />
         <DashboardKpiCard
           icon={AlertTriangle}
@@ -68,6 +79,7 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
           value={fmtSourced(snapshot.kpis.needingAttention)}
           hint="Seniors with no apps, quiet, or zero activity"
           tone="amber"
+          footer={report("attention")}
         />
         <DashboardKpiCard
           icon={Flag}
@@ -75,6 +87,7 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
           value={snapshot.kpis.equityGapFlag.flagged ? "On" : "Clear"}
           hint={snapshot.kpis.equityGapFlag.detail}
           tone={snapshot.kpis.equityGapFlag.flagged ? "amber" : "teal"}
+          footer={report("equity")}
         />
       </div>
 
@@ -82,7 +95,12 @@ export default async function CampusHomePage({ searchParams }: { searchParams: P
         <SourceBadge source={snapshot.kpis.placementRate.source} />
         {canCampus(snapshot.access, "view_actions") ? (
           <Button asChild className="rounded-full">
-            <Link href="/campus/actions">Open action queue</Link>
+            <Link href="/campus/pending">Pending items</Link>
+          </Button>
+        ) : null}
+        {canCampus(snapshot.access, "view_reports") ? (
+          <Button asChild variant="outline" className="rounded-full">
+            <Link href="/campus/reports">Reports</Link>
           </Button>
         ) : null}
       </div>

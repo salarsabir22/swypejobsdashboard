@@ -4,8 +4,7 @@ import { readCampusAccess, writeCampusAudit } from "@/lib/campus/access"
 import { canCampus, scopedCampus } from "@/lib/campus/rbac"
 import { buildCampusExport, isCampusExportDataset } from "@/lib/campus/export"
 import { loadCampusSnapshot } from "@/lib/campus/metrics"
-import { toCsv } from "@/lib/admin/export"
-import { toExcel, toPdf } from "@/lib/export/formats"
+import { toCsvSheets, toExcel, toPdf } from "@/lib/export/formats"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -52,7 +51,15 @@ export async function GET(request: Request) {
       })
     }
     if (format === "pdf") {
-      const pdf = await toPdf({ title: result.title, subtitle: snapshot.access.university || "Career office", sheets: result.sheets })
+      const pdf = await toPdf({
+        title: result.title,
+        subtitle: result.subtitle,
+        org: result.org,
+        hero: result.hero,
+        notes: result.notes,
+        sheets: result.sheets,
+        layout: "portrait",
+      })
       return new NextResponse(Buffer.from(pdf), {
         status: 200,
         headers: {
@@ -63,8 +70,7 @@ export async function GET(request: Request) {
       })
     }
 
-    const primary = result.sheets[0] || { columns: ["value"], rows: [] }
-    return new NextResponse(toCsv(primary.columns, primary.rows), {
+    return new NextResponse(toCsvSheets(result.sheets), {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",

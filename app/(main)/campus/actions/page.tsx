@@ -1,4 +1,5 @@
 import { campusPageData } from "@/lib/campus/page-data"
+import { canCampus } from "@/lib/campus/rbac"
 import { createClient } from "@/lib/supabase/server"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { EventForm, JobReviewButtons, NudgeForm } from "@/components/campus/CampusActions"
@@ -11,6 +12,7 @@ export default async function CampusActionsPage({
 }) {
   const { campus, segment } = await searchParams
   const snapshot = await campusPageData(campus, "view_actions")
+  const canMutate = canCampus(snapshot.access, "mutate")
   const university = snapshot.access.university || snapshot.attention[0]?.university || "Campus"
 
   const seniors = snapshot.attention.filter((s) => s.reason.includes("Senior"))
@@ -76,7 +78,9 @@ export default async function CampusActionsPage({
             <li className="text-muted-foreground">No one in this segment right now.</li>
           )}
         </ul>
-        <NudgeForm university={university} students={list} defaultTitle="Your career office wants you back on swypejobs" />
+        {canMutate ? (
+          <NudgeForm university={university} students={list} defaultTitle="Your career office wants you back on swypejobs" />
+        ) : null}
       </DashboardPanel>
 
       <DashboardPanel title="Employer outreach from demand gaps">
@@ -105,7 +109,7 @@ export default async function CampusActionsPage({
                     {company?.company_name} · {job.job_type} · {job.location || "Location tbd"}
                   </p>
                 </div>
-                <JobReviewButtons jobId={job.id} university={university} />
+                {canMutate ? <JobReviewButtons jobId={job.id} university={university} /> : null}
               </li>
             )
           })}
@@ -114,7 +118,7 @@ export default async function CampusActionsPage({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <DashboardPanel title="Create and promote an event">
-          <EventForm university={university} />
+          {canMutate ? <EventForm university={university} /> : null}
         </DashboardPanel>
         <DashboardPanel title="Alumni and mentorship">
           {snapshot.alumni.length ? (

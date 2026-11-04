@@ -1,7 +1,6 @@
 import type { ReactNode } from "react"
 import { CampusExportButtons } from "@/components/campus/CampusExportButtons"
 import { CampusFilter } from "@/components/campus/CampusFilter"
-import { CampusNav } from "@/components/campus/CampusNav"
 import { SourceBadge } from "@/components/campus/SourceBadge"
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
 import type { CampusExportDataset } from "@/lib/campus/export"
@@ -36,7 +35,6 @@ export function CampusFrame({
           title={title}
           description={description}
         />
-        <CampusNav staffRole={snapshot.access.staffRole} />
         {snapshot.access.role === "admin" ? <CampusFilter current={snapshot.access.university} /> : null}
       </header>
       {snapshot.missingTables.length ? (

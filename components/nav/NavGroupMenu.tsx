@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils"
 export type NavGroupItem = { href: string; label: string; icon?: LucideIcon }
 
 export function isNavPathActive(pathname: string, href: string) {
-  const path = href.split("#")[0]
+  const path = href.split("#")[0].split("?")[0]
   if (href.includes("#")) return false
   if (path === "/campus") return pathname === "/campus"
   if (path === "/admin") return pathname === "/admin"

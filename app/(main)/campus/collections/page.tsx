@@ -26,8 +26,8 @@ export default async function CampusCollectionsPage({ searchParams }: { searchPa
   return (
     <CampusFrame
       snapshot={snapshot}
-      title="Curated job collections"
-      description="Membership here is what shows the Campus curated badge. Removing a job from a collection does not unpublish the employer’s listing."
+      title="Curated jobs"
+      description="Listings selected for student and alumni visibility. Feature or remove a job here without unpublishing the employer’s original posting."
     >
       <DashboardPanel title="Collections">
         {error ? (

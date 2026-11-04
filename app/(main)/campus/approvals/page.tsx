@@ -1,5 +1,6 @@
 import { ClipboardCheck } from "lucide-react"
 import { campusPageData } from "@/lib/campus/page-data"
+import { canCampus } from "@/lib/campus/rbac"
 import { createClient } from "@/lib/supabase/server"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { JobReviewButtons } from "@/components/campus/CampusActions"
@@ -20,7 +21,7 @@ export default async function CampusApprovalsPage({ searchParams }: { searchPara
   const rows = (reviews || []).filter((row) => !university || row.university === university)
 
   return (
-    <CampusFrame snapshot={snapshot} title="Job approvals" description="One approval record per campus. A decline here does not approve another university’s copy of the same job.">
+    <CampusFrame snapshot={snapshot} title="Approvals" description="Verify employer-facing listings and internships. Individual and bulk review: approve or hold. Job approval is optional in the IoBM source — a hold only affects this campus.">
       <DashboardPanel title="Queue">
         {error ? (
           <DashboardEmptyState
@@ -56,7 +57,9 @@ export default async function CampusApprovalsPage({ searchParams }: { searchPara
                     </p>
                     <StatusBadge value={row.status} />
                   </div>
-                  {university ? <JobReviewButtons jobId={row.job_id} university={university} /> : null}
+                  {university && canCampus(snapshot.access, "mutate") ? (
+                    <JobReviewButtons jobId={row.job_id} university={university} />
+                  ) : null}
                 </li>
               )
             })}

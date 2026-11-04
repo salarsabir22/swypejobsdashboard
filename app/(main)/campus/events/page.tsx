@@ -21,7 +21,7 @@ export default async function CampusEventsPage({ searchParams }: { searchParams:
     .limit(40)
 
   return (
-    <CampusFrame snapshot={snapshot} title="Events" description="Publish fairs, workshops, and info sessions. Students RSVP from Events in their app.">
+    <CampusFrame snapshot={snapshot} title="Events & career fairs" description="Create events, manage RSVPs, and run career-fair activity. A dedicated fair ATS is listed for Phase 3 in the IoBM source; this desk is the live RSVP and session list.">
       {canCampus(snapshot.access, "mutate") ? (
         <DashboardPanel title="Create event">
           <EventForm university={university} />
