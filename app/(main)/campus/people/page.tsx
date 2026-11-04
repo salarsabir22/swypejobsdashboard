@@ -20,30 +20,32 @@ export default async function CampusPeoplePage({
   const supabase = await createClient()
   const view = kind === "alumni" ? "alumni" : "students"
 
-  let peopleRes = await (university
-    ? supabase
-        .from("student_profiles")
-        .select("id, degree, graduation_year, skills, resume_url, still_enrolled, is_alumni, linkedin_url, profiles(full_name)")
-        .eq("university", university)
-        .limit(120)
-    : supabase
-        .from("student_profiles")
-        .select("id, degree, graduation_year, skills, resume_url, still_enrolled, is_alumni, linkedin_url, profiles(full_name)")
-        .limit(120))
-  if (peopleRes.error) {
-    peopleRes = university
-      ? await supabase
-          .from("student_profiles")
-          .select("id, degree, graduation_year, skills, resume_url, still_enrolled, linkedin_url, profiles(full_name)")
-          .eq("university", university)
-          .limit(120)
-      : await supabase
-          .from("student_profiles")
-          .select("id, degree, graduation_year, skills, resume_url, still_enrolled, linkedin_url, profiles(full_name)")
-          .limit(120)
+  const loadPeople = (columns: string) => {
+    const query = supabase.from("student_profiles").select(columns)
+    return (university ? query.eq("university", university) : query).limit(120)
+  }
+  const primary = await loadPeople(
+    "id, degree, graduation_year, skills, resume_url, still_enrolled, is_alumni, linkedin_url, profiles(full_name)"
+  )
+  const peopleRes = primary.error
+    ? await loadPeople(
+        "id, degree, graduation_year, skills, resume_url, still_enrolled, linkedin_url, profiles(full_name)"
+      )
+    : primary
+
+  type PeopleRow = {
+    id: string
+    degree: string | null
+    graduation_year: number | null
+    skills: string[] | null
+    resume_url: string | null
+    still_enrolled: boolean | null
+    is_alumni?: boolean | null
+    linkedin_url: string | null
+    profiles: { full_name: string | null } | { full_name: string | null }[] | null
   }
 
-  const rows = (peopleRes.data || [])
+  const rows = ((peopleRes.data || []) as PeopleRow[])
     .filter((row) => (view === "alumni" ? studentIsAlumni(row) : !studentIsAlumni(row)))
     .map((row) => {
       const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles

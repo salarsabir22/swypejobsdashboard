@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { studentIsAlumni } from "@/lib/jobs/targeting"
-import { EMPLOYMENT_STATUSES, RELATED_OPTIONS, isWorking } from "@/lib/profile/survey"
+import { EMPLOYMENT_STATUSES, RELATED_OPTIONS, isWorking, type EmploymentStatus } from "@/lib/profile/survey"
 import { listCareerSurveysForStudent, upsertCareerSurvey, type CareerSurveyRow } from "@/lib/profile/career-survey-store"
 
 export const runtime = "nodejs"
@@ -19,14 +19,14 @@ async function requireAlumni() {
     return { error: NextResponse.json({ error: "Alumni surveys are for student accounts." }, { status: 403 }) }
   }
 
-  let studentRes = await supabase
+  const studentPrimary = await supabase
     .from("student_profiles")
     .select("still_enrolled, graduation_year, is_alumni")
     .eq("id", user.id)
     .maybeSingle()
-  if (studentRes.error) {
-    studentRes = await supabase.from("student_profiles").select("still_enrolled, graduation_year").eq("id", user.id).maybeSingle()
-  }
+  const studentRes = studentPrimary.error
+    ? await supabase.from("student_profiles").select("still_enrolled, graduation_year").eq("id", user.id).maybeSingle()
+    : studentPrimary
   if (!studentIsAlumni(studentRes.data)) {
     return { error: NextResponse.json({ error: "Career surveys open after you graduate." }, { status: 403 }) }
   }
@@ -55,13 +55,14 @@ export async function PUT(request: Request) {
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
     return NextResponse.json({ error: "Pick a valid survey year." }, { status: 400 })
   }
-  if (!status || !EMPLOYMENT_STATUSES.includes(status as (typeof EMPLOYMENT_STATUSES)[number])) {
+  if (!status || !EMPLOYMENT_STATUSES.includes(status as EmploymentStatus)) {
     return NextResponse.json({ error: "Pick an employment status." }, { status: 400 })
   }
-  if (isWorking(status) && !body?.employer?.trim()) {
+  const employmentStatus = status as EmploymentStatus
+  if (isWorking(employmentStatus) && !body?.employer?.trim()) {
     return NextResponse.json({ error: "Add your employer." }, { status: 400 })
   }
-  if (status === "further_study" && !body?.further_study?.trim()) {
+  if (employmentStatus === "further_study" && !body?.further_study?.trim()) {
     return NextResponse.json({ error: "Add the program you’re studying." }, { status: 400 })
   }
   const related = body?.related_to_degree
@@ -80,14 +81,14 @@ export async function PUT(request: Request) {
   const payload: CareerSurveyRow = {
     student_id: auth.user.id,
     survey_year: year,
-    employment_status: status,
-    employer: isWorking(status) ? body?.employer?.trim() || null : null,
-    designation: isWorking(status) ? body?.designation?.trim() || null : null,
-    industry: isWorking(status) ? body?.industry?.trim() || null : null,
-    salary_pkr: isWorking(status) ? salary : null,
-    related_to_degree: isWorking(status) ? related || null : null,
+    employment_status: employmentStatus,
+    employer: isWorking(employmentStatus) ? body?.employer?.trim() || null : null,
+    designation: isWorking(employmentStatus) ? body?.designation?.trim() || null : null,
+    industry: isWorking(employmentStatus) ? body?.industry?.trim() || null : null,
+    salary_pkr: isWorking(employmentStatus) ? salary : null,
+    related_to_degree: isWorking(employmentStatus) ? related || null : null,
     satisfaction,
-    further_study: status === "further_study" ? body?.further_study?.trim() || null : null,
+    further_study: employmentStatus === "further_study" ? body?.further_study?.trim() || null : null,
     comments: body?.comments?.trim() || null,
     submitted_at: new Date().toISOString(),
   }

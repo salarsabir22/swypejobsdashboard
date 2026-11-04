@@ -124,7 +124,7 @@ export async function toPdf(opts: {
   const footerH = 28
   const org = opts.org || "IoBM Career Development Center"
 
-  let page: PDFPage
+  let page!: PDFPage
   let y = 0
   const pages: PDFPage[] = []
 
