@@ -67,12 +67,21 @@ export type DepartmentRisk = {
   reason: string
 }
 
+export type CampusPeriod = {
+  id: "day" | "week" | "month" | "quarter" | "year" | "all"
+  label: string
+  shortLabel: string
+  days: number | null
+}
+
 export type CampusSnapshot = {
   access: CampusAccess
   missingTables: string[]
+  period: CampusPeriod
   kpis: {
     placementRate: SourcedNumber
     activeStudentsMonth: SourcedNumber
+    engagementRate: SourcedNumber
     openJobsMatched: SourcedNumber
     employersEngaged: SourcedNumber
     needingAttention: SourcedNumber
@@ -138,6 +147,7 @@ export type CampusSnapshot = {
     responseRate: SourcedNumber
     timeToRespondHours: SourcedNumber
     employerNps: SourcedNumber
+    internationalPrograms: number
     partners: { name: string; tier: string }[]
   }
   matchQuality: {
@@ -172,7 +182,7 @@ export type CampusSnapshot = {
     waitHours: SourcedNumber
     programRoi: SourcedNumber
     waitHint: string
-    events: { id: string; title: string; kind: string; rsvps: number; hires: number }[]
+    events: { id: string; title: string; kind: string; rsvps: number; hires: number; location?: string | null; starts_at?: string | null }[]
     resumeReviews: number
     npsOffice: SourcedNumber
     npsPlatform: SourcedNumber

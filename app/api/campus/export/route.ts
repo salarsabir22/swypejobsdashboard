@@ -34,9 +34,10 @@ export async function GET(request: Request) {
   const formatParam = url.searchParams.get("format") || "csv"
   const format = formatParam === "xls" || formatParam === "pdf" ? formatParam : "csv"
   const campus = scopedCampus(access, url.searchParams.get("campus"))
+  const range = url.searchParams.get("range")
 
   try {
-    const snapshot = await loadCampusSnapshot(access, campus)
+    const snapshot = await loadCampusSnapshot(access, campus, range)
     const result = buildCampusExport(snapshot, dataset)
     void writeCampusAudit(access.userId, "export", dataset, dataset, { format, sheets: result.sheets.length }).catch(() => undefined)
 

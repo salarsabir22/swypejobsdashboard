@@ -27,7 +27,7 @@ export function BreakdownList({
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#5a48ff] to-[#3ee0a8]"
+                  className="h-full rounded-full bg-[#2251FF]"
                   style={{ width: `${Math.max(6, (row.value / max) * 100)}%` }}
                 />
               </div>

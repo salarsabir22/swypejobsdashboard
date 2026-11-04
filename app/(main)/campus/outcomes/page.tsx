@@ -1,4 +1,4 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { campusReportData } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
@@ -6,9 +6,12 @@ import { SourceBadge } from "@/components/campus/SourceBadge"
 import { fmtNum, fmtPct, fmtSourced } from "@/lib/campus/format"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-export default async function CampusOutcomesPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_reports")
+export default async function CampusOutcomesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campus?: string; range?: string }>
+}) {
+  const snapshot = await campusReportData(searchParams)
 
   return (
     <CampusFrame

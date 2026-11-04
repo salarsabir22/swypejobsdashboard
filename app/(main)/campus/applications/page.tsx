@@ -1,4 +1,4 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { campusReportData } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { CampusTrendChart } from "@/components/campus/CampusTrendChart"
 import { BreakdownList } from "@/components/campus/BreakdownList"
@@ -7,9 +7,12 @@ import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { Send, UserCheck, Users } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-export default async function CampusApplicationsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_reports")
+export default async function CampusApplicationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campus?: string; range?: string }>
+}) {
+  const snapshot = await campusReportData(searchParams)
 
   return (
     <CampusFrame
@@ -17,7 +20,7 @@ export default async function CampusApplicationsPage({ searchParams }: { searchP
       showSources
       exportDataset="applications"
       title="Student applications"
-      description="Right-swipes from your students, by day, programme, and employer. This is the live application stream the career office can act on."
+      description={`Right-swipes from your students, by programme and employer · ${snapshot.period.label.toLowerCase()}. This is the live application stream the career office can act on.`}
     >
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardKpiCard
@@ -37,8 +40,9 @@ export default async function CampusApplicationsPage({ searchParams }: { searchP
         />
       </div>
       <CampusTrendChart
-        title="Daily student applications"
+        title="Student applications"
         description="Right-swipes counted as applications."
+        periodLabel={snapshot.period.label}
         points={snapshot.engagement.dailyApplications.map((row) => ({ label: row.label, applications: row.value }))}
         appsKey="Applications"
       />

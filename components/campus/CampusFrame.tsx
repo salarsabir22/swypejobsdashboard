@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { CampusExportButtons } from "@/components/campus/CampusExportButtons"
 import { CampusFilter } from "@/components/campus/CampusFilter"
+import { CampusRangeFilter } from "@/components/campus/CampusRangeFilter"
 import { SourceBadge } from "@/components/campus/SourceBadge"
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
 import type { CampusExportDataset } from "@/lib/campus/export"
@@ -16,6 +17,9 @@ export function CampusFrame({
   children,
   showSources = false,
   exportDataset,
+  showRange = true,
+  hideEyebrow = false,
+  actions,
 }: {
   snapshot: CampusSnapshot
   title: string
@@ -23,19 +27,25 @@ export function CampusFrame({
   children: ReactNode
   showSources?: boolean
   exportDataset?: CampusExportDataset
+  showRange?: boolean
+  hideEyebrow?: boolean
+  actions?: ReactNode
 }) {
   const campusLabel = snapshot.access.university || "All campuses"
   const canExport = canCampus(snapshot.access, "export")
+  const range = snapshot.period?.id
 
   return (
     <div className="space-y-6">
       <header className="space-y-4">
         <DashboardPageHeader
-          eyebrow={`${campusLabel} · ${formatIobmStaffRole(snapshot.access.staffRole)}`}
+          eyebrow={hideEyebrow ? undefined : `${campusLabel} · ${formatIobmStaffRole(snapshot.access.staffRole)} · ${snapshot.period?.label || "1 month"}`}
           title={title}
           description={description}
+          action={actions}
         />
         {snapshot.access.role === "admin" ? <CampusFilter current={snapshot.access.university} /> : null}
+        {showRange ? <CampusRangeFilter current={range} /> : null}
       </header>
       {snapshot.missingTables.length ? (
         <Alert>
@@ -54,7 +64,9 @@ export function CampusFrame({
               <SourceBadge source="self_reported" />
             </div>
           ) : <span />}
-          {canExport && exportDataset ? <CampusExportButtons dataset={exportDataset} campus={snapshot.access.university} /> : null}
+          {canExport && exportDataset ? (
+            <CampusExportButtons dataset={exportDataset} campus={snapshot.access.university} range={range} />
+          ) : null}
         </div>
       ) : null}
       {children}

@@ -202,7 +202,7 @@ export function postAuthRedirect(opts: {
   if (role === "student") {
     if (!opts.studentReady) return "/onboarding"
     if (next && next !== "/onboarding") return next
-    return "/discover"
+    return "/dashboard"
   }
   return "/onboarding"
 }

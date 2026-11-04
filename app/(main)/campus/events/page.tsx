@@ -15,7 +15,7 @@ export default async function CampusEventsPage({ searchParams }: { searchParams:
   const supabase = await createClient()
   const { data: events } = await supabase
     .from("campus_events")
-    .select("id, title, kind, starts_at")
+    .select("id, title, kind, starts_at, summary")
     .eq("university", university)
     .order("starts_at", { ascending: true })
     .limit(40)
@@ -30,7 +30,7 @@ export default async function CampusEventsPage({ searchParams }: { searchParams:
       <DashboardPanel title="Upcoming">
         {events?.length ? (
           <ul className="space-y-2">
-            {events.map((row) => (
+            {events.filter((row) => !String((row as { summary?: string }).summary || "").startsWith("INTERNATIONAL_PROGRAM")).map((row) => (
               <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border px-4 py-3">
                 <div>
                   <p className="text-sm font-medium">{row.title}</p>

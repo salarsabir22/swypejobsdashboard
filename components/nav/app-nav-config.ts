@@ -38,7 +38,7 @@ export const recruiterTabs: TabItem[] = [
 ]
 
 export const studentMoreLinks: MoreLink[] = [
-  { href: "/dashboard", label: "Insights", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/career-office", label: "Career office", icon: Building2 },
   { href: "/internships", label: "Internships", icon: GraduationCap },
   { href: "/events", label: "Events", icon: Calendar },
@@ -79,7 +79,7 @@ export const studentNavGroups: NavGroup[] = [
     items: [
       { href: "/matches", label: "Applications", icon: Briefcase },
       { href: "/resume", label: "Resume", icon: FileText },
-      { href: "/dashboard", label: "Insights", icon: LayoutDashboard },
+      { href: "/discover", label: "Discover", icon: Layers },
       { href: "/internships", label: "Internships", icon: GraduationCap },
       { href: "/profile#saved", label: "Saved roles", icon: Bookmark },
       { href: "/profile", label: "Profile", icon: User },

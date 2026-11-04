@@ -1,12 +1,15 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { campusReportData } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { fmtSourced } from "@/lib/campus/format"
 
-export default async function CampusTrendsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_reports")
+export default async function CampusTrendsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campus?: string; range?: string }>
+}) {
+  const snapshot = await campusReportData(searchParams)
   const seniors = snapshot.engagement.byYear[0]
   const projected = snapshot.kpis.placementRate.value
 

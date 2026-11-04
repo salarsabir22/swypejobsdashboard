@@ -1,13 +1,16 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { campusReportData } from "@/lib/campus/page-data"
 import { writeCampusAudit } from "@/lib/campus/access"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { fmtSourced } from "@/lib/campus/format"
 
-export default async function CampusEquityPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_equity")
+export default async function CampusEquityPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campus?: string; range?: string }>
+}) {
+  const snapshot = await campusReportData(searchParams, "view_equity")
   await writeCampusAudit(snapshot.access.userId, "view_equity", "campus_demographics", snapshot.access.university || "all")
 
   return (

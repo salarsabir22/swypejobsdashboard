@@ -21,3 +21,12 @@ export function fmtSourced(row: SourcedNumber, kind: "pct" | "num" = "num") {
   if (row.value == null) return "—"
   return kind === "pct" ? fmtPct(row.value) : fmtNum(row.value)
 }
+
+export function pctChange(series: number[]) {
+  if (series.length < 2) return null
+  const mid = Math.max(1, Math.floor(series.length / 2))
+  const prev = series.slice(0, mid).reduce((sum, n) => sum + n, 0)
+  const next = series.slice(mid).reduce((sum, n) => sum + n, 0)
+  if (prev <= 0) return null
+  return Math.round(((next - prev) / prev) * 100)
+}

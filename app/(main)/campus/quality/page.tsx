@@ -1,4 +1,4 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { campusReportData } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
@@ -7,9 +7,12 @@ import { fmtSourced } from "@/lib/campus/format"
 import { GitCompare, Sparkles, Target } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-export default async function CampusQualityPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_reports")
+export default async function CampusQualityPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campus?: string; range?: string }>
+}) {
+  const snapshot = await campusReportData(searchParams)
 
   return (
     <CampusFrame

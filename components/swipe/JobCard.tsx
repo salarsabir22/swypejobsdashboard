@@ -33,7 +33,7 @@ export function JobCard({
   reasons,
   studentSkills,
 }: JobCardProps) {
-  const company = job.recruiter_profiles
+  const company = Array.isArray(job.recruiter_profiles) ? job.recruiter_profiles[0] : job.recruiter_profiles
   const typeLabel = JOB_TYPE_LABEL[job.job_type] ?? job.job_type
   const locationOrRemote = job.is_remote ? "Remote" : job.location
   const pay = formatSalary({
@@ -42,6 +42,12 @@ export function JobCard({
     currency: job.salary_currency,
     note: job.compensation_note,
   })
+  const team = company?.employee_count
+    ? company.employee_count.toLowerCase().includes("team")
+      ? company.employee_count
+      : `${company.employee_count} team`
+    : null
+  const cardLine = [pay || "Pay on request", locationOrRemote || "Location TBA", team || "Team size TBA"].join(" · ")
   const matched = skillOverlap(studentSkills, job.required_skills)
   const matchedSet = new Set(matched.map((s) => s.toLowerCase()))
   const otherSkills = (job.required_skills || []).filter((s) => !matchedSet.has(s.trim().toLowerCase()))
@@ -77,6 +83,11 @@ export function JobCard({
               {locationOrRemote}
             </span>
           ) : null}
+          {team ? (
+            <span className="rounded-full bg-white/10 px-2.5 py-0.5 font-body text-[10px] font-medium text-white/85 ring-1 ring-white/15">
+              {team}
+            </span>
+          ) : null}
           {deadlineText ? (
             <span
               className={cn(
@@ -107,10 +118,8 @@ export function JobCard({
             <p className="mt-1 font-body text-sm text-white/80">{company.company_name}</p>
           )
         ) : null}
-        <p className="mt-1.5 font-body text-sm font-medium text-white/90">
-          {pay ? `${pay} · ` : null}
-          Posted {formatRelativeTime(job.created_at)}
-        </p>
+        <p className="mt-1.5 font-body text-sm font-medium text-white">{cardLine}</p>
+        <p className="mt-0.5 font-body text-xs text-white/75">Posted {formatRelativeTime(job.created_at)}</p>
         {onOpenListing ? (
           <button
             type="button"
@@ -128,7 +137,7 @@ export function JobCard({
 
       <div className="shrink-0 space-y-1.5 p-2.5 sm:space-y-3 sm:p-4 lg:p-5">
         {reasons && reasons.length > 0 ? (
-          <div className="hidden flex-wrap gap-1.5 lg:flex">
+          <div className="flex flex-wrap gap-1.5">
             {reasons.map((reason) => (
               <Badge key={reason} variant="outline" className="font-normal text-primary">
                 {reason}
@@ -138,8 +147,10 @@ export function JobCard({
         ) : null}
 
         {job.description ? (
-          <p className="hidden font-body text-sm leading-relaxed text-muted-foreground lg:line-clamp-4 lg:block">{job.description}</p>
-        ) : null}
+          <p className="line-clamp-4 font-body text-sm leading-relaxed text-muted-foreground">{job.description}</p>
+        ) : (
+          <p className="font-body text-sm text-muted-foreground">Open the listing for the full brief.</p>
+        )}
 
         {matched.length + otherSkills.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">

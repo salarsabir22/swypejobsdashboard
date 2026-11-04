@@ -100,6 +100,99 @@ export function fillDaySeries(isoTimestamps: string[], days = 14) {
   return keys.map((date) => ({ date, label: shortDayLabel(date), value: map.get(date) || 0 }))
 }
 
+function countByKey(isoTimestamps: string[], keyFn: (iso: string) => string | null) {
+  const map = new Map<string, number>()
+  for (const iso of isoTimestamps) {
+    const key = keyFn(iso)
+    if (!key) continue
+    map.set(key, (map.get(key) || 0) + 1)
+  }
+  return map
+}
+
+export function fillHourSeries(isoTimestamps: string[]) {
+  const keys: string[] = []
+  const now = new Date()
+  now.setMinutes(0, 0, 0)
+  for (let i = 23; i >= 0; i -= 1) {
+    const d = new Date(now)
+    d.setHours(d.getHours() - i)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, "0")
+    const day = String(d.getDate()).padStart(2, "0")
+    const hour = String(d.getHours()).padStart(2, "0")
+    keys.push(`${y}-${m}-${day}T${hour}`)
+  }
+  const map = countByKey(isoTimestamps, (iso) => {
+    const date = new Date(iso)
+    if (Number.isNaN(date.getTime())) return null
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    const hour = String(date.getHours()).padStart(2, "0")
+    return `${y}-${m}-${day}T${hour}`
+  })
+  return keys.map((date) => ({
+    date,
+    label: `${Number(date.slice(-2))}:00`,
+    value: map.get(date) || 0,
+  }))
+}
+
+export function fillWeekSeries(isoTimestamps: string[], weeks = 13) {
+  const keys: string[] = []
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  now.setDate(now.getDate() - now.getDay())
+  for (let i = weeks - 1; i >= 0; i -= 1) {
+    const d = new Date(now)
+    d.setDate(d.getDate() - i * 7)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, "0")
+    const day = String(d.getDate()).padStart(2, "0")
+    keys.push(`${y}-${m}-${day}`)
+  }
+  const map = countByKey(isoTimestamps, (iso) => {
+    const date = new Date(iso)
+    if (Number.isNaN(date.getTime())) return null
+    date.setHours(0, 0, 0, 0)
+    date.setDate(date.getDate() - date.getDay())
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${y}-${m}-${day}`
+  })
+  return keys.map((date) => ({ date, label: shortDayLabel(date), value: map.get(date) || 0 }))
+}
+
+export function fillMonthSeries(isoTimestamps: string[], months = 12) {
+  const keys: string[] = []
+  const now = new Date()
+  now.setDate(1)
+  now.setHours(0, 0, 0, 0)
+  for (let i = months - 1; i >= 0; i -= 1) {
+    const d = new Date(now)
+    d.setMonth(d.getMonth() - i)
+    keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
+  }
+  const map = countByKey(isoTimestamps, (iso) => (iso || "").slice(0, 7) || null)
+  return keys.map((date) => {
+    const month = MONTHS[Number(date.slice(5, 7)) - 1] || date
+    return { date, label: `${month} ${date.slice(2, 4)}`, value: map.get(date) || 0 }
+  })
+}
+
+export function fillPeriodSeries(
+  isoTimestamps: string[],
+  range: { id: string; days: number | null }
+) {
+  if (range.id === "day") return fillHourSeries(isoTimestamps)
+  if (range.id === "quarter") return fillWeekSeries(isoTimestamps, 13)
+  if (range.id === "year") return fillMonthSeries(isoTimestamps, 12)
+  if (range.id === "all") return fillMonthSeries(isoTimestamps, 24)
+  return fillDaySeries(isoTimestamps, range.days || 30)
+}
+
 export function csvEscape(value: unknown) {
   const s = value == null ? "" : String(value)
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`

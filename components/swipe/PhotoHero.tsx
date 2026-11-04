@@ -17,9 +17,8 @@ export function PhotoHero({
   return (
     <div
       className={cn(
-        "relative isolate min-h-0 overflow-hidden bg-[#1d1d1f]",
-        "max-lg:min-h-[6.5rem] max-lg:flex-1",
-        "lg:aspect-[4/5] lg:h-auto lg:max-h-[min(36rem,62vh)] lg:flex-none",
+        "relative isolate w-full overflow-hidden bg-[#1d1d1f]",
+        "aspect-[3/4] h-auto max-h-[min(32rem,58vh)] flex-none",
         className
       )}
     >

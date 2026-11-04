@@ -217,7 +217,7 @@ export function StudentDiscoverView({
 
       let query = supabase
         .from("jobs")
-        .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved)")
+        .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved, employee_count)")
         .eq("is_active", true)
         .or(openDeadlineFilter())
 
@@ -228,7 +228,7 @@ export function StudentDiscoverView({
         // Migration not applied yet: fall back to the pre-deadline query.
         let fallback = supabase
           .from("jobs")
-          .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved)")
+          .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved, employee_count)")
           .eq("is_active", true)
         if (exclude) fallback = fallback.not("id", "in", exclude)
         ;({ data, error } = await fallback.order("created_at", { ascending: false }).limit(DECK_PAGE))
@@ -265,7 +265,7 @@ export function StudentDiscoverView({
       const campusJobs = university
         ? await supabase
             .from("jobs")
-            .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved)")
+            .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved, employee_count)")
             .eq("is_active", true)
             .contains("target_universities", [university])
             .limit(40)
@@ -273,7 +273,7 @@ export function StudentDiscoverView({
       const missing = extraIds.length
         ? await supabase
             .from("jobs")
-            .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved)")
+            .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved, employee_count)")
             .in("id", extraIds)
             .eq("is_active", true)
         : { data: [] as Job[], error: null }

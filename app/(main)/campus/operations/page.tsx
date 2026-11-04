@@ -1,4 +1,4 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { campusReportData } from "@/lib/campus/page-data"
 import { canCampus } from "@/lib/campus/rbac"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { EventForm } from "@/components/campus/CampusActions"
@@ -8,9 +8,12 @@ import { fmtSourced } from "@/lib/campus/format"
 import { departmentAlerts } from "@/lib/campus/alerts"
 import { Calendar, ClipboardList, Smile, Users } from "lucide-react"
 
-export default async function CampusOperationsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_reports")
+export default async function CampusOperationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campus?: string; range?: string }>
+}) {
+  const snapshot = await campusReportData(searchParams)
   const university = snapshot.access.university || "Campus"
   const alerts = departmentAlerts(snapshot.attention)
 

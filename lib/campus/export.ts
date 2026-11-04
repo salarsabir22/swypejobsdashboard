@@ -84,8 +84,9 @@ export function buildCampusExport(snapshot: CampusSnapshot, dataset: CampusExpor
   const equity = snapshot.equity
   const title = TITLES[dataset]
   const org = "IoBM Career Development Center"
-  const subtitle = `${campus} · ${stamp}`
-  const filename = `${dataset}_${campus.replace(/[^\w]+/g, "-").slice(0, 40)}_${stamp}`
+  const rangeLabel = snapshot.period?.label || "1 month"
+  const subtitle = `${campus} · ${rangeLabel} · ${stamp}`
+  const filename = `${dataset}_${snapshot.period?.id || "month"}_${campus.replace(/[^\w]+/g, "-").slice(0, 40)}_${stamp}`
 
   const keep = (items: Sheet[]) => items.filter((item) => item.rows.length > 0)
 
@@ -467,14 +468,15 @@ export function buildCampusExport(snapshot: CampusSnapshot, dataset: CampusExpor
     sheets: keep([
       sheet("KPIs", [
         { metric: "Placement rate", value: pct(kpis.placementRate), sample_n: kpis.placementRate.n, source: sourceLabel(kpis.placementRate.source), note: kpis.placementRate.note || "" },
-        sourced("Active students this month", kpis.activeStudentsMonth),
+        sourced("Active students", kpis.activeStudentsMonth),
+        { metric: "Engagement rate", value: pct(kpis.engagementRate), sample_n: kpis.engagementRate.n, source: sourceLabel(kpis.engagementRate.source), note: kpis.engagementRate.note || "" },
         sourced("Open jobs matched", kpis.openJobsMatched),
         {
-          metric: "Student applications this week",
-          value: engagement.applicationsWeek,
+          metric: "Student applications",
+          value: engagement.applicationsMonth,
           sample_n: engagement.applicants,
           source: "Platform",
-          note: `${engagement.applicationsMonth} this month`,
+          note: snapshot.period?.label || "Selected range",
         },
         sourced("Employers engaged", kpis.employersEngaged),
         sourced("Students needing attention", kpis.needingAttention),

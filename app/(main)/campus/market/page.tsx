@@ -1,4 +1,4 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { campusReportData } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { CampusTrendChart } from "@/components/campus/CampusTrendChart"
 import { BreakdownList } from "@/components/campus/BreakdownList"
@@ -8,9 +8,12 @@ import { fmtSourced } from "@/lib/campus/format"
 import { Briefcase, Building2, Clock, Repeat } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-export default async function CampusMarketPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_reports")
+export default async function CampusMarketPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campus?: string; range?: string }>
+}) {
+  const snapshot = await campusReportData(searchParams)
 
   return (
     <CampusFrame
@@ -18,10 +21,10 @@ export default async function CampusMarketPage({ searchParams }: { searchParams:
       showSources
       exportDataset="jobs"
       title="Employer and job market"
-      description="Who is hiring, what they post, and where student supply does not meet demand."
+      description={`Job posts and employer activity for ${snapshot.period.label.toLowerCase()}. Who is hiring, what they post, and where student supply does not meet demand.`}
     >
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <DashboardKpiCard icon={Building2} label="Employers recruiting" value={snapshot.market.activeEmployers} hint={`${snapshot.market.newEmployers} joined this month`} />
+      <div id="employers" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <DashboardKpiCard icon={Building2} label="Employers recruiting" value={snapshot.market.activeEmployers} hint={`${snapshot.market.newEmployers} joined this period`} />
         <DashboardKpiCard
           icon={Briefcase}
           label="Open full-time jobs"
@@ -33,8 +36,9 @@ export default async function CampusMarketPage({ searchParams }: { searchParams:
         <DashboardKpiCard icon={Repeat} label="Repeat employers" value={snapshot.market.repeatEmployers} hint="More than one hire" />
       </div>
       <CampusTrendChart
-        title="Daily job posts"
+        title="Job posts"
         description="New listings posted to the board."
+        periodLabel={snapshot.period.label}
         points={snapshot.market.dailyJobPosts.map((row) => ({ label: row.label, jobs: row.value }))}
         jobsKey="Job posts"
       />

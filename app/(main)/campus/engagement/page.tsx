@@ -1,4 +1,4 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { campusReportData } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { DashboardFunnel } from "@/components/dashboard/DashboardFunnel"
@@ -7,9 +7,12 @@ import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { fmtSourced } from "@/lib/campus/format"
 import { FileText, Sparkles, UserCheck, Users } from "lucide-react"
 
-export default async function CampusEngagementPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_reports")
+export default async function CampusEngagementPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campus?: string; range?: string }>
+}) {
+  const snapshot = await campusReportData(searchParams)
 
   return (
     <CampusFrame
@@ -17,7 +20,7 @@ export default async function CampusEngagementPage({ searchParams }: { searchPar
       showSources
       exportDataset="engagement"
       title="Student engagement"
-      description="Who is on the platform, who is complete, and where the class drops off between signup and offer."
+      description={`Who is on the platform, who is complete, and where the class drops off between signup and offer · ${snapshot.period.label.toLowerCase()}.`}
     >
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardKpiCard icon={Users} label="Registered" value={snapshot.engagement.registered} />

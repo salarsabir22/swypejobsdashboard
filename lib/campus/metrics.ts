@@ -7,13 +7,14 @@ import {
   daysBetween,
   degreeLevel,
   employerType,
-  fillDaySeries,
+  fillPeriodSeries,
   hoursBetween,
   inLastDays,
   median,
   pct,
   workMode,
 } from "@/lib/campus/helpers"
+import { inCampusRange, parseCampusRange } from "@/lib/campus/range"
 import { sameCampus } from "@/lib/jobs/curation"
 
 const LIMIT = 800
@@ -72,9 +73,15 @@ function sourced(value: number | null, n: number, source: CampusSnapshot["kpis"]
   return { value, n, source, note }
 }
 
-export const loadCampusSnapshot = cache(async (access: CampusAccess, universityFilter?: string | null): Promise<CampusSnapshot> => {
+export const loadCampusSnapshot = cache(async (
+  access: CampusAccess,
+  universityFilter?: string | null,
+  rangeId?: string | null
+): Promise<CampusSnapshot> => {
   const supabase = await createClient()
   const university = universityFilter ?? access.university
+  const period = parseCampusRange(rangeId)
+  const windowDays = period.days ?? 3650
   const missingTables: string[] = []
 
   const uni = university || ""
@@ -95,7 +102,7 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
     .limit(LIMIT)
   if (university) studentsQuery = studentsQuery.eq("university", university)
 
-  const [studentsRes, jobsRes, recruitersRes, outcomes, events, appointments, reviews, surveys, partners] = await Promise.all([
+  const [studentsRes, jobsRes, recruitersRes, outcomes, events, appointments, reviews, surveys, partners, opportunities] = await Promise.all([
     studentsQuery,
     supabase
       .from("jobs")
@@ -116,7 +123,7 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
       return q
     }),
     optional("campus_events", () => {
-      let q = supabase.from("campus_events").select("id, title, kind").limit(80)
+      let q = supabase.from("campus_events").select("id, title, kind, location, starts_at, summary").limit(80)
       if (uni) q = q.eq("university", uni)
       return q
     }),
@@ -139,6 +146,16 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
       let q = supabase.from("campus_employer_partners").select("recruiter_id, tier").limit(80)
       if (uni) q = q.eq("university", uni)
       return q
+    }),
+    optional("international_opportunities", async () => {
+      const scoped = await supabase.from("international_opportunities").select("id, is_active, university").limit(LIMIT)
+      if (!scoped.error) {
+        const rows = (scoped.data || []).filter(
+          (row) => !uni || !(row as { university?: string | null }).university || sameCampus((row as { university?: string | null }).university, uni)
+        )
+        return { data: rows, error: null }
+      }
+      return supabase.from("international_opportunities").select("id, is_active").limit(LIMIT)
     }),
   ])
 
@@ -205,9 +222,10 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
     return latest || stu?.updated_at || stu?.profiles?.updated_at || stu?.created_at || ""
   }
 
-  const activeMonth = students.filter((s) => inLastDays(lastActivity(s.id), 30)).length
-  const activeWeek = students.filter((s) => inLastDays(lastActivity(s.id), 7)).length
+  const activeMonth = students.filter((s) => inLastDays(lastActivity(s.id), windowDays)).length
+  const activeWeek = students.filter((s) => inLastDays(lastActivity(s.id), Math.min(7, windowDays))).length
   const inactive = students.length - activeMonth
+  const engagementRate = sourced(pct(activeMonth, students.length), students.length, "platform", period.shortLabel)
 
   const complete = students.filter((s) => s.university && s.degree && (s.skills?.length || 0) >= 3 && s.resume_url).length
   const withResume = students.filter((s) => s.resume_url).length
@@ -256,17 +274,19 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
     .filter((row, i, arr) => arr.findIndex((r) => r.id === row.id) === i)
     .slice(0, 50)
 
-  const dailyJobPosts = fillDaySeries(jobs.map((j) => j.created_at), 14)
-  const dailyApplications = fillDaySeries(apps.map((a) => a.created_at), 14)
-  const applicationsWeek = apps.filter((a) => inLastDays(a.created_at, 7)).length
-  const applicationsMonth = apps.filter((a) => inLastDays(a.created_at, 30)).length
-  const applicants = new Set(apps.map((a) => a.student_id)).size
-  const applicationsByMajor = countBy(apps.map((a) => studentMap.get(a.student_id)?.degree)).slice(0, 12)
+  const jobsInRange = jobs.filter((j) => inCampusRange(j.created_at, period))
+  const appsInRange = apps.filter((a) => inCampusRange(a.created_at, period))
+  const dailyJobPosts = fillPeriodSeries(jobsInRange.map((j) => j.created_at), period)
+  const dailyApplications = fillPeriodSeries(appsInRange.map((a) => a.created_at), period)
+  const applicationsWeek = apps.filter((a) => inLastDays(a.created_at, Math.min(7, windowDays))).length
+  const applicationsMonth = appsInRange.length
+  const applicants = new Set(appsInRange.map((a) => a.student_id)).size
+  const applicationsByMajor = countBy(appsInRange.map((a) => studentMap.get(a.student_id)?.degree)).slice(0, 12)
   const applicationsByEmployer = countBy(
-    apps.map((a) => recruiterMap.get(jobMap.get(a.job_id)?.recruiter_id || "")?.company_name)
+    appsInRange.map((a) => recruiterMap.get(jobMap.get(a.job_id)?.recruiter_id || "")?.company_name)
   ).slice(0, 12)
 
-  const applicantsByStudent = new Set(apps.map((a) => a.student_id))
+  const applicantsByStudent = new Set(appsInRange.map((a) => a.student_id))
   const deptBuckets = new Map<string, StudentRow[]>()
   for (const student of students) {
     const department = (student.degree || student.institution_type || "Undeclared").trim() || "Undeclared"
@@ -276,12 +296,13 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
   }
   const atRiskDepartments = [...deptBuckets.entries()]
     .map(([department, members]) => {
-      const active = members.filter((s) => inLastDays(lastActivity(s.id), 30)).length
+      const active = members.filter((s) => inLastDays(lastActivity(s.id), windowDays)).length
       const applied = members.filter((s) => applicantsByStudent.has(s.id)).length
       const activityRate = pct(active, members.length)
       const appRate = pct(applied, members.length)
       const noApps = applied === 0
-      const lowActivity = (activityRate ?? 0) < 35
+      const lowBar = period.id === "day" ? 15 : period.id === "week" ? 20 : 35
+      const lowActivity = (activityRate ?? 0) < lowBar
       if (members.length < 2 || (!noApps && !lowActivity)) return null
       return {
         department,
@@ -290,7 +311,7 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
         applications: applied,
         activityRate,
         appRate,
-        reason: noApps ? "No applications from this programme" : "Low activity this month",
+        reason: noApps ? `No applications · ${period.shortLabel.toLowerCase()}` : `Low activity · ${period.shortLabel.toLowerCase()}`,
       }
     })
     .filter(Boolean)
@@ -433,17 +454,35 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
   const consentedDemo = demographics.filter((d) => (d as { consent_at?: string | null }).consent_at)
   const equityAvailable = consentedDemo.length > 0
 
-  const npsOffice = surveys.filter((s) => (s as { target?: string }).target === "career_office").map((s) => Number((s as { nps?: number }).nps)).filter((n) => Number.isFinite(n))
-  const npsPlatform = surveys.filter((s) => (s as { target?: string }).target === "platform").map((s) => Number((s as { nps?: number }).nps)).filter((n) => Number.isFinite(n))
+  const npsScores = (targets: string[]) => {
+    const allowed = new Set(targets)
+    return surveys
+      .filter((s) => allowed.has(String((s as { target?: string }).target || "").toLowerCase()))
+      .map((s) => Number((s as { nps?: number }).nps))
+      .filter((n) => Number.isFinite(n))
+  }
+  const npsOffice = npsScores(["career_office", "office", "cdc"])
+  const npsPlatform = npsScores(["platform", "student"])
+  const employerNpsValues = npsScores(["employer", "recruiter"])
+  const programEvents = events.filter((row) =>
+    String((row as { summary?: string | null }).summary || "").startsWith("INTERNATIONAL_PROGRAM")
+  )
+  const calendarEvents = events.filter(
+    (row) => !String((row as { summary?: string | null }).summary || "").startsWith("INTERNATIONAL_PROGRAM")
+  )
+  const internationalPrograms =
+    opportunities.filter((row) => (row as { is_active?: boolean | null }).is_active !== false).length || programEvents.length
 
   const noShows = appointments.filter((a) => (a as { status?: string }).status === "no_show").length
-  const eventRows = events.map((e) => {
-    const ev = e as { id: string; title: string; kind: string }
+  const eventRows = calendarEvents.map((e) => {
+    const ev = e as { id: string; title: string; kind: string; location?: string | null; starts_at?: string | null }
     const evRsvps = rsvps.filter((r) => (r as { event_id: string }).event_id === ev.id)
     return {
       id: ev.id,
       title: ev.title,
       kind: ev.kind,
+      location: ev.location || null,
+      starts_at: ev.starts_at || null,
       rsvps: evRsvps.length,
       hires: evRsvps.filter((r) => (r as { hired_from_event?: boolean }).hired_from_event).length,
     }
@@ -510,10 +549,6 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
     })
     .filter((n): n is number => n != null)
   const eventHires = eventRows.reduce((sum, ev) => sum + ev.hires, 0)
-  const employerNpsValues = surveys
-    .filter((s) => (s as { target?: string }).target === "employer")
-    .map((s) => Number((s as { nps?: number }).nps))
-    .filter((n) => Number.isFinite(n))
   const alumni: AttentionStudent[] = hired.slice(0, 24).map((m) => {
     const stu = studentMap.get(m.student_id)
     const job = jobMap.get(m.job_id)
@@ -559,14 +594,22 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
   const interviewStudents = new Set(interviews.map((m) => m.student_id)).size
   const offerStudents = new Set(offers.map((m) => m.student_id)).size
 
+  const employersPosted = new Set(jobsInRange.map((j) => j.recruiter_id))
+  const employersWithApps = new Set(
+    appsInRange.map((a) => jobMap.get(a.job_id)?.recruiter_id).filter((id): id is string => Boolean(id))
+  )
+  const employersActive = new Set([...employersPosted, ...employersWithApps]).size
+
   return {
     access: { ...access, university },
     missingTables: [...new Set(missingTables)],
+    period,
     kpis: {
       placementRate,
-      activeStudentsMonth: sourced(activeMonth, students.length, "platform"),
+      activeStudentsMonth: sourced(activeMonth, students.length, "platform", period.shortLabel),
+      engagementRate,
       openJobsMatched: sourced(activeJobs.filter((j) => students.some((s) => (s.preferred_job_categories || []).includes(j.category || ""))).length || activeJobs.length, activeJobs.length, "platform"),
-      employersEngaged: sourced(new Set(apps.map((a) => jobMap.get(a.job_id)?.recruiter_id).filter(Boolean)).size, recruiters.length, "platform"),
+      employersEngaged: sourced(employersActive, recruiters.length, "platform", period.shortLabel),
       needingAttention: sourced(attention.length, students.length, "platform"),
       equityGapFlag: {
         flagged: equityAvailable && consentedDemo.length < students.length * 0.3,
@@ -651,7 +694,7 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
     },
     market: {
       activeEmployers: recruiters.length,
-      newEmployers: recruiters.filter((r) => inLastDays(r.created_at, 30)).length,
+      newEmployers: recruiters.filter((r) => inCampusRange(r.created_at, period)).length,
       openJobs: activeJobs.filter((j) => j.job_type !== "internship").length,
       internships: internships.length,
       dailyJobPosts,
@@ -664,6 +707,7 @@ export const loadCampusSnapshot = cache(async (access: CampusAccess, universityF
       responseRate: sourced(pct(responded, appCount), responded, "platform"),
       timeToRespondHours: sourced(average(recruiterFirstReply), recruiterFirstReply.length, "platform"),
       employerNps: sourced(average(employerNpsValues), employerNpsValues.length, "survey"),
+      internationalPrograms,
       partners: partners.map((p) => ({
         name: recruiterMap.get((p as { recruiter_id: string }).recruiter_id)?.company_name || "Partner",
         tier: (p as { tier: string }).tier,

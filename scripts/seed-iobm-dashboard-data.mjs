@@ -837,9 +837,13 @@ async function main() {
   }
 
   await tryInsert(sb, "campus_surveys", [
-    { university: UNI, target: "office", nps: 62 },
+    { university: UNI, target: "career_office", nps: 62 },
+    { university: UNI, target: "career_office", nps: 71 },
     { university: UNI, target: "platform", nps: 48 },
-    { university: UNI, target: "office", nps: 71 },
+    { university: UNI, target: "employer", nps: 54 },
+    { university: UNI, target: "employer", nps: 61 },
+    { university: UNI, target: "employer", nps: 47 },
+    { university: UNI, target: "employer", nps: 58 },
   ])
 
   const reviewStudents = [studentId, ...cohortIds.slice(0, 3).map((c) => c.id)].filter(Boolean)

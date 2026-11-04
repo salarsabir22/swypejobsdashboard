@@ -81,6 +81,7 @@ function fromGroups(groups: NavGroup[], lead?: SidebarItem): SidebarSection[] {
 }
 
 const discover: SidebarItem = { href: "/discover", label: "Discover", icon: Layers }
+const studentHome: SidebarItem = { href: "/dashboard", label: "Home", icon: LayoutDashboard, exact: true }
 
 export function sidebarSectionsFor(opts: {
   role: UserRole | "admin"
@@ -120,14 +121,15 @@ export function sidebarSectionsFor(opts: {
   }
 
   if (role === "recruiter") return fromGroups(recruiterNavGroups, discover)
-  if (isAlumni) return fromGroups(alumniNavGroups, discover)
-  return fromGroups(studentNavGroups, discover)
+  if (isAlumni) return fromGroups(alumniNavGroups, studentHome)
+  return fromGroups(studentNavGroups, studentHome)
 }
 
 export function homeHrefFor(role: UserRole | "admin") {
   if (role === "admin") return "/admin"
   if (role === "university") return "/campus"
-  return "/discover"
+  if (role === "recruiter") return "/discover"
+  return "/dashboard"
 }
 
 export function roleLabelFor(role: UserRole | "admin", isAlumni?: boolean, staffRole?: string | null) {

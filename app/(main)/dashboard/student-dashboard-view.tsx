@@ -1,126 +1,102 @@
 import Link from "next/link"
-import { Bookmark, Eye, Send, Sparkles, ArrowRight } from "lucide-react"
+import { Suspense } from "react"
+import { AlertTriangle, Bookmark, Briefcase, Building2, Calendar, FileText, Globe, Handshake, Send, Users } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
-import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
-import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
+import { CampusRangeFilter } from "@/components/campus/CampusRangeFilter"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
-import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
-import { DashboardFocusBanner } from "@/components/dashboard/DashboardFocusBanner"
-import { DashboardFunnel } from "@/components/dashboard/DashboardFunnel"
-import { DashboardFeedRow } from "@/components/dashboard/DashboardFeedRow"
-import { StudentDashboardCharts } from "@/components/dashboard/StudentDashboardCharts"
-import { CompletenessCard } from "@/components/profile/CompletenessCard"
-import { studentCompleteness } from "@/lib/profile/completeness"
-import { skillGaps } from "@/lib/profile/skill-gap"
-import { formatDate } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { daysLastN, shortDayLabel } from "@/lib/dashboard/time-series"
-import { countCreatedBetween, matchRatePercent, weekOverWeekHint } from "@/lib/dashboard/period-metrics"
-import { conversationChatHref } from "@/lib/dashboard/chat-links"
-import { coalesceRelation } from "@/lib/dashboard/relations"
+import { EventRsvpButton } from "@/components/portal/EventRsvpButton"
+import { StudentHomeDeck, type StudentHomeJob } from "@/components/student/StudentHomeDeck"
 import { loadStudentCampus } from "@/lib/campus/student-campus"
+import { inCampusRange, parseCampusRange } from "@/lib/campus/range"
+import { coalesceRelation } from "@/lib/dashboard/relations"
+import { fetchFeedPosts } from "@/lib/feed/queries"
+import { studentCompleteness } from "@/lib/profile/completeness"
+import { formatRelativeTime, getInitials } from "@/lib/utils"
+import { one } from "@/components/feed/types"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 
-type SavedJobRow = {
+type JobJoin = {
   id: string
-  created_at: string
-  jobs: {
-    id: string
-    title: string
-    job_type: string | null
-    recruiter_profiles: { company_name: string | null; logo_url?: string | null }[] | null
-  }[] | null
+  title: string
+  description?: string | null
+  job_type?: string | null
+  category?: string | null
+  location?: string | null
+  is_remote?: boolean | null
+  created_at?: string
+  recruiter_profiles?: { company_name?: string | null; logo_url?: string | null } | { company_name?: string | null; logo_url?: string | null }[] | null
 }
 
-type MatchRow = {
-  id: string
-  job_id?: string
-  created_at: string
-  pipeline_status?: string | null
-  is_archived?: boolean
-  profiles: { full_name: string | null; avatar_url?: string | null }[] | null
-  jobs: {
-    title: string | null
-    recruiter_id?: string
-    recruiter_profiles: { company_name: string | null; logo_url?: string | null }[] | null
-  }[] | null
-  conversations: { id: string }[] | null
+type SwipeJobRow = { id: string; created_at: string; direction: string; jobs: JobJoin | JobJoin[] | null }
+
+function toHomeJob(job: JobJoin | undefined, fallbackDate?: string): StudentHomeJob | null {
+  if (!job?.id) return null
+  const company = coalesceRelation(job.recruiter_profiles)
+  return {
+    id: job.id,
+    title: job.title,
+    description: job.description || null,
+    job_type: job.job_type || null,
+    category: job.category || null,
+    location: job.location || null,
+    is_remote: job.is_remote ?? null,
+    created_at: job.created_at || fallbackDate || new Date().toISOString(),
+    company: company?.company_name || null,
+    logo: company?.logo_url || null,
+  }
 }
 
-type SwipeTimelineRow = { created_at: string; direction: string }
-type MatchTimelineRow = { created_at: string }
-type ProfileViewRow = { id: string; created_at: string; viewer_id: string }
-type ViewerProfile = { id: string; full_name: string | null; avatar_url: string | null; role: string | null }
-type CompanyLite = { id: string; company_name: string | null; logo_url: string | null }
+function greeting(name?: string | null) {
+  const hour = new Date().getHours()
+  const hello = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
+  return name ? `${hello}, ${name}!` : hello
+}
 
 export async function StudentDashboardView({
   userId,
   fullName,
   isAlumni = false,
+  range: rangeParam,
 }: {
   userId: string
   fullName: string | null
   isAlumni?: boolean
+  range?: string
 }) {
   const supabase = await createClient()
-
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30)
-  const since = thirtyDaysAgo.toISOString()
-
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7)
-  const fourteenDaysAgo = new Date()
-  fourteenDaysAgo.setUTCDate(fourteenDaysAgo.getUTCDate() - 14)
-  const since7 = sevenDaysAgo.toISOString()
-  const since14 = fourteenDaysAgo.toISOString()
+  const period = parseCampusRange(rangeParam)
+  const firstName = fullName?.split(" ")[0]
 
   const [
     appliedRes,
     savedRes,
     matchesRes,
-    savedJobsRes,
-    recentMatchesRes,
-    swipesTimelineRes,
-    matchesTimelineRes,
-    profileViewsCountRes,
+    swipeJobsRes,
+    featuredRes,
     profileViewsRes,
     profileRes,
     studentRes,
     matchStatusRes,
-    openRolesRes,
+    campusRsvps,
   ] = await Promise.all([
-    supabase.from("job_swipes").select("id", { count: "exact", head: true }).eq("student_id", userId).eq("direction", "right"),
-    supabase.from("job_swipes").select("id", { count: "exact", head: true }).eq("student_id", userId).eq("direction", "saved"),
-    supabase.from("matches").select("id", { count: "exact", head: true }).eq("student_id", userId),
+    supabase.from("job_swipes").select("id, created_at").eq("student_id", userId).eq("direction", "right").limit(400),
+    supabase.from("job_swipes").select("id, created_at").eq("student_id", userId).eq("direction", "saved").limit(400),
+    supabase.from("matches").select("id, created_at").eq("student_id", userId).limit(400),
     supabase
       .from("job_swipes")
-      .select("id, created_at, jobs(id, title, job_type, recruiter_profiles(company_name, logo_url))")
+      .select("id, created_at, direction, jobs(id, title, description, job_type, category, location, is_remote, created_at, recruiter_profiles(company_name, logo_url))")
       .eq("student_id", userId)
-      .eq("direction", "saved")
+      .in("direction", ["right", "saved"])
       .order("created_at", { ascending: false })
-      .limit(6),
+      .limit(24),
     supabase
-      .from("matches")
-      .select(
-        "id, created_at, pipeline_status, is_archived, profiles!matches_recruiter_id_fkey(full_name, avatar_url), jobs(title, recruiter_id, recruiter_profiles(company_name, logo_url)), conversations(id)"
-      )
-      .eq("student_id", userId)
+      .from("jobs")
+      .select("id, title, description, job_type, category, location, is_remote, created_at, recruiter_profiles(company_name, logo_url)")
+      .eq("is_active", true)
       .order("created_at", { ascending: false })
-      .limit(8),
-    supabase
-      .from("job_swipes")
-      .select("created_at, direction")
-      .eq("student_id", userId)
-      .gte("created_at", since)
-      .limit(400),
-    supabase.from("matches").select("created_at").eq("student_id", userId).gte("created_at", since).limit(400),
-    supabase.from("profile_views").select("id", { count: "exact", head: true }).eq("student_id", userId),
-    supabase
-      .from("profile_views")
-      .select("id, created_at, viewer_id")
-      .eq("student_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(8),
+      .limit(16),
+    supabase.from("profile_views").select("id, created_at").eq("student_id", userId).limit(400),
     supabase.from("profiles").select("avatar_url, bio, profile_video_url").eq("id", userId).maybeSingle(),
     supabase
       .from("student_profiles")
@@ -128,57 +104,34 @@ export async function StudentDashboardView({
       .eq("id", userId)
       .maybeSingle(),
     supabase.from("matches").select("pipeline_status, is_archived").eq("student_id", userId).limit(400),
-    supabase.from("jobs").select("category, required_skills").eq("is_active", true).limit(80),
+    supabase.from("campus_event_rsvps").select("event_id").eq("student_id", userId),
   ])
 
-  const applied = appliedRes.count || 0
-  const saved = savedRes.count || 0
-  const matches = matchesRes.count || 0
-  const savedJobs = (savedJobsRes.data || []) as SavedJobRow[]
-  const recentMatches = (recentMatchesRes.data || []) as MatchRow[]
+  const appliedRows = appliedRes.data || []
+  const savedRows = savedRes.data || []
+  const matchRows = matchesRes.data || []
+  const viewRows = profileViewsRes.data || []
+  const applied = appliedRows.filter((row) => inCampusRange(row.created_at, period)).length
+  const saved = savedRows.filter((row) => inCampusRange(row.created_at, period)).length
+  const matches = matchRows.filter((row) => inCampusRange(row.created_at, period)).length
+  const profileViews = viewRows.filter((row) => inCampusRange(row.created_at, period)).length
+  const jobPosts = (featuredRes.data || []).filter((job) => inCampusRange(job.created_at, period)).length
 
-  const swipes = (swipesTimelineRes.data || []) as SwipeTimelineRow[]
-  const rightSwipes = swipes.filter((row) => row.direction === "right")
-  const appliedLast7 = countCreatedBetween(rightSwipes, since7)
-  const appliedPrev7 = countCreatedBetween(rightSwipes, since14, since7)
-  const wowApplications = weekOverWeekHint(appliedLast7, appliedPrev7)
-  const matchRate = matchRatePercent(matches, applied)
-  const profileViewCount = profileViewsCountRes.count || 0
-  const profileViewRows = (profileViewsRes.data || []) as ProfileViewRow[]
-  const viewerIds = [...new Set(profileViewRows.map((row) => row.viewer_id))]
-  const [viewerRowsRes, companyRowsRes] = viewerIds.length
-    ? await Promise.all([
-        supabase.from("profiles").select("id, full_name, avatar_url, role").in("id", viewerIds),
-        supabase.from("recruiter_profiles").select("id, company_name, logo_url").in("id", viewerIds),
-      ])
-    : [{ data: [] as ViewerProfile[] }, { data: [] as CompanyLite[] }]
-  const viewers = (viewerRowsRes.data || []) as ViewerProfile[]
-  const viewerById = new Map(viewers.map((p) => [p.id, p]))
-  const companyById = new Map(((companyRowsRes.data || []) as CompanyLite[]).map((c) => [c.id, c]))
-
-  const days = daysLastN(30)
-  const matchTimeline = (matchesTimelineRes.data || []) as MatchTimelineRow[]
-
-  const activity = days.map((day) => {
-    let a = 0
-    let s = 0
-    for (const row of swipes) {
-      if (row.created_at?.slice(0, 10) !== day) continue
-      if (row.direction === "right") a++
-      else if (row.direction === "saved") s++
-    }
-    return { label: shortDayLabel(day), applied: a, saved: s }
-  })
-
-  const matchesSeries = days.map((day) => ({
-    label: shortDayLabel(day),
-    matches: matchTimeline.filter((m) => m.created_at?.slice(0, 10) === day).length,
-  }))
-
-  const sumApplied30 = activity.reduce((acc, d) => acc + d.applied, 0)
-  const sumSaved30 = activity.reduce((acc, d) => acc + d.saved, 0)
-  const sumMatches30 = matchesSeries.reduce((acc, d) => acc + d.matches, 0)
-  const chartFootnote = `Last 30 days: ${sumApplied30} applications · ${sumSaved30} saves · ${sumMatches30} new matches.`
+  const swipeJobs = (swipeJobsRes.data || []) as SwipeJobRow[]
+  const savedJobs = swipeJobs
+    .filter((row) => row.direction === "saved")
+    .map((row) => toHomeJob(coalesceRelation(row.jobs), row.created_at))
+    .filter(Boolean) as StudentHomeJob[]
+  const appliedJobs = swipeJobs
+    .filter((row) => row.direction === "right")
+    .map((row) => toHomeJob(coalesceRelation(row.jobs), row.created_at))
+    .filter(Boolean) as StudentHomeJob[]
+  const seen = new Set([...savedJobs, ...appliedJobs].map((job) => job.id))
+  const discoverJobs = ((featuredRes.data || []) as JobJoin[])
+    .map((job) => toHomeJob(job))
+    .filter((job): job is StudentHomeJob => Boolean(job && !seen.has(job.id)))
+  const preferred = new Set(studentRes.data?.preferred_job_categories || [])
+  const recommendedJobs = discoverJobs.filter((job) => (job.category && preferred.has(job.category)) || preferred.size === 0).slice(0, 8)
 
   const completeness = studentCompleteness({
     avatar: profileRes.data?.avatar_url,
@@ -189,329 +142,214 @@ export async function StudentDashboardView({
     video: profileRes.data?.profile_video_url,
     linkedin: studentRes.data?.linkedin_url,
   })
-
-  const matchStatus = (matchStatusRes.data || []) as { pipeline_status?: string | null; is_archived?: boolean }[]
-  const interviewPlus = matchStatus.filter((m) =>
-    ["interview", "offer", "hired"].includes(m.pipeline_status || "")
+  const interviews = (matchStatusRes.data || []).filter((row) =>
+    ["interview", "offer", "hired"].includes(row.pipeline_status || "")
   ).length
-  const chattingStage = matchStatus.filter(
-    (m) => !m.is_archived && !["interview", "offer", "hired", "passed"].includes(m.pipeline_status || "")
-  ).length
+  const matchRate = appliedRows.length ? Math.round((matchRows.length / appliedRows.length) * 100) : 0
+  const remaining = completeness.items.filter((item) => !item.done)
+  const alerts = [
+    !studentRes.data?.resume_url ? "Resume missing" : null,
+    appliedRows.length === 0 ? "No applications yet" : null,
+    completeness.percent < 80 ? `Profile ${completeness.percent}% complete` : null,
+  ].filter(Boolean) as string[]
 
-  const chattingCount = recentMatches.filter((m) => conversationChatHref(m.conversations)).length
-  const firstName = fullName?.split(" ")[0]
-
-  const focus =
-    !studentRes.data?.resume_url
-      ? {
-          kicker: "Next step",
-          title: "Build a resume recruiters can download",
-          description: "Start from your profile, export a PDF, or import a JSON Resume. You can also draft cover letters for each role.",
-          href: "/resume",
-          cta: "Open resume builder",
-        }
-    : completeness.percent < 80
-      ? {
-          kicker: "Next step",
-          title: `Your profile is ${completeness.percent}% complete`,
-          description: "Handshake-style hiring teams filter on a photo, education, and a resume before they swipe.",
-          href: "/onboarding",
-          cta: "Finish profile",
-        }
-      : applied === 0
-        ? {
-            kicker: "Next step",
-            title: "Apply to a role",
-            description: "Discover is live. A right swipe is your application — matches show up here after both sides opt in.",
-            href: "/discover",
-            cta: "Open Discover",
-          }
-        : matches === 0
-          ? {
-              kicker: "Keep going",
-              title: `${applied} application${applied === 1 ? "" : "s"} in motion`,
-              description: "No mutual matches yet. Recruiters who view you appear below — follow up by staying active on Discover.",
-              href: "/discover",
-              cta: "Find more roles",
-            }
-          : chattingCount > 0
-            ? {
-                kicker: "Your move",
-                title: `${chattingCount} conversation${chattingCount === 1 ? "" : "s"} ready`,
-                description: "Reply while the match is fresh. Most campus hires start in the first messages.",
-                href: "/chat",
-                cta: "Open inbox",
-              }
-            : {
-                kicker: "You’re in",
-                title: `${matches} mutual match${matches === 1 ? "" : "es"}`,
-                description: "Open Applications to track stage, or keep Discover moving.",
-                href: "/matches",
-                cta: "View applications",
-              }
-
-  const gaps = skillGaps(studentRes.data?.skills, openRolesRes.data || [], studentRes.data?.preferred_job_categories)
   const campus = await loadStudentCampus(supabase, {
     userId,
     university: studentRes.data?.university || null,
     isAlumni,
   })
+  const going = new Set((campusRsvps.data || []).map((row) => row.event_id))
+  const feed = await fetchFeedPosts(supabase, { limit: 3 })
+  const event = campus.events[0]
 
   return (
-    <div className="space-y-8">
-      <DashboardPageHeader
-        eyebrow="Insights"
-        title={
-          firstName ? (
-            <>
-              Welcome back,{" "}
-              <span className="text-primary">{firstName}</span>
-            </>
-          ) : (
-            "Your overview"
-          )
-        }
-        description="Applications, who viewed you, and what to do next — from your live activity."
-        action={
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-2">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-[2.4rem]">
+            {greeting(firstName)}
+          </h1>
+          <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+            Discover opportunities, grow your skills, and kickstart your career.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex min-h-11 items-center rounded-full bg-primary/10 px-3.5 text-[13px] font-medium text-primary">
+            Your profile is {completeness.percent}% complete
+          </span>
           <Button asChild variant="outline" className="rounded-full">
-            <Link href="/discover">
-              Discover
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
+            <Link href="/discover">Open Discover</Link>
           </Button>
-        }
-      />
-
-      <DashboardFocusBanner {...focus} />
-
-      {campus.university ? (
-        <DashboardPanel
-          title={campus.title}
-          description={
-            isAlumni
-              ? "Events, notices, advising, and mentorship from your campus."
-              : "Events, internships, advising, and notices from your career office."
-          }
-        >
-          {campus.events[0] ? (
-            <p className="text-[14px]">
-              Next event: <span className="font-medium">{campus.events[0].title}</span>
-              {campus.events[0].starts_at
-                ? ` · ${new Date(campus.events[0].starts_at).toLocaleDateString()}`
-                : ""}
-            </p>
-          ) : (
-            <p className="text-[14px] text-muted-foreground">No upcoming campus events yet.</p>
-          )}
-          {campus.announcements[0] ? (
-            <p className="mt-2 text-[14px] text-muted-foreground">Latest notice: {campus.announcements[0].title}</p>
-          ) : null}
-          <div className="mt-4 flex flex-wrap gap-3 text-sm">
-            <Link href="/career-office" className="text-primary hover:underline">
-              Open campus hub
-            </Link>
-            <Link href="/events" className="text-primary hover:underline">
-              Events
-            </Link>
-            <Link href="/appointments" className="text-primary hover:underline">
-              Book advising
-            </Link>
-            <Link href="/announcements" className="text-primary hover:underline">
-              Announcements
-            </Link>
-            {isAlumni ? (
-              <Link href="/mentorship" className="text-primary hover:underline">
-                Mentorship
-              </Link>
-            ) : (
-              <Link href="/internships" className="text-primary hover:underline">
-                Internships
-              </Link>
-            )}
-          </div>
-        </DashboardPanel>
-      ) : null}
-
-      <section aria-labelledby="kpi-heading">
-        <h2 id="kpi-heading" className="sr-only">
-          Key metrics
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <DashboardKpiCard
-            tone="blue"
-            icon={Send}
-            label="Applications"
-            value={applied}
-            trend={activity.map((d) => d.applied)}
-            hint={
-              wowApplications
-                ? `${wowApplications} · ${appliedLast7} this week`
-                : `${appliedLast7} in the last 7 days`
-            }
-          />
-          <DashboardKpiCard
-            tone="violet"
-            icon={Eye}
-            label="Profile views"
-            value={profileViewCount}
-            hint="Recruiters who opened your public profile"
-          />
-          <DashboardKpiCard
-            tone="teal"
-            icon={Sparkles}
-            label="Mutual matches"
-            value={matches}
-            trend={matchesSeries.map((d) => d.matches)}
-            hint={applied > 0 ? `${matchRate}% of applications matched` : "Apply to see a match rate"}
-          />
-          <DashboardKpiCard
-            tone="amber"
-            icon={Bookmark}
-            label="Saved roles"
-            value={saved}
-            trend={activity.map((d) => d.saved)}
-            hint="Bookmarked from Discover"
-          />
         </div>
-      </section>
+      </header>
 
-      <DashboardPanel title="Skill gaps" description="Skills asked for on live roles in your categories that aren’t on your profile yet.">
-        {gaps.length ? (
-          <ul className="space-y-1.5 text-[14px]">
-            {gaps.map((gap) => (
-              <li key={gap.label}>
-                <span className="font-medium">{gap.label}</span>
-                <span className="text-muted-foreground"> · asked on {gap.count} role{gap.count === 1 ? "" : "s"}</span>
-              </li>
+      <Suspense fallback={null}>
+        <CampusRangeFilter current={period.id} />
+      </Suspense>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+        <StudentHomeDeck
+          discover={discoverJobs.slice(0, 8)}
+          saved={savedJobs.slice(0, 8)}
+          applied={appliedJobs.slice(0, 8)}
+          recommended={recommendedJobs}
+        />
+
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="space-y-4 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-heading text-lg font-semibold">Your feed</h2>
+                <Link href="/feed" className="text-sm font-medium text-primary hover:underline">
+                  See all
+                </Link>
+              </div>
+              {feed.posts.length ? (
+                <ul className="space-y-4">
+                  {feed.posts.slice(0, 2).map((post) => {
+                    const author = one(post.profiles)
+                    return (
+                      <li key={post.id} className="border-b border-border/70 pb-4 last:border-0 last:pb-0">
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-[12px] font-semibold">
+                            {getInitials(author?.full_name || "Member")}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold">{author?.full_name || "Member"}</p>
+                            <p className="text-[12px] text-muted-foreground">{formatRelativeTime(post.created_at)}</p>
+                            <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{post.body}</p>
+                          </div>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">No posts yet. The campus feed will land here.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="space-y-4 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-heading text-lg font-semibold">Upcoming events</h2>
+                <Link href="/events" className="text-sm font-medium text-primary hover:underline">
+                  See all
+                </Link>
+              </div>
+              {event ? (
+                <div className="rounded-2xl bg-secondary/60 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <Calendar className="h-4 w-4" aria-hidden />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-medium">{event.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {event.starts_at
+                          ? new Date(event.starts_at).toLocaleString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })
+                          : "Date to be announced"}
+                        {event.location ? ` · ${event.location}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <EventRsvpButton eventId={event.id} going={going.has(event.id)} />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No upcoming campus events yet.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent className="grid gap-6 p-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+          <div>
+            <h2 className="font-heading text-lg font-semibold">Track your progress</h2>
+            <div className="mt-4 flex items-center gap-4">
+              <div
+                className="grid size-24 place-items-center rounded-full"
+                style={{
+                  background: `conic-gradient(#2251FF ${completeness.percent * 3.6}deg, #e8eef5 0deg)`,
+                }}
+                aria-hidden
+              >
+                <div className="grid size-[4.6rem] place-items-center rounded-full bg-card">
+                  <span className="text-xl font-semibold tabular-nums">{completeness.percent}%</span>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">Profile complete</p>
+            </div>
+            <ul className="mt-4 space-y-2 text-sm">
+              {completeness.items.slice(0, 3).map((item) => (
+                <li key={item.id} className="flex items-center gap-2">
+                  <span className={item.done ? "text-primary" : "text-muted-foreground"}>{item.done ? "●" : "○"}</span>
+                  <Link href={item.href} className="hover:text-primary">
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <DashboardKpiCard icon={Briefcase} label="Job posts" value={jobPosts} hint={`New roles · ${period.shortLabel.toLowerCase()}`} tone="violet" />
+            <DashboardKpiCard icon={Users} label="Engagement" value={applied + saved} hint="Your applications and saves" tone="teal" />
+            <DashboardKpiCard icon={Building2} label="Employer activity" value={profileViews} hint="Recruiters who viewed you" />
+            <DashboardKpiCard icon={Send} label="Applications" value={applied} hint={`${appliedRows.length} all time`} tone="teal" />
+            <DashboardKpiCard
+              icon={Handshake}
+              label="Placement insights"
+              value={interviews || matches}
+              hint={appliedRows.length ? `${matchRate}% match rate · ${interviews} interviews` : "Apply to see your pipeline"}
+            />
+            <DashboardKpiCard
+              icon={AlertTriangle}
+              label="Alerts"
+              value={alerts.length}
+              hint={alerts[0] || "You’re on track"}
+              tone={alerts.length ? "amber" : "teal"}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-5">
+          <h2 className="font-heading text-lg font-semibold">Quick links</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { href: "/resume", label: "My resume", icon: FileText },
+              { href: "/appointments", label: "Book a session", icon: Handshake },
+              { href: "/career-office", label: "Career resources", icon: Bookmark },
+              { href: "/opportunities", label: "International programs", icon: Globe },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex min-h-11 items-center gap-3 rounded-2xl border border-border px-4 py-3 text-sm font-medium hover:bg-secondary"
+              >
+                <item.icon className="h-4 w-4 text-primary" aria-hidden />
+                {item.label}
+              </Link>
             ))}
-          </ul>
-        ) : (
-          <p className="text-[14px] text-muted-foreground">No gap against the current listings, or add preferred categories on your profile.</p>
-        )}
-        <div className="mt-4 flex flex-wrap gap-3 text-sm">
-          <Link href="/discover" className="text-primary hover:underline">Campus-curated jobs</Link>
-          <Link href="/internships" className="text-primary hover:underline">Internships</Link>
-          <Link href="/events" className="text-primary hover:underline">Events</Link>
-          <Link href="/announcements" className="text-primary hover:underline">Announcements</Link>
-          <Link href="/appointments" className="text-primary hover:underline">Book advising</Link>
-          <Link href="/profile/education" className="text-primary hover:underline">Education history</Link>
-          <Link href="/opportunities" className="text-primary hover:underline">International opportunities</Link>
-        </div>
-      </DashboardPanel>
-
-      <DashboardFunnel
-        title="Application pipeline"
-        stages={[
-          { label: "Applied", value: applied },
-          { label: "Profile views", value: profileViewCount },
-          { label: "Chatting", value: chattingStage },
-          { label: "Interview+", value: interviewPlus },
-        ]}
-      />
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <StudentDashboardCharts
-            activity={activity}
-            matchesSeries={matchesSeries}
-            matchRate={applied > 0 ? matchRate : 0}
-            footnote={chartFootnote}
-          />
-        </div>
-        <CompletenessCard percent={completeness.percent} items={completeness.items} />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <DashboardPanel title="Who viewed you" description="Most recent recruiters on your profile." badge={`${profileViewCount} total`}>
-          {profileViewRows.length === 0 ? (
-            <DashboardEmptyState
-              icon={Eye}
-              title="No profile views yet"
-              description="When a recruiter opens your candidate page, they show up here."
-              primaryAction={{ href: "/profile", label: "Share profile" }}
-            />
-          ) : (
-            <div className="divide-y divide-border">
-              {profileViewRows.map((row) => {
-                const viewer = viewerById.get(row.viewer_id)
-                const company = companyById.get(row.viewer_id)
-                const href = viewer?.role === "recruiter" ? `/company/${row.viewer_id}` : `/candidates/${row.viewer_id}`
-                return (
-                  <DashboardFeedRow
-                    key={row.id}
-                    href={href}
-                    image={company?.logo_url || viewer?.avatar_url}
-                    title={viewer?.full_name || "Recruiter"}
-                    subtitle={company?.company_name || "Opened your profile"}
-                    meta={formatDate(row.created_at)}
-                    action="View"
-                  />
-                )
-              })}
-            </div>
-          )}
-        </DashboardPanel>
-
-        <DashboardPanel title="Recent matches" description="Mutual interest — jump into chat." badge={`${recentMatches.length}`}>
-          {recentMatches.length === 0 ? (
-            <DashboardEmptyState
-              icon={Sparkles}
-              title="No matches yet"
-              description="When you apply and a recruiter returns interest, they appear here."
-              primaryAction={{ href: "/discover", label: "Go to Discover" }}
-              secondaryAction={{ href: "/matches", label: "Applications" }}
-            />
-          ) : (
-            <div className="divide-y divide-border">
-              {recentMatches.map((m) => {
-                const job = coalesceRelation(m.jobs)
-                const chat = conversationChatHref(m.conversations)
-                const company = job?.recruiter_profiles?.[0]
-                return (
-                  <DashboardFeedRow
-                    key={m.id}
-                    href={chat || "/matches"}
-                    image={company?.logo_url || m.profiles?.[0]?.avatar_url}
-                    title={job?.title || "Match"}
-                    subtitle={company?.company_name || m.profiles?.[0]?.full_name || "Recruiter"}
-                    meta={formatDate(m.created_at)}
-                    action={chat ? "Chat" : "Open"}
-                  />
-                )
-              })}
-            </div>
-          )}
-        </DashboardPanel>
-      </div>
-
-      <DashboardPanel title="Saved roles" description="Come back to these when you’re ready to apply." badge={`${savedJobs.length}`}>
-        {savedJobs.length === 0 ? (
-          <DashboardEmptyState
-            icon={Bookmark}
-            title="No saved roles yet"
-            description="Save roles on Discover to compare employers later."
-            primaryAction={{ href: "/discover", label: "Browse Discover" }}
-          />
-        ) : (
-          <div className="divide-y divide-border">
-            {savedJobs.map((row) => {
-              const job = coalesceRelation(row.jobs)
-              const company = job?.recruiter_profiles?.[0]
-              return (
-                <DashboardFeedRow
-                  key={row.id}
-                  href={job?.id ? `/jobs/${job.id}` : "/saved"}
-                  image={company?.logo_url}
-                  title={job?.title || "Untitled role"}
-                  subtitle={company?.company_name || job?.job_type?.replace(/_/g, " ") || ""}
-                  meta={formatDate(row.created_at)}
-                  action="Open"
-                />
-              )
-            })}
           </div>
-        )}
-      </DashboardPanel>
+          {remaining.length ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              Next: <Link href={remaining[0].href} className="font-medium text-primary hover:underline">{remaining[0].label}</Link>
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
     </div>
   )
 }
