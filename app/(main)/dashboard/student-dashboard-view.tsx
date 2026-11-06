@@ -1,8 +1,6 @@
 import Link from "next/link"
-import { Suspense } from "react"
 import { AlertTriangle, Bookmark, Briefcase, Building2, Calendar, FileText, Globe, Handshake, Send, Users } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
-import { CampusRangeFilter } from "@/components/campus/CampusRangeFilter"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
 import { EventRsvpButton } from "@/components/portal/EventRsvpButton"
 import { StudentHomeDeck, type StudentHomeJob } from "@/components/student/StudentHomeDeck"
@@ -57,15 +55,13 @@ export async function StudentDashboardView({
   userId,
   fullName,
   isAlumni = false,
-  range: rangeParam,
 }: {
   userId: string
   fullName: string | null
   isAlumni?: boolean
-  range?: string
 }) {
   const supabase = await createClient()
-  const period = parseCampusRange(rangeParam)
+  const period = parseCampusRange("month")
   const firstName = fullName?.split(" ")[0]
 
   const [
@@ -182,10 +178,6 @@ export async function StudentDashboardView({
           </Button>
         </div>
       </header>
-
-      <Suspense fallback={null}>
-        <CampusRangeFilter current={period.id} />
-      </Suspense>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
         <StudentHomeDeck
