@@ -76,6 +76,7 @@ export function StudentDiscoverView({
   department,
   preferredLocations,
   university,
+  campusConnected = true,
   selfImageUrl,
   selfName = "You",
 }: {
@@ -92,6 +93,8 @@ export function StudentDiscoverView({
   department?: string | null
   preferredLocations?: string[] | null
   university?: string | null
+  /** False when CDC disconnected this student from the career center (SwypeJobs account stays active). */
+  campusConnected?: boolean
   selfImageUrl?: string | null
   selfName?: string
 }) {
@@ -111,16 +114,16 @@ export function StudentDiscoverView({
   const [sessionApplied, setSessionApplied] = useState(0)
   const [sessionSaved, setSessionSaved] = useState(0)
   const [sessionPassed, setSessionPassed] = useState(0)
-  const [jobType, setJobType] = useState("all")
-  const [remote, setRemote] = useState("all")
-  const [category, setCategory] = useState("all")
+  const [jobTypes, setJobTypes] = useState<string[]>([])
+  const [workModes, setWorkModes] = useState<string[]>([])
+  const [categories, setCategories] = useState<string[]>([])
   const [location, setLocation] = useState("")
   const [keyword, setKeyword] = useState("")
   const [minSalary, setMinSalary] = useState("")
   const [company, setCompany] = useState("")
   const [industry, setIndustry] = useState("")
-  const [market, setMarket] = useState("all")
-  const [feedMode, setFeedMode] = useState<DiscoverFeedMode>(FEED_CURATED)
+  const [markets, setMarkets] = useState<string[]>([])
+  const [feedMode, setFeedMode] = useState<DiscoverFeedMode>(campusConnected ? FEED_CURATED : FEED_ALL)
   const [matchOpen, setMatchOpen] = useState(false)
   const [matchName, setMatchName] = useState("")
   const [matchHref, setMatchHref] = useState<string | null>(null)
@@ -133,19 +136,29 @@ export function StudentDiscoverView({
   const jobs = useMemo(() => {
     const loc = location.trim().toLowerCase()
     const minPay = minSalary ? Number(minSalary) : null
+    const wantRemote = workModes.includes("remote")
+    const wantOnsite = workModes.includes("onsite")
+    const wantLocal = markets.includes("local")
+    const wantInternational = markets.includes("international")
     return allJobs.filter((job) => {
-      if (jobType !== "all" && job.job_type !== jobType) return false
-      if (remote === "remote" && !job.is_remote) return false
-      if (remote === "onsite" && job.is_remote) return false
-      if (category !== "all" && (job.category || "") !== category) return false
-      if (loc && !(job.location || "").toLowerCase().includes(loc) && !job.is_remote) return false
+      if (jobTypes.length && !jobTypes.includes(job.job_type)) return false
+      if (wantRemote || wantOnsite) {
+        if (job.is_remote && !wantRemote) return false
+        if (!job.is_remote && !wantOnsite) return false
+      }
+      if (categories.length && !categories.includes(job.category || "")) return false
+      // City applies to on-site roles; remote still matches when remote is included (or unrestricted).
+      if (loc && !job.is_remote && !(job.location || "").toLowerCase().includes(loc)) return false
       if (!jobMatchesKeyword(job, keyword)) return false
       if (!jobMeetsMinSalary(job, minPay)) return false
       const employer = Array.isArray(job.recruiter_profiles) ? job.recruiter_profiles[0] : job.recruiter_profiles
       if (company.trim() && !(employer?.company_name || "").toLowerCase().includes(company.trim().toLowerCase())) return false
       if (industry.trim() && !(employer?.industry || "").toLowerCase().includes(industry.trim().toLowerCase())) return false
-      if (market === "international" && job.is_international !== true) return false
-      if (market === "local" && job.is_international === true) return false
+      if (wantLocal || wantInternational) {
+        const isIntl = job.is_international === true
+        if (isIntl && !wantInternational) return false
+        if (!isIntl && !wantLocal) return false
+      }
       if (feedMode === FEED_CURATED && job.cdc_curated !== true) return false
       if (
         !studentEligibility(job, {
@@ -164,7 +177,28 @@ export function StudentDiscoverView({
       }
       return true
     })
-  }, [allJobs, jobType, remote, category, location, keyword, minSalary, company, industry, market, feedMode, stillEnrolled, currentSemester, degree, graduationYear, cgpa, isAlumni, gender, department, preferredLocations])
+  }, [
+    allJobs,
+    jobTypes,
+    workModes,
+    categories,
+    location,
+    keyword,
+    minSalary,
+    company,
+    industry,
+    markets,
+    feedMode,
+    stillEnrolled,
+    currentSemester,
+    degree,
+    graduationYear,
+    cgpa,
+    isAlumni,
+    gender,
+    department,
+    preferredLocations,
+  ])
 
   const rankJobs = useCallback(
     (rows: Job[], weights: RankingWeights = rankingWeights) =>
@@ -242,60 +276,77 @@ export function StudentDiscoverView({
       }
 
       let fetched = (data || []) as Job[]
-      const [collectionRes, reviewRes] = await Promise.all([
-        supabase
-          .from("job_collection_items")
-          .select("job_id, job_collections!inner(name, university, is_active)")
-          .eq("job_collections.is_active", true),
-        supabase.from("campus_job_reviews").select("job_id, university, status"),
-      ])
       const curated = new Map<string, string>()
-      for (const row of collectionRes.data || []) {
-        const col = Array.isArray(row.job_collections) ? row.job_collections[0] : row.job_collections
-        if (!col || col.is_active === false) continue
-        if (university && col.university && !sameCampus(col.university, university)) continue
-        if (!curated.has(row.job_id)) curated.set(row.job_id, col.name)
-      }
       const reviews = new Map<string, string>()
-      for (const row of reviewRes.data || []) {
-        if (row.job_id && row.university) reviews.set(reviewKey(row.job_id, row.university), row.status)
-      }
 
-      const extraIds = [...curated.keys()].filter((id) => !fetched.some((job) => job.id === id))
-      const campusJobs = university
-        ? await supabase
-            .from("jobs")
-            .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved, employee_count)")
-            .eq("is_active", true)
-            .contains("target_universities", [university])
-            .limit(40)
-        : { data: [] as Job[], error: null }
-      const missing = extraIds.length
-        ? await supabase
-            .from("jobs")
-            .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved, employee_count)")
-            .in("id", extraIds)
-            .eq("is_active", true)
-        : { data: [] as Job[], error: null }
-      const extras = [...(campusJobs.error ? [] : campusJobs.data || []), ...(missing.error ? [] : missing.data || [])] as Job[]
-      if (extras.length) {
-        const seen = new Set(fetched.map((job) => job.id))
-        fetched = [...extras.filter((job) => !seen.has(job.id)), ...fetched]
+      if (campusConnected && university) {
+        const [collectionRes, reviewRes] = await Promise.all([
+          supabase
+            .from("job_collection_items")
+            .select("job_id, job_collections!inner(name, university, is_active)")
+            .eq("job_collections.is_active", true),
+          supabase.from("campus_job_reviews").select("job_id, university, status"),
+        ])
+        for (const row of collectionRes.data || []) {
+          const col = Array.isArray(row.job_collections) ? row.job_collections[0] : row.job_collections
+          if (!col || col.is_active === false) continue
+          if (col.university && !sameCampus(col.university, university)) continue
+          if (!curated.has(row.job_id)) curated.set(row.job_id, col.name)
+        }
+        for (const row of reviewRes.data || []) {
+          if (row.job_id && row.university) reviews.set(reviewKey(row.job_id, row.university), row.status)
+        }
+
+        const extraIds = [...curated.keys()].filter((id) => !fetched.some((job) => job.id === id))
+        const campusJobs = await supabase
+          .from("jobs")
+          .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved, employee_count)")
+          .eq("is_active", true)
+          .contains("target_universities", [university])
+          .limit(40)
+        const missing = extraIds.length
+          ? await supabase
+              .from("jobs")
+              .select("*, recruiter_profiles(id, company_name, industry, logo_url, website_url, description, is_approved, employee_count)")
+              .in("id", extraIds)
+              .eq("is_active", true)
+          : { data: [] as Job[], error: null }
+        const extras = [...(campusJobs.error ? [] : campusJobs.data || []), ...(missing.error ? [] : missing.data || [])] as Job[]
+        if (extras.length) {
+          const seen = new Set(fetched.map((job) => job.id))
+          fetched = [...extras.filter((job) => !seen.has(job.id)), ...fetched]
+        }
       }
 
       const tagged = fetched.map((job) => {
-        const label = jobCuratedForCampus(job, university, curated)
+        const label = campusConnected ? jobCuratedForCampus(job, university, curated) : null
         return { ...job, cdc_curated: Boolean(label), collection_label: label }
       })
-      const rows = rankJobs(
+      let rows = rankJobs(
         tagged.filter(
           (j) =>
             j.recruiter_profiles?.is_approved === true &&
             !blocked.has(j.recruiter_id) &&
-            jobVisibleOnCampus(j, university, reviews)
+            // Disconnected students still see network jobs; partner-only campus posts stay gated.
+            jobVisibleOnCampus(j, campusConnected ? university : null, reviews)
         ),
         activeWeights,
       )
+
+      const appCountIds = rows.map((job) => job.id)
+      if (appCountIds.length) {
+        const { data: appRows } = await supabase
+          .from("job_swipes")
+          .select("job_id")
+          .eq("direction", "right")
+          .in("job_id", appCountIds)
+        const counts = new Map<string, number>()
+        for (const row of appRows || []) {
+          counts.set(row.job_id, (counts.get(row.job_id) || 0) + 1)
+        }
+        rows = rows.map((job) => ({ ...job, application_count: counts.get(job.id) ?? 0 }))
+      }
+
       setHasMore(fetched.length >= DECK_PAGE && rows.length > 0)
       hasMoreRef.current = fetched.length >= DECK_PAGE && rows.length > 0
 
@@ -318,7 +369,7 @@ export function StudentDiscoverView({
       setLoadingMore(false)
       loadingMoreRef.current = false
     },
-    [userId, rankJobs, toast, rankingWeights, university]
+    [userId, rankJobs, toast, rankingWeights, university, campusConnected]
   )
 
   useEffect(() => {
@@ -326,10 +377,14 @@ export function StudentDiscoverView({
   }, [allJobs])
 
   useEffect(() => {
-    try {
-      setFeedMode(parseFeedMode(window.localStorage.getItem(FEED_STORAGE_KEY)))
-    } catch {
-      setFeedMode(FEED_CURATED)
+    if (!campusConnected) {
+      setFeedMode(FEED_ALL)
+    } else {
+      try {
+        setFeedMode(parseFeedMode(window.localStorage.getItem(FEED_STORAGE_KEY)))
+      } catch {
+        setFeedMode(FEED_CURATED)
+      }
     }
     queueMicrotask(() => {
       void loadJobs("replace")
@@ -348,7 +403,7 @@ export function StudentDiscoverView({
 
   useEffect(() => {
     setCurrentIndex(0)
-  }, [jobType, remote, category, location, keyword, minSalary, company, industry, market, feedMode])
+  }, [jobTypes, workModes, categories, location, keyword, minSalary, company, industry, markets, feedMode])
 
   const currentJob = jobs[currentIndex]
   const nextJob = jobs[currentIndex + 1]
@@ -486,20 +541,24 @@ export function StudentDiscoverView({
     : []
 
   const filterFields = [
-    {
-      id: "feed",
-      label: "Feed",
-      kind: "select" as const,
-      pin: true,
-      chip: false,
-      value: feedMode,
-      emptyValue: FEED_CURATED,
-      onChange: (value: string) => setFeedMode(parseFeedMode(value)),
-      options: [
-        { value: FEED_CURATED, label: "Campus curated" },
-        { value: FEED_ALL, label: "All jobs" },
-      ],
-    },
+    ...(campusConnected
+      ? [
+          {
+            id: "feed",
+            label: "Feed",
+            kind: "select" as const,
+            pin: true,
+            chip: false,
+            value: feedMode,
+            emptyValue: FEED_CURATED,
+            onChange: (value: string) => setFeedMode(parseFeedMode(value)),
+            options: [
+              { value: FEED_CURATED, label: "Campus curated" },
+              { value: FEED_ALL, label: "All jobs" },
+            ],
+          },
+        ]
+      : []),
     {
       id: "keyword",
       label: "Search",
@@ -513,27 +572,30 @@ export function StudentDiscoverView({
     {
       id: "type",
       label: "Type",
-      kind: "select" as const,
+      kind: "multi" as const,
       pin: true,
-      value: jobType,
-      onChange: setJobType,
+      value: jobTypes,
+      onChange: setJobTypes,
+      emptyLabel: "Any type",
       options: [
-        { value: "all", label: "All types" },
         { value: "internship", label: "Internship" },
         { value: "full_time", label: "Full-time" },
         { value: "part_time", label: "Part-time" },
         { value: "contract", label: "Contract" },
+        { value: "fellowship", label: "Fellowship" },
+        { value: "freelance", label: "Freelance" },
+        { value: "project", label: "Project" },
       ],
     },
     {
       id: "remote",
-      label: "Location",
-      kind: "select" as const,
+      label: "Work mode",
+      kind: "multi" as const,
       pin: true,
-      value: remote,
-      onChange: setRemote,
+      value: workModes,
+      onChange: setWorkModes,
+      emptyLabel: "Remote or on-site",
       options: [
-        { value: "all", label: "Remote or on-site" },
         { value: "remote", label: "Remote" },
         { value: "onsite", label: "On-site" },
       ],
@@ -541,18 +603,17 @@ export function StudentDiscoverView({
     {
       id: "category",
       label: "Category",
-      kind: "select" as const,
-      value: category,
-      onChange: setCategory,
-      options: [
-        { value: "all", label: "All categories" },
-        ...JOB_CATEGORIES.map((c) => ({ value: c, label: c })),
-      ],
+      kind: "multi" as const,
+      value: categories,
+      onChange: setCategories,
+      emptyLabel: "Any category",
+      options: JOB_CATEGORIES.map((c) => ({ value: c, label: c })),
     },
     {
       id: "city",
       label: "City",
       kind: "text" as const,
+      pin: true,
       value: location,
       placeholder: "Lahore, Karachi…",
       onChange: setLocation,
@@ -585,11 +646,11 @@ export function StudentDiscoverView({
     {
       id: "market",
       label: "Market",
-      kind: "select" as const,
-      value: market,
-      onChange: setMarket,
+      kind: "multi" as const,
+      value: markets,
+      onChange: setMarkets,
+      emptyLabel: "Local and international",
       options: [
-        { value: "all", label: "Local and international" },
         { value: "local", label: "Local" },
         { value: "international", label: "International" },
       ],
@@ -607,16 +668,16 @@ export function StudentDiscoverView({
         "Unilever or Folio3…",
       ]}
       onClear={() => {
-        setJobType("all")
-        setRemote("all")
-        setCategory("all")
+        setJobTypes([])
+        setWorkModes([])
+        setCategories([])
         setLocation("")
         setKeyword("")
         setMinSalary("")
         setCompany("")
         setIndustry("")
-        setMarket("all")
-        setFeedMode(FEED_CURATED)
+        setMarkets([])
+        setFeedMode(campusConnected ? FEED_CURATED : FEED_ALL)
       }}
     />
   )
@@ -759,7 +820,12 @@ export function StudentDiscoverView({
             <div className="relative min-h-0 w-full max-w-[26rem] flex-1 overflow-hidden max-lg:max-w-none lg:max-w-none">
               {nextJob ? (
                 <div className="pointer-events-none absolute inset-0 -translate-y-3 scale-[0.96] overflow-hidden rounded-3xl opacity-50">
-                  <JobCard job={nextJob} studentSkills={skills} />
+                  <JobCard
+                    job={nextJob}
+                    studentSkills={skills}
+                    preferredCategories={preferredCategories}
+                    studentLocationHint={location.trim() || null}
+                  />
                 </div>
               ) : null}
               <SwipeCard
@@ -774,6 +840,8 @@ export function StudentDiscoverView({
                   job={currentJob}
                   reasons={currentReasons}
                   studentSkills={skills}
+                  preferredCategories={preferredCategories}
+                  studentLocationHint={location.trim() || null}
                   onOpenCompany={() => router.push(`/company/${currentJob.recruiter_id}`)}
                   onOpenListing={() => router.push(`/jobs/${currentJob.id}`)}
                 />

@@ -29,7 +29,13 @@ export default async function StudentCareerOfficePage() {
   const membership = await readStudentCampusMembership(supabase, user)
   const university = canonicalizeUniversity(membership.university || shell.university) || null
   const isAlumni = membership.isAlumni || Boolean(shell.isAlumni)
-  const campus = await loadStudentCampus(supabase, { userId: user.id, university, isAlumni })
+  const campusConnected = membership.campusConnected !== false
+  const campus = await loadStudentCampus(supabase, {
+    userId: user.id,
+    university,
+    isAlumni,
+    campusConnected,
+  })
 
   const { data: rsvps } = await supabase.from("campus_event_rsvps").select("event_id").eq("student_id", user.id)
   const going = new Set((rsvps || []).map((r) => r.event_id))
@@ -60,8 +66,16 @@ export default async function StudentCareerOfficePage() {
           description="Finish education onboarding so we can show your career office’s events, notices, and campus jobs."
           primaryAction={{ href: "/onboarding", label: "Complete education" }}
         />
+      ) : !campusConnected ? (
+        <DashboardEmptyState
+          icon={Building2}
+          title="Not connected to this career center"
+          description="Your SwypeJobs account still works for Discover and applications. Campus curated jobs, events, and advising from this career office are unavailable until they restore the partnership."
+          primaryAction={{ href: "/discover", label: "Open Discover" }}
+        />
       ) : null}
 
+      {campusConnected ? (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {[
           { href: "/discover", label: "Curated jobs", icon: Briefcase },
@@ -80,7 +94,10 @@ export default async function StudentCareerOfficePage() {
           </Link>
         ))}
       </div>
+      ) : null}
 
+      {campusConnected ? (
+      <>
       <DashboardPanel
         title="Campus curated jobs"
         description="Roles your career office approved for this campus. Open Discover to swipe them."
@@ -170,6 +187,8 @@ export default async function StudentCareerOfficePage() {
           </Link>
         </p>
       </DashboardPanel>
+      </>
+      ) : null}
     </div>
   )
 }

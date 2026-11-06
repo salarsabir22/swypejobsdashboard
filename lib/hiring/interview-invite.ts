@@ -19,3 +19,28 @@ export function normalizeCalendlyUrl(value: string) {
   if (/^https?:\/\//i.test(trimmed)) return trimmed
   return `https://${trimmed.replace(/^\/+/, "")}`
 }
+
+export type InterviewFormat = "virtual" | "onsite"
+
+const FORMAT_PREFIX: Record<InterviewFormat, string> = {
+  virtual: "[Virtual]",
+  onsite: "[On-site]",
+}
+
+export function encodeInterviewNote(format: InterviewFormat, note?: string | null) {
+  const body = note?.trim() || ""
+  return body ? `${FORMAT_PREFIX[format]} ${body}` : FORMAT_PREFIX[format]
+}
+
+export function interviewFormatFromNote(note: string | null | undefined): InterviewFormat | null {
+  const value = (note || "").trim()
+  if (value.startsWith("[Virtual]")) return "virtual"
+  if (value.startsWith("[On-site]")) return "onsite"
+  return null
+}
+
+export function interviewFormatLabel(format: InterviewFormat | null | undefined) {
+  if (format === "virtual") return "Virtual"
+  if (format === "onsite") return "On-site"
+  return null
+}

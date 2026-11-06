@@ -33,19 +33,21 @@ export function CampusFrame({
 }) {
   const campusLabel = snapshot.access.university || "All campuses"
   const canExport = canCampus(snapshot.access, "export")
-  const range = snapshot.period?.id
+  const period = snapshot.period
 
   return (
     <div className="space-y-6">
       <header className="space-y-4">
         <DashboardPageHeader
-          eyebrow={hideEyebrow ? undefined : `${campusLabel} · ${formatIobmStaffRole(snapshot.access.staffRole)} · ${snapshot.period?.label || "1 month"}`}
+          eyebrow={hideEyebrow ? undefined : `${campusLabel} · ${formatIobmStaffRole(snapshot.access.staffRole)} · ${period?.label || "1 month"}`}
           title={title}
           description={description}
           action={actions}
         />
         {snapshot.access.role === "admin" ? <CampusFilter current={snapshot.access.university} /> : null}
-        {showRange ? <CampusRangeFilter current={range} /> : null}
+        {showRange ? (
+          <CampusRangeFilter current={period?.id} from={period?.from} to={period?.to} />
+        ) : null}
       </header>
       {snapshot.missingTables.length ? (
         <Alert>
@@ -65,7 +67,7 @@ export function CampusFrame({
             </div>
           ) : <span />}
           {canExport && exportDataset ? (
-            <CampusExportButtons dataset={exportDataset} campus={snapshot.access.university} range={range} />
+            <CampusExportButtons dataset={exportDataset} campus={snapshot.access.university} period={period} />
           ) : null}
         </div>
       ) : null}

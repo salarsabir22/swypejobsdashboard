@@ -1,6 +1,9 @@
+import { announcementTargetsGroup } from "@/lib/campus/announcement-audience"
+import { eventVisibleToViewer, parseEventSummary } from "@/lib/campus/event-meta"
 import { parseAcademicHistory, primaryAcademicFields } from "@/lib/profile/academics"
 import { IOBM_SHORT_NAME, IOBM_UNIVERSITY_NAME } from "@/lib/sso/iobm"
 import { jobCuratedForCampus, jobVisibleOnCampus, reviewKey, sameCampus } from "@/lib/jobs/curation"
+import { isCampusPartnershipActive } from "@/lib/campus/partnership"
 
 export function canonicalizeUniversity(name: string | null | undefined) {
   const value = name?.trim() || ""
@@ -62,7 +65,15 @@ export async function readStudentCampusMembership(
     }
   }
 
-  return { university: university || null, isAlumni }
+  const campusConnected = university
+    ? await isCampusPartnershipActive({
+        university,
+        subject: "student",
+        userId: user.id,
+      })
+    : false
+
+  return { university: university || null, isAlumni, campusConnected }
 }
 
 export function belongsToCampus(
@@ -104,15 +115,37 @@ export type StudentCampusJob = {
 export async function loadStudentCampus(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: { from: (table: string) => any },
-  opts: { userId: string; university: string | null; isAlumni: boolean }
+  opts: { userId: string; university: string | null; isAlumni: boolean; campusConnected?: boolean }
 ): Promise<{
   title: string
   university: string | null
+  campusConnected: boolean
   events: StudentCampusEvent[]
   announcements: StudentCampusAnnouncement[]
   jobs: StudentCampusJob[]
 }> {
-  const audience = opts.isAlumni ? "alumni" : "students"
+  const campusConnected =
+    opts.campusConnected ??
+    (opts.university
+      ? await isCampusPartnershipActive({
+          university: opts.university,
+          subject: "student",
+          userId: opts.userId,
+        })
+      : false)
+
+  if (!campusConnected) {
+    return {
+      title: careerOfficeTitle(opts.university),
+      university: opts.university,
+      campusConnected: false,
+      events: [],
+      announcements: [],
+      jobs: [],
+    }
+  }
+
+  const viewerGroup = opts.isAlumni ? "alumni" : "students"
   const [eventsRes, announcementsRes, collectionRes, reviewRes, jobsRes] = await Promise.all([
     supabase
       .from("campus_events")
@@ -140,10 +173,15 @@ export async function loadStudentCampus(
   ])
 
   const events = ((eventsRes.error ? [] : eventsRes.data) || [])
-    .filter((row: { university?: string | null; starts_at?: string | null }) => {
+    .filter((row: { university?: string | null; starts_at?: string | null; summary?: string | null }) => {
       if (!belongsToCampus(row.university, opts.university)) return false
       if (row.starts_at && new Date(row.starts_at).getTime() < Date.now() - 6 * 60 * 60 * 1000) return false
-      return true
+      if (String(row.summary || "").startsWith("INTERNATIONAL_PROGRAM")) return false
+      return eventVisibleToViewer(row.summary, { group: viewerGroup, userId: opts.userId })
+    })
+    .map((row: StudentCampusEvent & { summary?: string | null }) => {
+      const { description } = parseEventSummary(row.summary)
+      return { ...row, summary: description || null }
     })
     .slice(0, 4) as StudentCampusEvent[]
 
@@ -151,7 +189,7 @@ export async function loadStudentCampus(
     .filter((row: { university?: string | null; audience?: string | null; expires_at?: string | null }) => {
       if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return false
       if (!belongsToCampus(row.university, opts.university)) return false
-      return row.audience === "all" || row.audience === audience
+      return announcementTargetsGroup(row.audience, viewerGroup)
     })
     .slice(0, 4) as StudentCampusAnnouncement[]
 
@@ -202,6 +240,7 @@ export async function loadStudentCampus(
   return {
     title: careerOfficeTitle(opts.university),
     university: opts.university,
+    campusConnected: true,
     events,
     announcements,
     jobs,

@@ -2,6 +2,7 @@ import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { CampusExportDataset } from "@/lib/campus/export"
+import { campusRangeQuery, type CampusRange } from "@/lib/campus/range"
 
 const FORMATS = [
   { id: "csv", label: "CSV" },
@@ -28,18 +29,22 @@ export function CampusExportButtons({
   dataset,
   campus,
   range,
+  period,
   compact = false,
   stacked = false,
 }: {
   dataset: CampusExportDataset
   campus?: string | null
+  /** @deprecated Prefer `period` so custom from/to are included. */
   range?: string | null
+  period?: Pick<CampusRange, "id" | "from" | "to"> | null
   compact?: boolean
   stacked?: boolean
 }) {
   const query = new URLSearchParams({ dataset })
   if (campus) query.set("campus", campus)
-  if (range) query.set("range", range)
+  const rangeParams = period ? campusRangeQuery(period) : range && range !== "month" ? { range } : {}
+  for (const [key, value] of Object.entries(rangeParams)) query.set(key, value)
   const topic = LABELS[dataset]
 
   return (

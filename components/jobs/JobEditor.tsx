@@ -23,6 +23,7 @@ import { parseCgpa, parseJobTargeting } from "@/lib/jobs/targeting"
 import { ScreeningQuestionsEditor } from "@/components/jobs/ScreeningQuestionsEditor"
 import { JobTargetingEditor, type JobTargetingValue } from "@/components/jobs/JobTargetingEditor"
 import { UniversityPicker } from "@/components/profile/UniversityPicker"
+import { sameCampus } from "@/lib/jobs/curation"
 import type { Job } from "@/types"
 
 const SKILL_SUGGESTIONS = [
@@ -139,7 +140,36 @@ export function JobEditor({ job }: { job?: Job }) {
     payload.departments = targeting.departments
     payload.location_preferences = targeting.locationPreferences
     payload.distribution_scope = distributionScope
-    payload.target_universities = distributionScope === "partner_universities" ? targetUniversities : []
+    let allowedTargets = distributionScope === "partner_universities" ? [...targetUniversities] : []
+    if (distributionScope === "partner_universities" && allowedTargets.length) {
+      const { data: partners } = await supabase
+        .from("campus_employer_partners")
+        .select("university, status")
+        .eq("recruiter_id", user!.id)
+        .eq("status", "active")
+      const activeCampuses = (partners || []).map((row) => row.university).filter(Boolean)
+      allowedTargets = allowedTargets.filter((name) =>
+        activeCampuses.some((campus) => sameCampus(campus, name))
+      )
+      if (!allowedTargets.length) {
+        setLoading(false)
+        toast({
+          variant: "destructive",
+          title: "No active campus partnerships",
+          description:
+            "Partner-campus listings require an active partnership. You can still post to the SwypeJobs network, or reconnect with a career office first.",
+        })
+        return
+      }
+      if (allowedTargets.length < targetUniversities.length) {
+        setTargetUniversities(allowedTargets)
+        toast({
+          title: "Some campuses were removed",
+          description: "Only universities with an active partnership can be targeted.",
+        })
+      }
+    }
+    payload.target_universities = allowedTargets
     const hasTargeting =
       targeting.degreePrograms.length > 0 ||
       targeting.graduationYears.length > 0 ||
@@ -290,6 +320,9 @@ export function JobEditor({ job }: { job?: Job }) {
                   <SelectItem value="full_time">Full-time</SelectItem>
                   <SelectItem value="part_time">Part-time</SelectItem>
                   <SelectItem value="contract">Contract</SelectItem>
+                  <SelectItem value="fellowship">Fellowship</SelectItem>
+                  <SelectItem value="freelance">Freelance</SelectItem>
+                  <SelectItem value="project">Project</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -534,11 +567,16 @@ export function JobEditor({ job }: { job?: Job }) {
                   className={`rounded-2xl border px-4 py-3 text-left text-sm ${distributionScope === "partner_universities" ? "border-primary bg-primary/5" : "border-border"}`}
                 >
                   <span className="font-medium">Partner campuses only</span>
-                  <span className="mt-1 block text-[13px] text-muted-foreground">Creates an approval task per selected university.</span>
+                  <span className="mt-1 block text-[13px] text-muted-foreground">
+                    Creates an approval task per selected university. Only active campus partnerships are allowed.
+                  </span>
                 </button>
               </div>
               {distributionScope === "partner_universities" ? (
                 <div className="space-y-2">
+                  <p className="text-[13px] text-muted-foreground">
+                    If a career office ends the partnership, you can still post to the SwypeJobs network and any other active partner campuses.
+                  </p>
                   <UniversityPicker
                     value={campusPick}
                     onChange={(value) => {

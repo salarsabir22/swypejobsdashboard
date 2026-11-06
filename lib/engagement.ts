@@ -93,7 +93,7 @@ export async function notifyApplicationMilestone(
 
 export async function recordProfileView(
   supabase: SupabaseClient,
-  opts: { viewerId: string; studentId: string }
+  opts: { viewerId: string; studentId: string; jobId?: string | null }
 ) {
   if (opts.viewerId === opts.studentId) return
 
@@ -112,6 +112,7 @@ export async function recordProfileView(
   await supabase.from("profile_views").insert({
     viewer_id: opts.viewerId,
     student_id: opts.studentId,
+    ...(opts.jobId ? { job_id: opts.jobId } : {}),
   })
 
   if (isRecruiter) {

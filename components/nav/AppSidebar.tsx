@@ -5,17 +5,13 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { ChevronDown } from "lucide-react"
 import { campusPathActive } from "@/lib/campus/nav"
+import { withCampusFilters } from "@/lib/campus/range"
 import { isNavPathActive } from "@/components/nav/NavGroupMenu"
 import { NavUnreadBadge } from "@/components/nav/NavUnreadBadge"
 import { useChatUnread } from "@/lib/hooks/use-chat-unread"
 import type { SidebarItem, SidebarSection } from "@/components/nav/sidebar-sections"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-
-function withCampus(href: string, campus: string | null) {
-  if (!campus || !href.startsWith("/campus") || href.includes("campus=")) return href
-  return `${href}${href.includes("?") ? "&" : "?"}campus=${encodeURIComponent(campus)}`
-}
 
 function linkActive(pathname: string, href: string, search: string, exact?: boolean) {
   if (href.startsWith("/campus")) return campusPathActive(pathname, href, search)
@@ -110,7 +106,6 @@ function AppSidebarNav({
 }) {
   const pathname = usePathname()
   const params = useSearchParams()
-  const campus = params.get("campus")
   const search = params.toString()
   const chatUnread = useChatUnread()
   const [open, setOpen] = useState<Record<string, boolean>>({})
@@ -128,7 +123,7 @@ function AppSidebarNav({
           {section.items.map((item) => {
             const active = itemActive(pathname, search, item)
             const expanded = open[item.href] ?? active
-            const href = withCampus(item.children?.length ? item.children[0].href : item.href, campus)
+            const href = withCampusFilters(item.children?.length ? item.children[0].href : item.href, params)
 
             return (
               <div key={item.href}>
@@ -160,7 +155,7 @@ function AppSidebarNav({
                       return (
                         <li key={child.href}>
                           <Link
-                            href={withCampus(child.href, campus)}
+                            href={withCampusFilters(child.href, params)}
                             onClick={onNavigate}
                             aria-current={childActive ? "page" : undefined}
                             className={cn(

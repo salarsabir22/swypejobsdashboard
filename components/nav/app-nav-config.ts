@@ -43,7 +43,7 @@ export const studentMoreLinks: MoreLink[] = [
   { href: "/internships", label: "Internships", icon: GraduationCap },
   { href: "/events", label: "Events", icon: Calendar },
   { href: "/opportunities", label: "International", icon: Globe },
-  { href: "/appointments", label: "Advising", icon: Handshake },
+  { href: "/appointments", label: "CDC advising", icon: Handshake },
   { href: "/announcements", label: "Announcements", icon: MessageSquareText },
   { href: "/community", label: "Community", icon: Users },
   { href: "/profile", label: "Profile", icon: User },
@@ -90,7 +90,7 @@ export const studentNavGroups: NavGroup[] = [
     items: [
       { href: "/career-office", label: "Career office", icon: Building2 },
       { href: "/events", label: "Events", icon: Calendar },
-      { href: "/appointments", label: "Advising", icon: Handshake },
+      { href: "/appointments", label: "CDC advising", icon: Handshake },
       { href: "/announcements", label: "Announcements", icon: MessageSquareText },
       { href: "/opportunities", label: "International", icon: Globe },
     ],

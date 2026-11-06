@@ -6,10 +6,8 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/lib/hooks/use-toast"
 import type { AttentionStudent } from "@/lib/campus/types"
 import { Button } from "@/components/ui/button"
-import { DateTimePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 
 export function NudgeForm({
@@ -68,89 +66,18 @@ export function NudgeForm({
       <Input value={title} onChange={(e) => setTitle(e.target.value)} />
       <Label>Message</Label>
       <Textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} />
-      <Button
-        type="submit"
-        loading={busy}
-        loadingText="Sending…"
-        className="rounded-full"
-      >
+      <Button type="submit" loading={busy} loadingText="Sending…" className="rounded-full">
         {`Message ${Math.min(students.length, 80)} students`}
       </Button>
     </form>
   )
 }
 
-export function EventForm({ university }: { university: string }) {
-  const { toast } = useToast()
-  const router = useRouter()
-  const [title, setTitle] = useState("")
-  const [kind, setKind] = useState("workshop")
-  const [starts, setStarts] = useState("")
-  const [busy, setBusy] = useState(false)
-
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setBusy(true)
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    const { error } = await supabase.from("campus_events").insert({
-      university,
-      title: title.trim(),
-      kind,
-      starts_at: starts || null,
-      created_by: user?.id || null,
-    })
-    setBusy(false)
-    if (error) {
-      toast({ variant: "destructive", title: "Could not create event", description: error.message })
-      return
-    }
-    setTitle("")
-    toast({ title: "Event created" })
-    router.refresh()
-  }
-
-  return (
-    <form onSubmit={save} className="space-y-3">
-      <Label>Event title</Label>
-      <Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Fall career fair" />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label>Type</Label>
-          <Select value={kind} onValueChange={setKind}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="career_fair">Career fair</SelectItem>
-              <SelectItem value="workshop">Workshop</SelectItem>
-              <SelectItem value="info_session">Info session</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="event-starts">Starts</Label>
-          <DateTimePicker id="event-starts" value={starts} onChange={setStarts} />
-        </div>
-      </div>
-      <Button
-        type="submit"
-        loading={busy}
-        loadingText="Saving…"
-        disabled={!title.trim()}
-        className="rounded-full"
-      >
-        Publish event
-      </Button>
-    </form>
-  )
-}
+export { EventCreateForm as EventForm } from "@/components/campus/EventCreateForm"
 
 export function SavedViewForm({ path }: { path: string }) {
   const { toast } = useToast()
+  const router = useRouter()
   const [name, setName] = useState("")
   const [busy, setBusy] = useState(false)
   const save = async (e: React.FormEvent) => {
@@ -164,15 +91,21 @@ export function SavedViewForm({ path }: { path: string }) {
       setBusy(false)
       return
     }
+    const href =
+      typeof window !== "undefined" && window.location.search ? `${path}${window.location.search}` : path
     const { error } = await supabase.from("campus_saved_views").insert({
       user_id: user.id,
       name: name.trim(),
-      path,
+      path: href,
       filters: {},
     })
     setBusy(false)
     if (error) toast({ variant: "destructive", title: "Could not save view", description: error.message })
-    else toast({ title: "Saved for your role" })
+    else {
+      setName("")
+      toast({ title: "Saved for your role" })
+      router.refresh()
+    }
   }
   return (
     <form onSubmit={save} className="flex flex-wrap gap-2">

@@ -1,18 +1,24 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { loadCampusPage } from "@/lib/campus/page-data"
 import { canCampus } from "@/lib/campus/rbac"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { AppointmentDesk } from "@/components/campus/AppointmentDesk"
+import { InterviewsTodayPanel } from "@/components/campus/InterviewsTodayPanel"
+import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 
-export default async function CampusAppointmentsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_advising")
+export default async function CampusAppointmentsPage({ searchParams }: { searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }> }) {
+  const { snapshot } = await loadCampusPage(searchParams, "view_advising")
   return (
     <CampusFrame
       snapshot={snapshot}
-      title="Advising appointments"
-      description="Student requests. Confirming a slot sends the student an in-app notice."
+      title="Advising & interviews"
+      description="Student CDC session requests, plus students who have employer interviews scheduled today."
     >
-      <AppointmentDesk canMutate={canCampus(snapshot.access, "mutate")} />
+      <DashboardPanel title="Interviews today">
+        <InterviewsTodayPanel />
+      </DashboardPanel>
+      <DashboardPanel title="CDC advising requests">
+        <AppointmentDesk canMutate={canCampus(snapshot.access, "mutate")} />
+      </DashboardPanel>
     </CampusFrame>
   )
 }

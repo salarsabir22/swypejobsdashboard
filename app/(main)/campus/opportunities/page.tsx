@@ -1,10 +1,9 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { loadCampusPage } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { OpportunityForm } from "@/components/campus/OpportunityForm"
 
-export default async function CampusOpportunitiesPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_actions")
+export default async function CampusOpportunitiesPage({ searchParams }: { searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }> }) {
+  const { snapshot, params } = await loadCampusPage(searchParams, "view_actions")
   return (
     <CampusFrame
       snapshot={snapshot}

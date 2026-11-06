@@ -79,6 +79,7 @@ export default async function DiscoverPage() {
       department={student?.department ?? null}
       preferredLocations={student?.preferred_locations ?? []}
       university={membership.university || student?.university || null}
+      campusConnected={membership.campusConnected !== false}
       selfImageUrl={profile.avatar_url}
       selfName={profile.full_name || "You"}
     />

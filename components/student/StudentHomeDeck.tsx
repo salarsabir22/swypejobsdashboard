@@ -34,6 +34,9 @@ const TYPE_LABEL: Record<string, string> = {
   full_time: "Full-time",
   part_time: "Part-time",
   contract: "Contract",
+  fellowship: "Fellowship",
+  freelance: "Freelance",
+  project: "Project",
 }
 
 export function StudentHomeDeck({

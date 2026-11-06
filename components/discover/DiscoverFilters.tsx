@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
-import { ChevronDown, ChevronUp, SlidersHorizontal, X } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, SlidersHorizontal, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Command, CommandInput } from "@/components/ui/command"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Select,
   SelectContent,
@@ -44,6 +45,14 @@ export type DiscoverFilterField =
       onChange: (value: string) => void
     })
   | (FilterBase & {
+      kind: "multi"
+      value: string[]
+      options: DiscoverFilterOption[]
+      onChange: (value: string[]) => void
+      /** Shown when nothing is selected. */
+      emptyLabel?: string
+    })
+  | (FilterBase & {
       kind: "text"
       value: string
       placeholder?: string
@@ -54,6 +63,7 @@ export type DiscoverFilterField =
 function isActive(field: DiscoverFilterField) {
   if (field.chip === false) return false
   if (field.kind === "select") return field.value !== (field.emptyValue ?? "all")
+  if (field.kind === "multi") return field.value.length > 0
   return field.value.trim().length > 0
 }
 
@@ -62,12 +72,24 @@ function chipLabel(field: DiscoverFilterField) {
     const option = field.options.find((item) => item.value === field.value)
     return `${field.label}: ${option?.label || field.value}`
   }
+  if (field.kind === "multi") {
+    const labels = field.value
+      .map((value) => field.options.find((item) => item.value === value)?.label || value)
+      .filter(Boolean)
+    if (labels.length <= 2) return `${field.label}: ${labels.join(" · ")}`
+    return `${field.label}: ${labels[0]} +${labels.length - 1}`
+  }
   return `${field.label}: ${field.value.trim()}`
 }
 
 function clearField(field: DiscoverFilterField) {
   if (field.kind === "select") field.onChange(field.emptyValue ?? "all")
+  else if (field.kind === "multi") field.onChange([])
   else field.onChange("")
+}
+
+function toggleMultiValue(values: string[], option: string) {
+  return values.includes(option) ? values.filter((value) => value !== option) : [...values, option]
 }
 
 function useTypewriter(phrases: string[], enabled: boolean) {
@@ -113,6 +135,87 @@ function useTypewriter(phrases: string[], enabled: boolean) {
   return { text, caret: true }
 }
 
+function MultiSelectControl({
+  field,
+  id,
+  compact,
+}: {
+  field: Extract<DiscoverFilterField, { kind: "multi" }>
+  id?: string
+  compact?: boolean
+}) {
+  const active = field.value.length > 0
+  const summary = active
+    ? field.value
+        .map((value) => field.options.find((item) => item.value === value)?.label || value)
+        .join(", ")
+    : field.emptyLabel || `Any ${field.label.toLowerCase()}`
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          id={id}
+          type="button"
+          variant="outline"
+          aria-label={field.label}
+          className={cn(
+            "w-full justify-between gap-2 border-input px-3 font-normal shadow-none hover:bg-background",
+            compact ? "h-9 rounded-full bg-card" : "h-10 rounded-xl bg-background",
+            !active && "text-muted-foreground"
+          )}
+        >
+          <span className="truncate text-left">{summary}</span>
+          <ChevronDown className="size-3.5 shrink-0 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(100vw-2rem,18rem)] space-y-1 p-2">
+        <p className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          Select one or more
+        </p>
+        <div className="max-h-64 space-y-0.5 overflow-y-auto">
+          {field.options.map((option) => {
+            const checked = field.value.includes(option.value)
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm hover:bg-secondary",
+                  checked && "bg-primary/5 text-primary"
+                )}
+                onClick={() => field.onChange(toggleMultiValue(field.value, option.value))}
+                aria-pressed={checked}
+              >
+                <span
+                  className={cn(
+                    "inline-flex size-4 shrink-0 items-center justify-center rounded border",
+                    checked ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"
+                  )}
+                >
+                  {checked ? <Check className="size-3" strokeWidth={2.5} /> : null}
+                </span>
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
+        {active ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 w-full rounded-full"
+            onClick={() => field.onChange([])}
+          >
+            Clear {field.label.toLowerCase()}
+          </Button>
+        ) : null}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 function FieldControl({
   field,
   id,
@@ -146,6 +249,10 @@ function FieldControl({
         </SelectContent>
       </Select>
     )
+  }
+
+  if (field.kind === "multi") {
+    return <MultiSelectControl field={field} id={id} compact={compact} />
   }
 
   return (
@@ -395,9 +502,18 @@ export function DiscoverFilters({
             <p className="min-w-0 truncate font-body text-xs">
               {contextFields
                 .map((field) => {
-                  if (field.kind !== "select") return `${field.label}: ${field.value}`
-                  const option = field.options.find((item) => item.value === field.value)
-                  return `${field.label}: ${option?.label || field.value}`
+                  if (field.kind === "select") {
+                    const option = field.options.find((item) => item.value === field.value)
+                    return `${field.label}: ${option?.label || field.value}`
+                  }
+                  if (field.kind === "multi") {
+                    if (!field.value.length) return `${field.label}: any`
+                    const labels = field.value.map(
+                      (value) => field.options.find((item) => item.value === value)?.label || value
+                    )
+                    return `${field.label}: ${labels.join(", ")}`
+                  }
+                  return `${field.label}: ${field.value}`
                 })
                 .join(" · ")}
             </p>

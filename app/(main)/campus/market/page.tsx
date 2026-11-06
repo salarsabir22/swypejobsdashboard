@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 export default async function CampusMarketPage({
   searchParams,
 }: {
-  searchParams: Promise<{ campus?: string; range?: string }>
+  searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }>
 }) {
   const snapshot = await campusReportData(searchParams)
 

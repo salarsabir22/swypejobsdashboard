@@ -139,7 +139,7 @@ function columnsFor(role: UserRole | "admin"): { cols: FooterCol[]; cta: FooterL
         links: [
           { href: "/career-office", label: "Career office" },
           { href: "/events", label: "Events" },
-          { href: "/appointments", label: "Advising" },
+          { href: "/appointments", label: "CDC advising" },
           { href: "/dashboard", label: "Your insights" },
         ],
       },

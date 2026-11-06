@@ -1,12 +1,13 @@
 import type { CampusExportDataset } from "@/lib/campus/export"
 import type { CampusSnapshot } from "@/lib/campus/types"
 import { fmtNum, fmtSourced } from "@/lib/campus/format"
+import { campusRangeQuery, withCampusFilters } from "@/lib/campus/range"
 
 export function campusQueryHref(path: string, snapshot: Pick<CampusSnapshot, "access" | "period">) {
-  const query = new URLSearchParams()
-  if (snapshot.access.university) query.set("campus", snapshot.access.university)
-  if (snapshot.period?.id && snapshot.period.id !== "month") query.set("range", snapshot.period.id)
-  return query.toString() ? `${path}?${query.toString()}` : path
+  return withCampusFilters(path, {
+    campus: snapshot.access.university,
+    ...campusRangeQuery(snapshot.period),
+  })
 }
 
 export type CampusReportId = "jobs" | "engagement" | "employers" | "applications" | "placement" | "departments"

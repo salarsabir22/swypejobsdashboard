@@ -1,12 +1,11 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { loadCampusPage } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { SsoDesk } from "@/components/campus/SsoDesk"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { listCampusIdentities, listOpenConflicts } from "@/lib/sso/identity"
 
-export default async function CampusSettingsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_sso")
+export default async function CampusSettingsPage({ searchParams }: { searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }> }) {
+  const { snapshot } = await loadCampusPage(searchParams, "view_sso")
   const [identities, conflicts] = await Promise.all([listCampusIdentities(), listOpenConflicts()])
 
   return (

@@ -30,6 +30,7 @@ import {
 } from "@/lib/resume/insights"
 import { mergeResumeWithProfile, resumeFromProfile, type ResumeProfileSeed } from "@/lib/resume/from-profile"
 import { downloadPdfBytes, renderCoverLetterPdf, renderResumePdf, slugName } from "@/lib/resume/pdf"
+import { downloadCoverLetterWord, downloadResumeWord } from "@/lib/resume/word"
 import { saveResumeDocuments, uploadResumePdf } from "@/lib/resume/persist"
 import {
   emptyResume,
@@ -251,6 +252,15 @@ export function ResumeStudio({
     }
   }
 
+  const focusSection = (sectionId: string) => {
+    const el = document.querySelector(`[data-resume-section="${sectionId}"]`)
+    if (el instanceof HTMLElement) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" })
+      el.classList.add("ring-2", "ring-primary/40")
+      window.setTimeout(() => el.classList.remove("ring-2", "ring-primary/40"), 1200)
+    }
+  }
+
   const downloadResume = async () => {
     if (!record) return
     setBusy("pdf")
@@ -260,6 +270,11 @@ export function ResumeStudio({
     } finally {
       setBusy(null)
     }
+  }
+
+  const downloadResumeDoc = () => {
+    if (!record) return
+    downloadResumeWord(resume, record.title || resume.basics.name || "resume")
   }
 
   const downloadLetter = async () => {
@@ -413,19 +428,26 @@ export function ResumeStudio({
           </div>
           {tab === "resume" ? (
             <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="rounded-full"
-                onClick={() => void downloadResume()}
-                disabled={busy !== null || !record}
-                loading={busy === "pdf"}
-                loadingText="Downloading…"
-              >
-                <Download className="h-4 w-4" />
-                Download PDF
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    disabled={busy !== null || !record}
+                    loading={busy === "pdf"}
+                    loadingText="Downloading…"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem onSelect={() => void downloadResume()}>PDF</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => downloadResumeDoc()}>Word (.doc)</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 type="button"
                 size="sm"
@@ -484,19 +506,33 @@ export function ResumeStudio({
                 <Sparkles className="h-4 w-4" />
                 Draft from profile
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="rounded-full"
-                onClick={() => void downloadLetter()}
-                disabled={busy !== null || !letter}
-                loading={busy === "letter-pdf"}
-                loadingText="Downloading…"
-              >
-                <Download className="h-4 w-4" />
-                Download PDF
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    disabled={busy !== null || !letter}
+                    loading={busy === "letter-pdf"}
+                    loadingText="Downloading…"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem onSelect={() => void downloadLetter()}>PDF</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      if (!letter) return
+                      downloadCoverLetterWord(letter, resume.basics.name)
+                    }}
+                  >
+                    Word (.doc)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </div>
@@ -661,7 +697,7 @@ export function ResumeStudio({
                     />
                   </Field>
 
-                  <section className="space-y-3">
+                  <section className="space-y-3 rounded-2xl" data-resume-section="basics">
                     <p className="text-[15px] font-semibold tracking-[-0.02em]">Basics</p>
                     <Field label="Full name">
                       <Input value={resume.basics.name} onChange={(e) => patchBasics({ name: e.target.value })} />
@@ -708,17 +744,20 @@ export function ResumeStudio({
                         />
                       </Field>
                     </div>
-                    <Field label="Summary">
-                      <RichTextEditor
-                        value={resume.basics.summary || ""}
-                        onChange={(html) => patchBasics({ summary: html })}
-                        placeholder="Two or three sentences about what you want next."
-                        minHeight={110}
-                      />
-                    </Field>
+                    <div data-resume-section="summary">
+                      <Field label="Summary">
+                        <RichTextEditor
+                          value={resume.basics.summary || ""}
+                          onChange={(html) => patchBasics({ summary: html })}
+                          placeholder="Two or three sentences about what you want next."
+                          minHeight={110}
+                        />
+                      </Field>
+                    </div>
                   </section>
 
                   <EditorList
+                    sectionId="education"
                     title="Education"
                     addLabel="Add school"
                     items={resume.education}
@@ -787,6 +826,7 @@ export function ResumeStudio({
                   />
 
                   <EditorList
+                    sectionId="experience"
                     title="Experience"
                     addLabel="Add role"
                     items={resume.work}
@@ -873,6 +913,7 @@ export function ResumeStudio({
                   />
 
                   <EditorList
+                    sectionId="projects"
                     title="Projects"
                     addLabel="Add project"
                     items={resume.projects}
@@ -924,7 +965,7 @@ export function ResumeStudio({
                     )}
                   />
 
-                  <section className="space-y-3">
+                  <section className="space-y-3 rounded-2xl" data-resume-section="skills">
                     <p className="text-[15px] font-semibold tracking-[-0.02em]">Skills</p>
                     <Input
                       placeholder="Type a skill and press Enter"
@@ -957,6 +998,7 @@ export function ResumeStudio({
                   </section>
 
                   <EditorList
+                    sectionId="languages"
                     title="Languages"
                     addLabel="Add language"
                     items={resume.languages || []}
@@ -998,6 +1040,7 @@ export function ResumeStudio({
                   />
 
                   <EditorList
+                    sectionId="certificates"
                     title="Certificates"
                     addLabel="Add certificate"
                     items={resume.certificates || []}
@@ -1055,6 +1098,7 @@ export function ResumeStudio({
                   />
 
                   <EditorList
+                    sectionId="awards"
                     title="Awards"
                     addLabel="Add award"
                     items={resume.awards || []}
@@ -1102,7 +1146,7 @@ export function ResumeStudio({
                   />
                 </div>
                 <div className="min-w-0 xl:sticky xl:top-24">
-                  <ResumePreview resume={resume} />
+                  <ResumePreview resume={resume} onEditSection={focusSection} />
                 </div>
               </>
             ) : (
@@ -1280,6 +1324,7 @@ export function ResumeStudio({
 
 function EditorList<T extends { id: string }>({
   title,
+  sectionId,
   addLabel,
   items,
   onAdd,
@@ -1288,6 +1333,7 @@ function EditorList<T extends { id: string }>({
   renderItem,
 }: {
   title: string
+  sectionId?: string
   addLabel: string
   items: T[]
   onAdd: () => void
@@ -1296,7 +1342,7 @@ function EditorList<T extends { id: string }>({
   renderItem: (item: T) => React.ReactNode
 }) {
   return (
-    <section className="space-y-3">
+    <section className="space-y-3 rounded-2xl" data-resume-section={sectionId}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-[15px] font-semibold tracking-[-0.02em]">{title}</p>
         <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={onAdd}>

@@ -1,16 +1,15 @@
 import { Megaphone } from "lucide-react"
-import { campusPageData } from "@/lib/campus/page-data"
+import { loadCampusPage } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { AnnouncementForm } from "@/components/campus/AnnouncementForm"
+import { AnnouncementAudienceBadges } from "@/components/campus/AnnouncementAudienceBadges"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { Badge } from "@/components/ui/badge"
-import { StatusBadge } from "@/components/ui/status-badge"
 import { createClient } from "@/lib/supabase/server"
 
-export default async function CampusAnnouncementsPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_actions")
+export default async function CampusAnnouncementsPage({ searchParams }: { searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }> }) {
+  const { snapshot, params } = await loadCampusPage(searchParams, "view_actions")
   const university = snapshot.access.university || snapshot.attention[0]?.university || "Campus"
   const supabase = await createClient()
   const { data: rows, error } = await supabase
@@ -21,7 +20,7 @@ export default async function CampusAnnouncementsPage({ searchParams }: { search
     .limit(20)
 
   return (
-    <CampusFrame snapshot={snapshot} title="Announcements" description="Target students, alumni, or everyone. Required acknowledgement is tracked per person.">
+    <CampusFrame snapshot={snapshot} title="Announcements" description="Target any mix of students, alumni, and employers — or everyone. Required acknowledgement is tracked per person.">
       <DashboardPanel title="Publish">
         <AnnouncementForm university={university} />
       </DashboardPanel>
@@ -40,7 +39,7 @@ export default async function CampusAnnouncementsPage({ searchParams }: { search
               <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border px-4 py-3">
                 <p className="text-sm font-medium">{row.title}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  <StatusBadge value={row.audience} />
+                  <AnnouncementAudienceBadges audience={row.audience} />
                   {row.requires_ack ? <Badge variant="secondary">Needs a reply</Badge> : null}
                 </div>
               </li>

@@ -39,7 +39,7 @@ function eventWhen(iso?: string | null) {
 export default async function CampusHomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ campus?: string; range?: string }>
+  searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }>
 }) {
   const snapshot = await campusReportData(searchParams, "view_home")
   const canExport = canCampus(snapshot.access, "export")
@@ -81,7 +81,12 @@ export default async function CampusHomePage({
       .find((row) => !row.starts_at || new Date(row.starts_at).getTime() >= now - 6 * 60 * 60 * 1000) ||
     snapshot.operations.events[0]
   const international = snapshot.market.internationalPrograms
-  const windowLabel = snapshot.period.days ? `the last ${snapshot.period.days} days` : "all time"
+  const windowLabel =
+    snapshot.period.id === "custom"
+      ? snapshot.period.label
+      : snapshot.period.days
+        ? `the last ${snapshot.period.days} days`
+        : "all time"
   const nps =
     snapshot.market.employerNps.value != null
       ? { row: snapshot.market.employerNps, label: "Employer NPS" }
@@ -180,7 +185,13 @@ export default async function CampusHomePage({
       description="Live job posts, applications, employers, and placements for this campus."
       actions={
         <Suspense fallback={null}>
-          <CampusHomeToolbar current={snapshot.period.id} campus={uni} canExport={canExport} />
+          <CampusHomeToolbar
+            current={snapshot.period.id}
+            from={snapshot.period.from}
+            to={snapshot.period.to}
+            campus={uni}
+            canExport={canExport}
+          />
         </Suspense>
       }
     >

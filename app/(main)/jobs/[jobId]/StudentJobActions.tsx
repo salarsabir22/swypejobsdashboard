@@ -131,13 +131,55 @@ export function StudentJobActions({
   }
 
   if (direction === "left") {
+    const undoAndApply = async () => {
+      setLoadingState("act")
+      setPendingAction("right")
+      const supabase = createClient()
+      await supabase.from("job_swipes").delete().eq("student_id", userId).eq("job_id", jobId)
+      if (needsApplyForm) {
+        setPendingAction(null)
+        setLoadingState("idle")
+        router.push(applyHref(jobId))
+        return
+      }
+      const { error } = await supabase.from("job_swipes").insert({
+        student_id: userId,
+        job_id: jobId,
+        direction: "right",
+      })
+      if (error) {
+        toast({ variant: "destructive", title: "Could not apply", description: error.message })
+        setPendingAction(null)
+        setLoadingState("idle")
+        void loadSwipe()
+        return
+      }
+      setDirection("right")
+      toast({ title: "Applied", description: jobTitle })
+      setPendingAction(null)
+      setLoadingState("idle")
+    }
+
     return (
       <Card className="shadow-sm">
         <CardContent className="space-y-4 p-5">
-          <p className="font-body text-sm text-muted-foreground">You passed on this listing.</p>
-          <Button className="rounded-full" asChild>
-            <Link href="/discover">Discover more roles</Link>
-          </Button>
+          <p className="font-body text-sm text-muted-foreground">
+            You passed on this listing. If that was a mistake, undo and apply.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              className="rounded-full"
+              loading={pendingAction === "right"}
+              loadingText="Applying…"
+              onClick={() => void undoAndApply()}
+            >
+              Undo & apply
+            </Button>
+            <Button variant="outline" className="rounded-full" asChild>
+              <Link href="/discover">Discover more roles</Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     )

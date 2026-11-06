@@ -14,6 +14,18 @@ import { UniversityPicker } from "@/components/profile/UniversityPicker"
 import { COMPANY_INDUSTRIES, EMPLOYEE_RANGES } from "@/lib/company-options"
 import { normalizeCalendlyUrl } from "@/lib/hiring/interview-invite"
 import { IOBM_UNIVERSITY_NAME } from "@/lib/sso/iobm"
+import {
+  IOBM_COLLEGES,
+  IOBM_STUDENT_ID_HELP,
+  IOBM_STUDENT_ID_PLACEHOLDER,
+  iobmCollegeById,
+  iobmCollegeByName,
+  iobmCollegeIdForProgram,
+  iobmProgramsForCollege,
+  isValidIobmStudentId,
+  normalizeIobmStudentId,
+  type IobmCollegeId,
+} from "@/lib/sso/iobm-programs"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { UserRole } from "@/types"
@@ -1004,11 +1016,11 @@ const textareaFieldClass =
   "min-h-[100px] resize-none rounded-xl border-border px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-ring/40"
 const labelClass = "mb-1.5 block font-data text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground"
 
-function HelpText({ children }: { children: React.ReactNode }) {
+function HelpText({ children, id }: { children: React.ReactNode; id?: string }) {
   return (
     <div className="mt-1.5 flex items-start gap-1.5">
       <Info className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
-      <p className="font-body text-[11px] leading-relaxed text-muted-foreground">{children}</p>
+      <p id={id} className="font-body text-[11px] leading-relaxed text-muted-foreground">{children}</p>
     </div>
   )
 }
@@ -1104,6 +1116,8 @@ export default function OnboardingPage() {
   const [bio, setBio] = useState("")
   const [university, setUniversity] = useState("")
   const [campusLocked, setCampusLocked] = useState(false)
+  const [campusStudentId, setCampusStudentId] = useState("")
+  const [iobmCollegeId, setIobmCollegeId] = useState<IobmCollegeId | "">("")
   const [degree, setDegree] = useState("")
   const [graduationYear, setGraduationYear] = useState("")
   const [institutionType, setInstitutionType] = useState<"university" | "college">("university")
@@ -1219,7 +1233,7 @@ export default function OnboardingPage() {
 
       let studentRes = await supabase
         .from("student_profiles")
-        .select("university, degree, graduation_year, institution_type, still_enrolled, current_semester, cgpa, is_alumni, mentorship_opt_in, skills, preferred_job_categories, linkedin_url, github_url, portfolio_url, resume_url")
+        .select("university, degree, graduation_year, institution_type, still_enrolled, current_semester, cgpa, is_alumni, mentorship_opt_in, college, campus_student_id, skills, preferred_job_categories, linkedin_url, github_url, portfolio_url, resume_url")
         .eq("id", user.id)
         .maybeSingle()
       if (studentRes.error) {
@@ -1230,7 +1244,13 @@ export default function OnboardingPage() {
           .maybeSingle()
       }
       const student = studentRes.data as
-        | (Record<string, any> & { cgpa?: number | null; is_alumni?: boolean | null; mentorship_opt_in?: boolean | null })
+        | (Record<string, any> & {
+            cgpa?: number | null
+            is_alumni?: boolean | null
+            mentorship_opt_in?: boolean | null
+            college?: string | null
+            campus_student_id?: string | null
+          })
         | null
       if (student) {
         if (student.cgpa !== null && student.cgpa !== undefined) setCgpa(Number(student.cgpa).toFixed(2))
@@ -1238,6 +1258,7 @@ export default function OnboardingPage() {
         if (student.mentorship_opt_in === true) setMentorshipOptIn(true)
         if (student.university) setUniversity(student.university)
         if (student.degree) setDegree(student.degree)
+        if (student.campus_student_id) setCampusStudentId(String(student.campus_student_id))
         if (student.graduation_year) setGraduationYear(String(student.graduation_year))
         if (student.institution_type === "college" || student.institution_type === "university") {
           setInstitutionType(student.institution_type)
@@ -1250,10 +1271,15 @@ export default function OnboardingPage() {
         if (student.github_url) setGithubUrl(student.github_url)
         if (student.portfolio_url) setPortfolioUrl(student.portfolio_url)
         if (student.resume_url) setExistingResumeUrl(student.resume_url)
+        const collegeFromName = iobmCollegeByName(student.college)
+        const collegeFromProgram = iobmCollegeIdForProgram(student.degree)
+        if (collegeFromName) setIobmCollegeId(collegeFromName.id)
+        else if (collegeFromProgram) setIobmCollegeId(collegeFromProgram)
       }
       if (iobmSso || student?.university === IOBM_UNIVERSITY_NAME) {
         setUniversity(IOBM_UNIVERSITY_NAME)
         setCampusLocked(true)
+        setInstitutionType("university")
       }
 
       const { data: recruiter } = await supabase
@@ -1316,11 +1342,24 @@ export default function OnboardingPage() {
         ]
       }
       if (step === 1) {
-        return [
+        const items = [
           { label: "University entered", done: university.trim().length > 1 },
           { label: "Degree entered", done: degree.trim().length > 1 },
           { label: "Graduation year selected", done: Boolean(graduationYear) },
         ]
+        if (campusLocked) {
+          items.splice(
+            1,
+            0,
+            { label: "Student ID entered", done: isValidIobmStudentId(campusStudentId) },
+            { label: "College selected", done: Boolean(iobmCollegeId) },
+            { label: "Program selected", done: degree.trim().length > 1 }
+          )
+          // Remove the generic "Degree entered" row; program covers it for IoBM.
+          const degreeIdx = items.findIndex((item) => item.label === "Degree entered")
+          if (degreeIdx >= 0) items.splice(degreeIdx, 1)
+        }
+        return items
       }
       if (step === 2) {
         return [
@@ -1354,6 +1393,21 @@ export default function OnboardingPage() {
         if (!university.trim() || !degree.trim() || !graduationYear) {
           setStepError("Please complete your university, degree, and graduation year.")
           return false
+        }
+        if (campusLocked) {
+          if (!isValidIobmStudentId(campusStudentId)) {
+            setStepError(`Enter your student ID as ${IOBM_STUDENT_ID_PLACEHOLDER}.`)
+            return false
+          }
+          if (!iobmCollegeId) {
+            setStepError("Select your IoBM college.")
+            return false
+          }
+          const programs = iobmProgramsForCollege(iobmCollegeId)
+          if (!programs.includes(degree.trim())) {
+            setStepError("Select your program from the list for your college.")
+            return false
+          }
         }
       }
       if (step === 2) {
@@ -1438,10 +1492,11 @@ export default function OnboardingPage() {
         let resumeUrl: string | undefined
         if (resumeFile) resumeUrl = await uploadFile(resumeFile, "resumes", `${user.id}/${crypto.randomUUID()}.pdf`)
         else if (existingResumeUrl) resumeUrl = existingResumeUrl
+        const iobmCollege = campusLocked ? iobmCollegeById(iobmCollegeId) : null
         const studentData: Record<string, unknown> = {
           id: user.id, university, degree,
           graduation_year: graduationYear ? parseInt(graduationYear) : null,
-          institution_type: institutionType,
+          institution_type: campusLocked ? "university" : institutionType,
           still_enrolled: stillEnrolled,
           current_semester: stillEnrolled && currentSemester ? parseInt(currentSemester) : null,
           cgpa: cgpa.trim() ? Number(cgpa) : null,
@@ -1451,6 +1506,11 @@ export default function OnboardingPage() {
           linkedin_url: linkedinUrl || null, github_url: githubUrl || null,
           portfolio_url: portfolioUrl || null, resume_url: resumeUrl || null,
         }
+        if (campusLocked) {
+          studentData.campus_student_id = normalizeIobmStudentId(campusStudentId)
+          studentData.college = iobmCollege?.name ?? null
+          studentData.department = iobmCollege?.shortName ?? null
+        }
         let { data: updated, error: studentErr } = await supabase.from("student_profiles").update(studentData).eq("id", user.id).select()
         if (studentErr) {
           delete studentData.institution_type
@@ -1459,6 +1519,9 @@ export default function OnboardingPage() {
           delete studentData.cgpa
           delete studentData.is_alumni
           delete studentData.mentorship_opt_in
+          delete studentData.campus_student_id
+          delete studentData.college
+          delete studentData.department
           const retry = await supabase.from("student_profiles").update(studentData).eq("id", user.id).select()
           updated = retry.data
           studentErr = retry.error
@@ -1467,7 +1530,12 @@ export default function OnboardingPage() {
           const insert = await supabase.from("student_profiles").insert(studentData)
           if (
             insert.error &&
-            (studentData.institution_type || studentData.still_enrolled || studentData.current_semester || studentData.cgpa !== undefined)
+            (studentData.institution_type ||
+              studentData.still_enrolled ||
+              studentData.current_semester ||
+              studentData.cgpa !== undefined ||
+              studentData.campus_student_id ||
+              studentData.college)
           ) {
             delete studentData.institution_type
             delete studentData.still_enrolled
@@ -1475,6 +1543,9 @@ export default function OnboardingPage() {
             delete studentData.cgpa
             delete studentData.is_alumni
             delete studentData.mentorship_opt_in
+            delete studentData.campus_student_id
+            delete studentData.college
+            delete studentData.department
             await supabase.from("student_profiles").insert(studentData)
           }
         }
@@ -1713,16 +1784,84 @@ export default function OnboardingPage() {
                       </>
                     )}
                   </div>
-                  <div>
-                    <Label className={labelClass}>Degree & Field of Study</Label>
-                    <Input
-                      className={inputFieldClass}
-                      placeholder="e.g. B.Sc. Computer Science"
-                      value={degree}
-                      onChange={(e) => setDegree(e.target.value)}
-                    />
-                    <HelpText>Include both the level (B.Sc. / M.Sc. / PhD) and the field</HelpText>
-                  </div>
+                  {campusLocked ? (
+                    <>
+                      <div>
+                        <Label className={labelClass} htmlFor="campus-student-id">Student ID</Label>
+                        <Input
+                          id="campus-student-id"
+                          className={inputFieldClass}
+                          inputMode="numeric"
+                          autoComplete="off"
+                          placeholder={IOBM_STUDENT_ID_PLACEHOLDER}
+                          value={campusStudentId}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, "").slice(0, 10)
+                            setCampusStudentId(
+                              digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits
+                            )
+                          }}
+                          aria-describedby="campus-student-id-help"
+                        />
+                        <HelpText id="campus-student-id-help">{IOBM_STUDENT_ID_HELP}</HelpText>
+                      </div>
+                      <div>
+                        <Label className={labelClass}>College</Label>
+                        <Select
+                          value={iobmCollegeId || undefined}
+                          onValueChange={(v) => {
+                            const next = v as IobmCollegeId
+                            setIobmCollegeId(next)
+                            const programs = iobmProgramsForCollege(next)
+                            if (!programs.includes(degree)) setDegree("")
+                          }}
+                        >
+                          <SelectTrigger className={cn(inputFieldClass, "w-full justify-between pr-3")}>
+                            <SelectValue placeholder="Select college…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {IOBM_COLLEGES.map((college) => (
+                              <SelectItem key={college.id} value={college.id}>
+                                {college.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <HelpText>Choose your IoBM college first — programmes update to match.</HelpText>
+                      </div>
+                      <div>
+                        <Label className={labelClass}>Program</Label>
+                        <Select
+                          value={degree || undefined}
+                          onValueChange={setDegree}
+                          disabled={!iobmCollegeId}
+                        >
+                          <SelectTrigger className={cn(inputFieldClass, "w-full justify-between pr-3")}>
+                            <SelectValue placeholder={iobmCollegeId ? "Select program…" : "Select a college first…"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {iobmProgramsForCollege(iobmCollegeId).map((program) => (
+                              <SelectItem key={program} value={program}>
+                                {program}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <HelpText>Shown for your selected college only.</HelpText>
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <Label className={labelClass}>Degree & Field of Study</Label>
+                      <Input
+                        className={inputFieldClass}
+                        placeholder="e.g. B.Sc. Computer Science"
+                        value={degree}
+                        onChange={(e) => setDegree(e.target.value)}
+                      />
+                      <HelpText>Include both the level (B.Sc. / M.Sc. / PhD) and the field</HelpText>
+                    </div>
+                  )}
                   <div>
                     <Label className={labelClass}>Expected Graduation Year</Label>
                     <Select value={graduationYear || undefined} onValueChange={setGraduationYear}>
@@ -1752,18 +1891,20 @@ export default function OnboardingPage() {
                     />
                     <HelpText>On a 4.00 scale. Some employers set a minimum CGPA; without one you won’t see those roles.</HelpText>
                   </div>
-                  <div>
-                    <Label className={labelClass}>This is a</Label>
-                    <Select value={institutionType} onValueChange={(v) => setInstitutionType(v as "university" | "college")}>
-                      <SelectTrigger className={cn(inputFieldClass, "w-full justify-between pr-3")}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="university">University</SelectItem>
-                        <SelectItem value="college">College</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {campusLocked ? null : (
+                    <div>
+                      <Label className={labelClass}>This is a</Label>
+                      <Select value={institutionType} onValueChange={(v) => setInstitutionType(v as "university" | "college")}>
+                        <SelectTrigger className={cn(inputFieldClass, "w-full justify-between pr-3")}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="university">University</SelectItem>
+                          <SelectItem value="college">College</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <label className="flex items-start gap-3 rounded-2xl border border-border bg-secondary/40 p-4 text-sm">
                     <input
                       type="checkbox"
@@ -1771,7 +1912,7 @@ export default function OnboardingPage() {
                       checked={stillEnrolled}
                       onChange={(e) => setStillEnrolled(e.target.checked)}
                     />
-                    <span>I am still in {institutionType === "college" ? "college" : "university"}</span>
+                    <span>I am still in {campusLocked || institutionType === "university" ? "university" : "college"}</span>
                   </label>
                   {stillEnrolled ? (
                     <div>

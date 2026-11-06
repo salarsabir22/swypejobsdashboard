@@ -68,10 +68,12 @@ export type DepartmentRisk = {
 }
 
 export type CampusPeriod = {
-  id: "day" | "week" | "month" | "quarter" | "year" | "all"
+  id: "day" | "week" | "month" | "quarter" | "year" | "all" | "custom"
   label: string
   shortLabel: string
   days: number | null
+  from?: string | null
+  to?: string | null
 }
 
 export type CampusSnapshot = {

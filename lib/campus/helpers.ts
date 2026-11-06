@@ -182,10 +182,42 @@ export function fillMonthSeries(isoTimestamps: string[], months = 12) {
   })
 }
 
+function dayKeysBetween(from: string, to: string) {
+  const keys: string[] = []
+  const cursor = new Date(`${from}T12:00:00`)
+  const end = new Date(`${to}T12:00:00`)
+  if (Number.isNaN(cursor.getTime()) || Number.isNaN(end.getTime())) return keys
+  while (cursor.getTime() <= end.getTime()) {
+    const y = cursor.getFullYear()
+    const m = String(cursor.getMonth() + 1).padStart(2, "0")
+    const day = String(cursor.getDate()).padStart(2, "0")
+    keys.push(`${y}-${m}-${day}`)
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return keys
+}
+
+function fillAbsoluteDaySeries(isoTimestamps: string[], from: string, to: string) {
+  const keys = dayKeysBetween(from, to)
+  const map = new Map<string, number>()
+  for (const iso of isoTimestamps) {
+    const key = (iso || "").slice(0, 10)
+    if (!key) continue
+    map.set(key, (map.get(key) || 0) + 1)
+  }
+  return keys.map((date) => ({ date, label: shortDayLabel(date), value: map.get(date) || 0 }))
+}
+
 export function fillPeriodSeries(
   isoTimestamps: string[],
-  range: { id: string; days: number | null }
+  range: { id: string; days: number | null; from?: string | null; to?: string | null }
 ) {
+  if (range.id === "custom" && range.from && range.to) {
+    const days = range.days || dayKeysBetween(range.from, range.to).length
+    if (days <= 62) return fillAbsoluteDaySeries(isoTimestamps, range.from, range.to)
+    if (days <= 200) return fillWeekSeries(isoTimestamps, Math.min(30, Math.ceil(days / 7)))
+    return fillMonthSeries(isoTimestamps, Math.min(36, Math.ceil(days / 30)))
+  }
   if (range.id === "day") return fillHourSeries(isoTimestamps)
   if (range.id === "quarter") return fillWeekSeries(isoTimestamps, 13)
   if (range.id === "year") return fillMonthSeries(isoTimestamps, 12)

@@ -1,4 +1,5 @@
 import { campusReportData } from "@/lib/campus/page-data"
+import { AttentionStudentList } from "@/components/campus/AttentionStudentList"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { DashboardFunnel } from "@/components/dashboard/DashboardFunnel"
@@ -10,7 +11,7 @@ import { FileText, Sparkles, UserCheck, Users } from "lucide-react"
 export default async function CampusEngagementPage({
   searchParams,
 }: {
-  searchParams: Promise<{ campus?: string; range?: string }>
+  searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }>
 }) {
   const snapshot = await campusReportData(searchParams)
 
@@ -49,21 +50,11 @@ export default async function CampusEngagementPage({
         <BreakdownList title="Active this month by major" rows={snapshot.engagement.activeByMajor} />
         <BreakdownList title="Active this month by college" rows={snapshot.engagement.activeByCollege} />
       </div>
-      <DashboardPanel title="Zero-activity outreach list" description="Registered students with no swipes.">
-        {snapshot.engagement.zeroActivity.length === 0 ? (
-          <p className="text-[14px] text-muted-foreground">Everyone in this campus has at least one swipe.</p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {snapshot.engagement.zeroActivity.map((row) => (
-              <li key={row.id} className="flex items-center justify-between gap-3 py-2 text-[14px]">
-                <span className="truncate">
-                  {row.name}
-                  <span className="text-muted-foreground"> · {row.major || "No major"} · {row.year || "—"}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+      <DashboardPanel title="Zero-activity outreach list" description="Registered students with no swipes. Open a profile to follow up.">
+        <AttentionStudentList
+          students={snapshot.engagement.zeroActivity}
+          empty="Everyone in this campus has at least one swipe."
+        />
       </DashboardPanel>
       <DashboardPanel title="Career office feature usage" description="RSVPs, advisor bookings, resume reviews.">
         <p className="text-[14px] text-muted-foreground">

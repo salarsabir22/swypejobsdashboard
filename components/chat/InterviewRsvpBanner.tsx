@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Calendar } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/lib/hooks/use-toast"
+import { interviewFormatFromNote, interviewFormatLabel } from "@/lib/hiring/interview-invite"
 import { Button } from "@/components/ui/button"
 
 type Proposal = {
@@ -53,6 +54,7 @@ export function InterviewRsvpBanner({
     dateStyle: "medium",
     timeStyle: "short",
   })
+  const formatLabel = interviewFormatLabel(interviewFormatFromNote(proposal.note))
   const mine = proposal.proposed_by === currentUserId
 
   const setStatus = async (status: "accepted" | "declined" | "cancelled") => {
@@ -82,6 +84,7 @@ export function InterviewRsvpBanner({
       <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
       <p className="min-w-0 flex-1 font-body text-xs text-foreground">
         {mine ? "Interview proposed" : "Interview request"} · {when}
+        {formatLabel ? ` · ${formatLabel}` : ""}
         {proposal.location_or_link ? ` · ${proposal.location_or_link}` : ""}
       </p>
       {mine ? (

@@ -1,6 +1,7 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { loadCampusPage } from "@/lib/campus/page-data"
 import { canCampus } from "@/lib/campus/rbac"
 import { createClient } from "@/lib/supabase/server"
+import { AttentionStudentList } from "@/components/campus/AttentionStudentList"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { EventForm, JobReviewButtons, NudgeForm } from "@/components/campus/CampusActions"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
@@ -8,10 +9,10 @@ import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 export default async function CampusActionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ campus?: string; segment?: string }>
+  searchParams: Promise<{ campus?: string; segment?: string; range?: string; from?: string; to?: string }>
 }) {
-  const { campus, segment } = await searchParams
-  const snapshot = await campusPageData(campus, "view_actions")
+  const { snapshot, params } = await loadCampusPage(searchParams, "view_actions")
+  const segment = (params as { segment?: string }).segment
   const canMutate = canCampus(snapshot.access, "mutate")
   const university = snapshot.access.university || snapshot.attention[0]?.university || "Campus"
 
@@ -65,19 +66,10 @@ export default async function CampusActionsPage({
         )}
       </DashboardPanel>
 
-      <DashboardPanel title="Students needing attention" description="Seniors with no applications, quiet accounts, zero activity.">
-        <ul className="mb-4 max-h-64 space-y-2 overflow-auto text-[14px]">
-          {list.length ? (
-            list.map((row) => (
-              <li key={row.id}>
-                {row.name}
-                <span className="text-muted-foreground"> · {row.reason}</span>
-              </li>
-            ))
-          ) : (
-            <li className="text-muted-foreground">No one in this segment right now.</li>
-          )}
-        </ul>
+      <DashboardPanel title="Students needing attention" description="Seniors with no applications, quiet accounts, zero activity. Open a profile to review.">
+        <div className="mb-4 max-h-80 overflow-auto">
+          <AttentionStudentList students={list} empty="No one in this segment right now." />
+        </div>
         {canMutate ? (
           <NudgeForm university={university} students={list} defaultTitle="Your career office wants you back on swypejobs" />
         ) : null}

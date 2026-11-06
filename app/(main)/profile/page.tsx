@@ -320,7 +320,11 @@ export default async function ProfilePage() {
                         <GraduationCap className="h-4 w-4 text-muted-foreground" />
                         {sp.university}
                       </p>
+                      {sp.college ? <p className="mt-1 font-body text-sm text-muted-foreground">{sp.college}</p> : null}
                       {sp.degree ? <p className="mt-1 font-body text-sm text-muted-foreground">{sp.degree}</p> : null}
+                      {sp.campus_student_id ? (
+                        <p className="mt-1 font-data text-xs text-muted-foreground">ID {sp.campus_student_id}</p>
+                      ) : null}
                       {sp.graduation_year ? (
                         <p className="mt-1 flex items-center gap-1 font-body text-xs text-muted-foreground">
                           <Calendar className="h-3.5 w-3.5" />
@@ -464,15 +468,20 @@ export default async function ProfilePage() {
                   ) : null}
                   {resumeHref ? (
                     <a href={resumeHref} className="flex items-center gap-2 text-sm text-primary hover:underline" target="_blank" rel="noopener noreferrer">
-                      <FileText className="h-4 w-4" /> Resume
+                      <FileText className="h-4 w-4" /> Resume (PDF)
                     </a>
                   ) : null}
-                  <Button asChild variant="outline" size="sm" className="mt-2 rounded-full">
-                    <Link href="/resume">
-                      <FileText className="h-4 w-4" />
-                      {resumeHref ? "Edit resume" : "Build resume"}
-                    </Link>
-                  </Button>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button asChild variant="outline" size="sm" className="rounded-full">
+                      <Link href="/resume">
+                        <Edit className="h-4 w-4" />
+                        {resumeHref ? "Edit resume" : "Build resume"}
+                      </Link>
+                    </Button>
+                    <Button asChild variant="ghost" size="sm" className="rounded-full">
+                      <Link href="/resume">Download PDF or Word</Link>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 

@@ -32,7 +32,7 @@ const TONES = {
 export default async function CampusReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ campus?: string; range?: string }>
+  searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }>
 }) {
   const snapshot = await campusReportData(searchParams, "view_reports")
   const supabase = await createClient()
@@ -45,7 +45,7 @@ export default async function CampusReportsPage({
     `/api/reports/accreditation?template=${template}&format=${format}&year=${year}`
   const canExport = canCampus(snapshot.access, "export")
   const cards = campusReportCards(snapshot)
-  const range = snapshot.period.id
+  const period = snapshot.period
   const uni = snapshot.access.university
 
   const nace = snapshot.outcomes.slices.map((s) => ({
@@ -72,7 +72,7 @@ export default async function CampusReportsPage({
           title="Download all reports"
           description="One-click overview of job posts, engagement, employers, applications, placement, and at-risk departments."
         >
-          <CampusExportButtons dataset="overview" campus={uni} range={range} />
+          <CampusExportButtons dataset="overview" campus={uni} period={period} />
         </DashboardPanel>
       ) : null}
 
@@ -92,7 +92,7 @@ export default async function CampusReportsPage({
                   <Button asChild size="sm" variant="ghost" className="h-8 rounded-full px-3 text-[12px]">
                     <Link href={campusQueryHref(card.href, snapshot)}>Open report</Link>
                   </Button>
-                  {canExport ? <CampusExportButtons dataset={card.dataset} campus={uni} range={range} compact /> : null}
+                  {canExport ? <CampusExportButtons dataset={card.dataset} campus={uni} period={period} compact /> : null}
                 </div>
               </div>
             }
@@ -146,7 +146,10 @@ export default async function CampusReportsPage({
             <ul className="mb-3 space-y-1 text-[14px]">
               {views!.map((view) => (
                 <li key={`${view.name}-${view.path}`}>
-                  {view.name} · {view.path}
+                  <Link href={view.path} className="text-primary hover:underline">
+                    {view.name}
+                  </Link>
+                  <span className="text-muted-foreground"> · {view.path}</span>
                 </li>
               ))}
             </ul>

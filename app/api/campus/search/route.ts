@@ -63,14 +63,14 @@ export async function GET(request: Request) {
     .slice(0, 8)
     .map((row) => {
       const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
-      return hit(row.id, `/campus/people?kind=students`, profile?.full_name || "Student", row.degree)
+      return hit(row.id, `/candidates/${row.id}`, profile?.full_name || "Student", row.degree)
     })
   const alumni = people
     .filter((row) => studentIsAlumni(row))
     .slice(0, 8)
     .map((row) => {
       const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
-      return hit(row.id, `/campus/people?kind=alumni`, profile?.full_name || "Alumni", row.degree)
+      return hit(row.id, `/candidates/${row.id}`, profile?.full_name || "Alumni", row.degree)
     })
 
   const employers = (recruitersRes.data || []).map((row) =>

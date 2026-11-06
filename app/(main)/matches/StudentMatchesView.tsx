@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
 import { StudentApplicationList } from "./StudentApplicationList"
+import { PassedJobsList } from "@/components/matches/PassedJobsList"
+import { jobHasMandatoryQuestions } from "@/lib/jobs/screening"
 
 type JobJoin = {
   id?: string
   title?: string
   job_type?: string
   recruiter_id?: string
+  screening_questions?: unknown
   recruiter_profiles?: { company_name?: string; logo_url?: string | null } | null
 }
 
@@ -41,7 +44,7 @@ function conversationId(match: MatchListItem | undefined) {
 export async function StudentMatchesView({ userId }: { userId: string }) {
   const supabase = await createClient()
 
-  const [matchesRes, appliedRes, savedRes, swipeRes, viewsRes] = await Promise.all([
+  const [matchesRes, appliedRes, savedRes, swipeRes, passedRes, viewsRes] = await Promise.all([
     supabase
       .from("matches")
       .select("*, jobs(id, title, job_type, recruiter_id, recruiter_profiles(company_name, logo_url)), conversations(id)")
@@ -63,11 +66,21 @@ export async function StudentMatchesView({ userId }: { userId: string }) {
       .eq("student_id", userId)
       .eq("direction", "right")
       .order("created_at", { ascending: false }),
+    supabase
+      .from("job_swipes")
+      .select(
+        "id, job_id, created_at, jobs(id, title, job_type, screening_questions, recruiter_id, recruiter_profiles(company_name, logo_url))"
+      )
+      .eq("student_id", userId)
+      .eq("direction", "left")
+      .order("created_at", { ascending: false })
+      .limit(60),
     supabase.from("profile_views").select("viewer_id, created_at").eq("student_id", userId),
   ])
 
   const matches = (matchesRes.data || []) as MatchListItem[]
   const applications = (swipeRes.data || []) as ApplicationRow[]
+  const passed = (passedRes.data || []) as ApplicationRow[]
   const appliedCount = appliedRes.count || applications.length
   const savedCount = savedRes.count || 0
   const matchRate = appliedCount > 0 ? Math.round((matches.length / appliedCount) * 100) : 0
@@ -214,6 +227,24 @@ export async function StudentMatchesView({ userId }: { userId: string }) {
           />
         </>
       )}
+
+      {passed.length ? (
+        <PassedJobsList
+          items={passed.map((row) => {
+            const job = row.jobs
+            const company = job?.recruiter_profiles
+            return {
+              id: row.id,
+              jobId: row.job_id,
+              title: job?.title || "Role",
+              company: company?.company_name || null,
+              logoUrl: company?.logo_url || null,
+              meta: `Passed ${formatDate(row.created_at)}`,
+              hasMandatoryQuestions: jobHasMandatoryQuestions({ screening_questions: job?.screening_questions }),
+            }
+          })}
+        />
+      ) : null}
     </div>
   )
 }

@@ -7,7 +7,7 @@ import { fmtSourced } from "@/lib/campus/format"
 export default async function CampusTrendsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ campus?: string; range?: string }>
+  searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }>
 }) {
   const snapshot = await campusReportData(searchParams)
   const seniors = snapshot.engagement.byYear[0]

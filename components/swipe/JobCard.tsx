@@ -1,7 +1,8 @@
 import { Building2 } from "lucide-react"
 import type { Job } from "@/types"
 import { cn, formatRelativeTime } from "@/lib/utils"
-import { skillOverlap } from "@/lib/match/fit"
+import { skillOverlap, jobFitScore } from "@/lib/match/fit"
+import { fitEncouragement, isEarlyApplicant, jobRequiresVideo, skillMatchPercent } from "@/lib/jobs/badges"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { formatSalary } from "@/lib/jobs/salary"
@@ -14,15 +15,20 @@ const JOB_TYPE_LABEL: Record<string, string> = {
   full_time: "Full-time",
   part_time: "Part-time",
   contract: "Contract",
+  fellowship: "Fellowship",
+  freelance: "Freelance",
+  project: "Project",
 }
 
 interface JobCardProps {
-  job: Job
+  job: Job & { application_count?: number | null }
   className?: string
   onOpenCompany?: () => void
   onOpenListing?: () => void
   reasons?: string[]
   studentSkills?: string[] | null
+  preferredCategories?: string[] | null
+  studentLocationHint?: string | null
 }
 
 export function JobCard({
@@ -32,6 +38,8 @@ export function JobCard({
   onOpenListing,
   reasons,
   studentSkills,
+  preferredCategories,
+  studentLocationHint,
 }: JobCardProps) {
   const company = Array.isArray(job.recruiter_profiles) ? job.recruiter_profiles[0] : job.recruiter_profiles
   const typeLabel = JOB_TYPE_LABEL[job.job_type] ?? job.job_type
@@ -56,6 +64,22 @@ export function JobCard({
   const hiddenCount = matched.length + otherSkills.length - shownMatched.length - shownOther.length
   const deadlineText = deadlineLabel(job.application_deadline)
   const closingSoon = deadlineSoon(job.application_deadline)
+  const requiresVideo = jobRequiresVideo(job)
+  const early = isEarlyApplicant(job.application_count)
+  const skillPercent = skillMatchPercent(studentSkills, job.required_skills)
+  const fitScore = jobFitScore({
+    studentSkills,
+    preferredCategories,
+    jobSkills: job.required_skills,
+    jobCategory: job.category,
+    jobLocation: job.location,
+    studentLocationHint,
+    remote: job.is_remote,
+    createdAt: job.created_at,
+    employerApproved: company?.is_approved,
+    employerHasWebsite: Boolean(company?.website_url),
+  })
+  const encouragement = fitEncouragement({ fitScore, skillPercent })
 
   return (
     <div
@@ -76,6 +100,16 @@ export function JobCard({
           {job.cdc_curated ? (
             <span className="rounded-full bg-white px-2.5 py-0.5 font-body text-[10px] font-semibold uppercase tracking-wide text-black">
               {job.collection_label || CURATED_BADGE}
+            </span>
+          ) : null}
+          {requiresVideo ? (
+            <span className="rounded-full bg-white px-2.5 py-0.5 font-body text-[10px] font-semibold uppercase tracking-wide text-black">
+              *Requires video
+            </span>
+          ) : null}
+          {early ? (
+            <span className="rounded-full bg-white/15 px-2.5 py-0.5 font-body text-[10px] font-medium uppercase tracking-wide text-white ring-1 ring-white/20">
+              Be an early applicant
             </span>
           ) : null}
           {locationOrRemote ? (
@@ -99,6 +133,9 @@ export function JobCard({
             </span>
           ) : null}
         </div>
+        {encouragement ? (
+          <p className="mb-2 font-body text-xs font-semibold text-white">{encouragement}</p>
+        ) : null}
         <h2 className="font-heading text-lg font-semibold leading-snug tracking-tight text-white sm:text-xl">{job.title}</h2>
         {company?.company_name ? (
           onOpenCompany ? (

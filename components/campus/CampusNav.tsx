@@ -4,13 +4,12 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { NavGroupMenu, isNavPathActive } from "@/components/nav/NavGroupMenu"
 import { campusNavGroups } from "@/lib/campus/nav"
+import { withCampusFilters } from "@/lib/campus/range"
 import { cn } from "@/lib/utils"
 
 export function CampusNav({ staffRole }: { staffRole?: string }) {
   const pathname = usePathname()
   const params = useSearchParams()
-  const campus = params.get("campus")
-  const q = campus ? `?campus=${encodeURIComponent(campus)}` : ""
   const groups = campusNavGroups(staffRole)
 
   return (
@@ -19,7 +18,7 @@ export function CampusNav({ staffRole }: { staffRole?: string }) {
         group.items.length === 1 ? (
           <Link
             key={group.label}
-            href={`${group.items[0].href}${q}`}
+            href={withCampusFilters(group.items[0].href, params)}
             className={cn(
               "inline-flex h-8 items-center rounded-full px-3 text-sm font-medium",
               isNavPathActive(pathname, group.items[0].href)
@@ -34,9 +33,11 @@ export function CampusNav({ staffRole }: { staffRole?: string }) {
           <NavGroupMenu
             key={group.label}
             label={group.label}
-            items={group.items}
+            items={group.items.map((item) => ({
+              ...item,
+              href: withCampusFilters(item.href, params),
+            }))}
             pathname={pathname}
-            query={q}
             variant="bar"
           />
         )

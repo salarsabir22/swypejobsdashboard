@@ -1,13 +1,12 @@
 import { MessageCircle } from "lucide-react"
-import { campusPageData } from "@/lib/campus/page-data"
+import { loadCampusPage } from "@/lib/campus/page-data"
 import { createClient } from "@/lib/supabase/server"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 
-export default async function CampusCommunicationPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_actions")
+export default async function CampusCommunicationPage({ searchParams }: { searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }> }) {
+  const { snapshot, params } = await loadCampusPage(searchParams, "view_actions")
   const university = snapshot.access.university
   const supabase = await createClient()
 

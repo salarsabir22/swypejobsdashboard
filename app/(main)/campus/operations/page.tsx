@@ -11,7 +11,7 @@ import { Calendar, ClipboardList, Smile, Users } from "lucide-react"
 export default async function CampusOperationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ campus?: string; range?: string }>
+  searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }>
 }) {
   const snapshot = await campusReportData(searchParams)
   const university = snapshot.access.university || "Campus"

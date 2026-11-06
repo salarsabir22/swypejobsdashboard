@@ -14,7 +14,7 @@ import {
   pct,
   workMode,
 } from "@/lib/campus/helpers"
-import { inCampusRange, parseCampusRange } from "@/lib/campus/range"
+import { inCampusRange, inCampusRangeTail, parseCampusRange, type CampusRangeBounds } from "@/lib/campus/range"
 import { sameCampus } from "@/lib/jobs/curation"
 
 const LIMIT = 800
@@ -76,12 +76,12 @@ function sourced(value: number | null, n: number, source: CampusSnapshot["kpis"]
 export const loadCampusSnapshot = cache(async (
   access: CampusAccess,
   universityFilter?: string | null,
-  rangeId?: string | null
+  rangeId?: string | null,
+  bounds?: CampusRangeBounds | null
 ): Promise<CampusSnapshot> => {
   const supabase = await createClient()
   const university = universityFilter ?? access.university
-  const period = parseCampusRange(rangeId)
-  const windowDays = period.days ?? 3650
+  const period = parseCampusRange(rangeId, bounds || undefined)
   const missingTables: string[] = []
 
   const uni = university || ""
@@ -222,8 +222,8 @@ export const loadCampusSnapshot = cache(async (
     return latest || stu?.updated_at || stu?.profiles?.updated_at || stu?.created_at || ""
   }
 
-  const activeMonth = students.filter((s) => inLastDays(lastActivity(s.id), windowDays)).length
-  const activeWeek = students.filter((s) => inLastDays(lastActivity(s.id), Math.min(7, windowDays))).length
+  const activeMonth = students.filter((s) => inCampusRange(lastActivity(s.id), period)).length
+  const activeWeek = students.filter((s) => inCampusRangeTail(lastActivity(s.id), period, 7)).length
   const inactive = students.length - activeMonth
   const engagementRate = sourced(pct(activeMonth, students.length), students.length, "platform", period.shortLabel)
 
@@ -278,7 +278,7 @@ export const loadCampusSnapshot = cache(async (
   const appsInRange = apps.filter((a) => inCampusRange(a.created_at, period))
   const dailyJobPosts = fillPeriodSeries(jobsInRange.map((j) => j.created_at), period)
   const dailyApplications = fillPeriodSeries(appsInRange.map((a) => a.created_at), period)
-  const applicationsWeek = apps.filter((a) => inLastDays(a.created_at, Math.min(7, windowDays))).length
+  const applicationsWeek = apps.filter((a) => inCampusRangeTail(a.created_at, period, 7)).length
   const applicationsMonth = appsInRange.length
   const applicants = new Set(appsInRange.map((a) => a.student_id)).size
   const applicationsByMajor = countBy(appsInRange.map((a) => studentMap.get(a.student_id)?.degree)).slice(0, 12)
@@ -296,7 +296,7 @@ export const loadCampusSnapshot = cache(async (
   }
   const atRiskDepartments = [...deptBuckets.entries()]
     .map(([department, members]) => {
-      const active = members.filter((s) => inLastDays(lastActivity(s.id), windowDays)).length
+      const active = members.filter((s) => inCampusRange(lastActivity(s.id), period)).length
       const applied = members.filter((s) => applicantsByStudent.has(s.id)).length
       const activityRate = pct(active, members.length)
       const appRate = pct(applied, members.length)

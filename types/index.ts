@@ -1,7 +1,14 @@
 import type { ScreeningQuestion } from "@/lib/jobs/screening"
 
 export type UserRole = "student" | "recruiter" | "admin" | "university"
-export type JobType = "internship" | "full_time" | "part_time" | "contract"
+export type JobType =
+  | "internship"
+  | "full_time"
+  | "part_time"
+  | "contract"
+  | "fellowship"
+  | "freelance"
+  | "project"
 export type SwipeDirection = "right" | "left" | "saved"
 
 export interface Profile {
@@ -34,6 +41,10 @@ export interface StudentProfile {
   academic_history?: unknown | null
   gender?: string | null
   department?: string | null
+  /** Internal college (e.g. CBM / CESD / CCSIS at IoBM). */
+  college?: string | null
+  /** University-issued student ID (IoBM: xxxxx-xxxxx). */
+  campus_student_id?: string | null
   preferred_locations?: string[] | null
   skills: string[]
   interests: string[]
@@ -107,6 +118,8 @@ export interface Job {
   /** Set in Discover from active campus collections. */
   cdc_curated?: boolean
   collection_label?: string | null
+  /** Right-swipe / application count attached in Discover for early-applicant badges. */
+  application_count?: number | null
   created_at: string
   updated_at: string
   recruiter_profiles?: RecruiterProfile

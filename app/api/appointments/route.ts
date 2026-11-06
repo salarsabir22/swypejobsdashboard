@@ -7,6 +7,7 @@ import {
   toAppointmentView,
   type AppointmentRecord,
 } from "@/lib/campus/appointments"
+import { careerOfficeTitle, readStudentCampusMembership } from "@/lib/campus/student-campus"
 
 export const runtime = "nodejs"
 
@@ -15,6 +16,7 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 })
 
+  const membership = await readStudentCampusMembership(supabase, user)
   const admin = createAdminClient()
   const { data, error } = await admin
     .from("campus_appointments")
@@ -23,6 +25,9 @@ export async function GET() {
     .order("starts_at", { ascending: true })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({
+    campusConnected: membership.campusConnected,
+    university: membership.university,
+    careerOffice: careerOfficeTitle(membership.university),
     appointments: ((data || []) as AppointmentRecord[]).map(toAppointmentView),
   })
 }
@@ -31,6 +36,16 @@ export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 })
+
+  const membership = await readStudentCampusMembership(supabase, user)
+  if (!membership.campusConnected || !membership.university) {
+    return NextResponse.json(
+      {
+        error: `Advising is unavailable while your partnership with ${careerOfficeTitle(membership.university)} is paused.`,
+      },
+      { status: 403 }
+    )
+  }
 
   const body = (await request.json().catch(() => null)) as { topic?: string; note?: string; starts_at?: string } | null
   if (!body?.topic?.trim() || !body.starts_at) {
@@ -42,10 +57,9 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient()
-  const { data: student } = await admin.from("student_profiles").select("university").eq("id", user.id).maybeSingle()
   const { error } = await admin.from("campus_appointments").insert({
     student_id: user.id,
-    university: student?.university || "",
+    university: membership.university,
     kind: appointmentKind(body.topic, body.note),
     starts_at: startsAt.toISOString(),
     status: "booked",

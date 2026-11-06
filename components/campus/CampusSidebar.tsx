@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { ChevronDown } from "lucide-react"
 import { campusNavForRole, campusPathActive, type CampusNavItem } from "@/lib/campus/nav"
+import { withCampusFilters } from "@/lib/campus/range"
 import { cn } from "@/lib/utils"
 
 function itemActive(pathname: string, search: string, item: CampusNavItem) {
@@ -25,9 +26,7 @@ export function CampusSidebar({
 }) {
   const pathname = usePathname()
   const params = useSearchParams()
-  const campus = params.get("campus")
   const search = params.toString()
-  const q = campus ? `?campus=${encodeURIComponent(campus)}` : ""
   const items = useMemo(() => campusNavForRole(staffRole), [staffRole])
   const [open, setOpen] = useState<Record<string, boolean>>({})
 
@@ -37,14 +36,13 @@ export function CampusSidebar({
         const Icon = item.icon
         const active = itemActive(pathname, search, item)
         const expanded = open[item.href] ?? active
-        const href = item.children?.length ? item.children[0].href : item.href
-        const suffix = href.includes("?") ? (campus ? `&campus=${encodeURIComponent(campus)}` : "") : q
+        const href = withCampusFilters(item.children?.length ? item.children[0].href : item.href, params)
 
         return (
           <div key={item.href}>
             <div className="flex items-center gap-0.5">
               <Link
-                href={`${href}${suffix}`}
+                href={href}
                 title={item.label}
                 onClick={onNavigate}
                 aria-current={active && !item.children?.length ? "page" : undefined}
@@ -75,15 +73,10 @@ export function CampusSidebar({
               <ul className="mb-1 ml-4 mt-0.5 space-y-0.5 border-l border-border pl-2">
                 {item.children.map((child) => {
                   const childActive = campusPathActive(pathname, child.href, search)
-                  const childSuffix = child.href.includes("?")
-                    ? campus
-                      ? `&campus=${encodeURIComponent(campus)}`
-                      : ""
-                    : q
                   return (
                     <li key={child.href}>
                       <Link
-                        href={`${child.href}${childSuffix}`}
+                        href={withCampusFilters(child.href, params)}
                         onClick={onNavigate}
                         aria-current={childActive ? "page" : undefined}
                         className={cn(

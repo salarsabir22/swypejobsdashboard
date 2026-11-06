@@ -49,6 +49,7 @@ export const CAMPUS_NAV: CampusNavItem[] = [
     children: [
       { href: "/campus/people?kind=students", label: "Students", capability: "view_actions" },
       { href: "/campus/people?kind=alumni", label: "Alumni", capability: "view_actions" },
+      { href: "/campus/people/groups", label: "Groups", capability: "view_actions" },
       { href: "/campus/employers", label: "Employers", capability: "view_actions" },
     ],
   },

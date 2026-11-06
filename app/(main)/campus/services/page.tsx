@@ -1,13 +1,13 @@
-import { campusPageData } from "@/lib/campus/page-data"
+import { loadCampusPage } from "@/lib/campus/page-data"
 import { canCampus } from "@/lib/campus/rbac"
 import { createClient } from "@/lib/supabase/server"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { AppointmentDesk } from "@/components/campus/AppointmentDesk"
+import { InterviewsTodayPanel } from "@/components/campus/InterviewsTodayPanel"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 
-export default async function CampusServicesPage({ searchParams }: { searchParams: Promise<{ campus?: string }> }) {
-  const { campus } = await searchParams
-  const snapshot = await campusPageData(campus, "view_advising")
+export default async function CampusServicesPage({ searchParams }: { searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }> }) {
+  const { snapshot } = await loadCampusPage(searchParams, "view_advising")
   const university = snapshot.access.university
   const supabase = await createClient()
 
@@ -21,8 +21,11 @@ export default async function CampusServicesPage({ searchParams }: { searchParam
     <CampusFrame
       snapshot={snapshot}
       title="Mentorship & career services"
-      description="Alumni mentorship, career surveys for HEC/NBEAC, and CDC advising appointments. Confirming a slot notifies the student."
+      description="Alumni mentorship, career surveys for HEC/NBEAC, CDC advising, and today’s employer interviews with your students."
     >
+      <DashboardPanel title="Interviews today">
+        <InterviewsTodayPanel />
+      </DashboardPanel>
       <DashboardPanel title="Advising appointments">
         <AppointmentDesk canMutate={canCampus(snapshot.access, "mutate")} />
       </DashboardPanel>
