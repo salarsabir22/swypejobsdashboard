@@ -31,33 +31,28 @@ export function NudgeForm({
       return
     }
     setBusy(true)
-    const supabase = createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    const rows = students.slice(0, 80).map((s) => ({
-      user_id: s.id,
-      type: "campus_nudge",
-      title,
-      body,
-      data: { university, source: "career_office" },
-    }))
-    const { error } = await supabase.from("notifications").insert(rows)
-    if (!error) {
-      await supabase.from("campus_nudges").insert({
+    const res = await fetch("/api/campus/nudges", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         university,
-        created_by: user?.id || null,
-        segment: defaultTitle,
         title,
-        body,
-      })
-    }
+        message: body,
+        segment: defaultTitle,
+        studentIds: students.slice(0, 80).map((s) => s.id),
+      }),
+    })
+    const payload = (await res.json().catch(() => null)) as { error?: string; sent?: number } | null
     setBusy(false)
-    if (error) {
-      toast({ variant: "destructive", title: "Could not send", description: error.message })
+    if (!res.ok) {
+      toast({
+        variant: "destructive",
+        title: "Could not send",
+        description: payload?.error || "Try again.",
+      })
       return
     }
-    toast({ title: `Sent to ${rows.length} students` })
+    toast({ title: `Sent to ${payload?.sent || Math.min(students.length, 80)} students` })
   }
 
   return (
