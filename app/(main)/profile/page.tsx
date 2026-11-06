@@ -18,7 +18,6 @@ import { formatDate } from "@/lib/utils"
 import Link from "next/link"
 import { ProfileVideoBlock } from "@/components/profile/ProfileVideoBlock"
 import { ShareButton } from "@/components/share/ShareButton"
-import { SavedJobActions } from "@/components/saved/SavedJobActions"
 import { CompletenessCard } from "@/components/profile/CompletenessCard"
 import { ProfileHero } from "@/components/profile/ProfileHero"
 import { recruiterCompleteness, studentCompleteness } from "@/lib/profile/completeness"
@@ -510,32 +509,42 @@ export default async function ProfilePage() {
               </Card>
 
               <Card id="saved" className="shadow-sm">
-                <CardContent className="space-y-4 p-5">
-                  <h2 className="font-data text-[10px] uppercase tracking-wide text-muted-foreground">Saved roles</h2>
+                <CardContent className="space-y-3 p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="font-data text-[10px] uppercase tracking-wide text-muted-foreground">Saved roles</h2>
+                    <Button asChild variant="outline" size="sm" className="rounded-full">
+                      <Link href="/saved">Open saved</Link>
+                    </Button>
+                  </div>
                   {savedRows.length === 0 ? (
-                    <p className="font-body text-sm text-muted-foreground">No bookmarks. Apply or pass in Discover.</p>
+                    <p className="font-body text-sm text-muted-foreground">No bookmarks yet. Save roles from Discover.</p>
                   ) : (
-                    savedRows.map((row: any) => {
-                      const job = Array.isArray(row.jobs) ? row.jobs[0] : row.jobs
-                      if (!job) return null
-                      const company = Array.isArray(job.recruiter_profiles) ? job.recruiter_profiles[0] : job.recruiter_profiles
-                      return (
-                        <div key={row.id} className="rounded-xl border border-border p-3">
-                          <p className="font-heading text-sm font-semibold">{job.title}</p>
-                          <p className="text-xs text-muted-foreground">{company?.company_name}</p>
-                          <div className="mt-2">
-                            <SavedJobActions
-                              swipeId={row.id}
-                              jobId={job.id}
-                              jobTitle={job.title}
-                              userId={user.id}
-                              isActive={job.is_active}
-                            />
-                          </div>
-                        </div>
-                      )
-                    })
+                    <ul className="space-y-2">
+                      {savedRows.slice(0, 3).map((row: any) => {
+                        const job = Array.isArray(row.jobs) ? row.jobs[0] : row.jobs
+                        if (!job) return null
+                        const company = Array.isArray(job.recruiter_profiles)
+                          ? job.recruiter_profiles[0]
+                          : job.recruiter_profiles
+                        return (
+                          <li key={row.id} className="flex items-center justify-between gap-2 text-sm">
+                            <Link href={`/jobs/${job.id}`} className="min-w-0 truncate hover:underline">
+                              {job.title}
+                              <span className="text-muted-foreground">
+                                {" "}
+                                · {company?.company_name || "Employer"}
+                              </span>
+                            </Link>
+                          </li>
+                        )
+                      })}
+                    </ul>
                   )}
+                  {savedRows.length > 3 ? (
+                    <Button asChild variant="link" className="h-auto p-0 text-primary">
+                      <Link href="/saved">View all {savedRows.length} saved roles</Link>
+                    </Button>
+                  ) : null}
                 </CardContent>
               </Card>
             </>

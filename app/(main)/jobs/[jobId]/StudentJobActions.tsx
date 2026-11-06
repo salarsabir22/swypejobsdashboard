@@ -120,11 +120,16 @@ export function StudentJobActions({
       <Card className="border-border bg-muted/30 shadow-none">
         <CardContent className="space-y-3 p-5">
           <CardDescription className="text-foreground/90">
-            Saved for later. Find it from Discover or your dashboard.
+            Saved for later. Open Saved roles when you’re ready to apply.
           </CardDescription>
-          <Button variant="link" className="h-auto p-0 text-primary" asChild>
-            <Link href="/discover">Back to Discover</Link>
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="link" className="h-auto p-0 text-primary" asChild>
+              <Link href="/saved">View saved roles</Link>
+            </Button>
+            <Button variant="link" className="h-auto p-0 text-muted-foreground" asChild>
+              <Link href="/discover">Back to Discover</Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     )

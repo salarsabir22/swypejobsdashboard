@@ -47,7 +47,7 @@ export const studentMoreLinks: MoreLink[] = [
   { href: "/announcements", label: "Announcements", icon: MessageSquareText },
   { href: "/community", label: "Community", icon: Users },
   { href: "/profile", label: "Profile", icon: User },
-  { href: "/profile#saved", label: "Saved roles", icon: Bookmark },
+  { href: "/saved", label: "Saved roles", icon: Bookmark },
   { href: "/help", label: "Help", icon: CircleHelp },
   { href: "/feedback", label: "Feedback", icon: MessageSquareText },
 ]
@@ -81,7 +81,7 @@ export const studentNavGroups: NavGroup[] = [
       { href: "/resume", label: "Resume", icon: FileText },
       { href: "/discover", label: "Discover", icon: Layers },
       { href: "/internships", label: "Internships", icon: GraduationCap },
-      { href: "/profile#saved", label: "Saved roles", icon: Bookmark },
+      { href: "/saved", label: "Saved roles", icon: Bookmark },
       { href: "/profile", label: "Profile", icon: User },
     ],
   },

@@ -153,19 +153,27 @@ export async function StudentMatchesView({ userId }: { userId: string }) {
             <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Your pipeline</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap items-end gap-x-6 gap-y-4">
-            {[
-              { label: "Applied", value: appliedCount },
-              { label: "Saved", value: savedCount },
-              { label: "Viewed", value: statusCounts.Viewed },
-              { label: "Chatting", value: statusCounts.Chatting },
-              { label: "Shortlisted", value: statusCounts.Shortlisted },
-              { label: "Interview", value: statusCounts.Interview },
-              { label: "Offer", value: statusCounts.Offer },
-              { label: "Hired", value: statusCounts.Hired },
-            ].map(({ label, value }) => (
+            {(
+              [
+                { label: "Applied", value: appliedCount },
+                { label: "Saved", value: savedCount, href: "/saved" },
+                { label: "Viewed", value: statusCounts.Viewed },
+                { label: "Chatting", value: statusCounts.Chatting },
+                { label: "Shortlisted", value: statusCounts.Shortlisted },
+                { label: "Interview", value: statusCounts.Interview },
+                { label: "Offer", value: statusCounts.Offer },
+                { label: "Hired", value: statusCounts.Hired },
+              ] as Array<{ label: string; value: number; href?: string }>
+            ).map(({ label, value, href }) => (
               <div key={label} className="min-w-[4.5rem]">
                 <p className="font-heading text-lg font-semibold tabular-nums text-foreground">{value}</p>
-                <p className="font-body mt-0.5 text-[11px] text-muted-foreground">{label}</p>
+                {href ? (
+                  <Link href={href} className="font-body mt-0.5 text-[11px] text-primary hover:underline">
+                    {label}
+                  </Link>
+                ) : (
+                  <p className="font-body mt-0.5 text-[11px] text-muted-foreground">{label}</p>
+                )}
               </div>
             ))}
           </CardContent>

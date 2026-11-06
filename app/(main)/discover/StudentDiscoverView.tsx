@@ -480,7 +480,7 @@ export function StudentDiscoverView({
         }
       } else if (direction === "saved") {
         setSessionSaved((n) => n + 1)
-        toast({ title: "Saved", description: "Find it later on your profile." })
+        toast({ title: "Saved", description: "Open Saved roles anytime to apply." })
       } else {
         setSessionPassed((n) => n + 1)
       }
