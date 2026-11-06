@@ -18,9 +18,6 @@ export default function IobmLayout({ children }: { children: React.ReactNode }) 
         </Link>
       </header>
       <main className="flex flex-1 items-center justify-center px-4 py-6">{children}</main>
-      <footer className="px-4 py-4 text-center text-[11px] text-[#5C6370]">
-        IoBM × swypejobs · Career Development Center · Korangi Creek, Karachi
-      </footer>
     </div>
   )
 }

@@ -60,12 +60,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="flex flex-1 flex-col items-center justify-center px-5 py-10 sm:px-8">
           <div className="w-full max-w-[420px]">{children}</div>
         </div>
-
-        <footer className="shrink-0 px-5 py-6 sm:px-8">
-          <p className="text-center text-[12px] text-muted-foreground lg:text-right">
-            © {new Date().getFullYear()} swypejobs
-          </p>
-        </footer>
       </div>
     </div>
   )

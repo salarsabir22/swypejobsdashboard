@@ -11,7 +11,6 @@ import { CoBrand } from "@/components/sso/CoBrand"
 import { CampusSearch } from "@/components/campus/CampusSearch"
 import { AppSidebar } from "@/components/nav/AppSidebar"
 import { AppBottomNav } from "@/components/nav/AppBottomNav"
-import { AppFooter } from "@/components/nav/AppFooter"
 import { AppMain } from "@/components/nav/AppMain"
 import { NotificationBell } from "@/components/nav/NotificationBell"
 import { ShareProfileMenuItem } from "@/components/share/ShareButton"
@@ -285,7 +284,6 @@ export function AppChrome({ user, children }: { user: AppShellUser; children: Re
 
       <main id="main-content" className="min-w-0 pt-16 lg:pl-[var(--app-sidebar-width)]">
         <AppMain>{children}</AppMain>
-        {user.role !== "university" ? <AppFooter role={user.role} /> : null}
       </main>
       <AppBottomNav role={user.role} />
     </div>
