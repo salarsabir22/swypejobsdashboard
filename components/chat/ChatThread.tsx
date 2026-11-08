@@ -359,8 +359,8 @@ export function ChatThread({
         .from("messages")
         .select(MESSAGE_COLS)
         .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true })
-        .limit(300)
+        .order("created_at", { ascending: false })
+        .limit(80)
 
       if (cancelled) return
       if (loadError) {
@@ -368,20 +368,20 @@ export function ChatThread({
           .from("messages")
           .select("id, conversation_id, sender_id, content, is_read, created_at, message_type, media_url, duration_seconds")
           .eq("conversation_id", conversationId)
-          .order("created_at", { ascending: true })
-          .limit(300)
+          .order("created_at", { ascending: false })
+          .limit(80)
         if (cancelled) return
         if (fallback.error) {
           setError("Could not load messages.")
           setLoading(false)
           return
         }
-        setMessages((fallback.data as ChatMessageRow[]) ?? [])
+        setMessages((((fallback.data as ChatMessageRow[]) ?? []) as ChatMessageRow[]).slice().reverse())
         setLoading(false)
         await markRead()
         return
       }
-      setMessages((data as ChatMessageRow[]) ?? [])
+      setMessages((((data as ChatMessageRow[]) ?? []) as ChatMessageRow[]).slice().reverse())
       setLoading(false)
       await markRead()
     }

@@ -37,6 +37,7 @@ export default function NotificationsPage() {
         .from("notifications")
         .select("*")
         .order("created_at", { ascending: false })
+        .limit(50)
 
       try {
         const res = await fetch("/api/chat/unread")

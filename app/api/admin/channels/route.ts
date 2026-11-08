@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     if ("error" in auth && auth.error) return auth.error
 
     const body = (await request.json().catch(() => null)) as {
-      action?: "create_channel" | "delete_channel" | "remove_member"
+      action?: "create_channel" | "delete_channel" | "remove_member" | "list_members"
       channelId?: string
       userId?: string
       name?: string
@@ -46,6 +46,16 @@ export async function POST(request: Request) {
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
       await writeAudit(admin, user!.id, "delete_channel", "community_channel", channelId)
       return NextResponse.json({ ok: true })
+    }
+
+    if (body?.action === "list_members") {
+      const { data, error } = await admin
+        .from("channel_members")
+        .select("user_id")
+        .eq("channel_id", channelId)
+        .limit(200)
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json({ ok: true, members: data || [] })
     }
 
     if (body?.action === "remove_member") {

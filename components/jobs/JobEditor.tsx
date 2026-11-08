@@ -144,9 +144,8 @@ export function JobEditor({ job }: { job?: Job }) {
     if (distributionScope === "partner_universities" && allowedTargets.length) {
       const { data: partners } = await supabase
         .from("campus_employer_partners")
-        .select("university, status")
+        .select("university")
         .eq("recruiter_id", user!.id)
-        .eq("status", "active")
       const activeCampuses = (partners || []).map((row) => row.university).filter(Boolean)
       allowedTargets = allowedTargets.filter((name) =>
         activeCampuses.some((campus) => sameCampus(campus, name))

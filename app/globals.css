@@ -758,29 +758,10 @@ body {
   color: var(--foreground);
 }
 
-/* Logo font: Bagoss Condensed is commercial. Add licensed files to public/fonts/ to enable it;
-   until then the stack falls back to Outfit. */
-@font-face {
-  font-family: "BagossCondensedFont";
-  src:
-    url("/fonts/BagossCondensed-Bold.woff2") format("woff2"),
-    url("/fonts/BagossCondensed-Bold.woff") format("woff"),
-    url("/fonts/BagossCondensed-Bold.otf") format("opentype"),
-    url("/fonts/BagossCondensed-Bold.ttf") format("truetype");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "BagossCondensedFont Fallback";
-  src: local("Arial");
-  size-adjust: 92%;
-  ascent-override: 92%;
-  descent-override: 24%;
-  line-gap-override: 0%;
-}
+/* Logo: Bagoss Condensed is commercial and not bundled — use Outfit to avoid 404 font fetches. */
 .lp-logo-font {
-  font-family: "BagossCondensedFont", var(--font-outfit), "BagossCondensedFont Fallback", Arial, Helvetica, sans-serif;
+  font-family: var(--font-outfit), Arial, Helvetica, sans-serif;
+  font-weight: 700;
 }
 
 .lp-grid {

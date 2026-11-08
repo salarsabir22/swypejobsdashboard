@@ -13,11 +13,11 @@ import {
   UserRound,
   Users,
 } from "lucide-react"
-import { campusReportData } from "@/lib/campus/page-data"
-import { canCampus } from "@/lib/campus/rbac"
+import { loadCampusSnapshot } from "@/lib/campus/metrics"
+import { canCampus, requireCampusCapability, scopedCampus } from "@/lib/campus/rbac"
 import { campusQueryHref } from "@/lib/campus/reports"
 import { fmtNum, fmtSourced, pctChange } from "@/lib/campus/format"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { CampusHomeKpi } from "@/components/campus/CampusHomeKpi"
 import { CampusHomeToolbar } from "@/components/campus/CampusHomeToolbar"
@@ -41,23 +41,27 @@ export default async function CampusHomePage({
 }: {
   searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }>
 }) {
-  const snapshot = await campusReportData(searchParams, "view_home")
+  const params = await searchParams
+  const access = await requireCampusCapability("view_home")
+  const uni = scopedCampus(access, params.campus)
+  const admin = createAdminClient()
+
+  const [snapshot, reviewsRes, invitesRes] = await Promise.all([
+    loadCampusSnapshot(access, uni, params.range, { from: params.from, to: params.to }),
+    admin.from("campus_job_reviews").select("job_id, university, status").limit(200),
+    uni
+      ? admin.from("employer_invitations").select("id, status").eq("university", uni).eq("status", "pending")
+      : admin.from("employer_invitations").select("id, status").eq("status", "pending").limit(80),
+  ])
+  const reviews = reviewsRes.data
+  const invites = invitesRes.data
   const canExport = canCampus(snapshot.access, "export")
   const canAct = canCampus(snapshot.access, "view_actions")
-  const uni = snapshot.access.university
-  const supabase = await createClient()
-
-  const [{ data: reviews }, { data: partners }] = await Promise.all([
-    supabase.from("campus_job_reviews").select("job_id, university, status").limit(200),
-    uni
-      ? supabase.from("campus_employer_partners").select("id, status").eq("university", uni)
-      : supabase.from("campus_employer_partners").select("id, status").limit(80),
-  ])
 
   const pendingJobs = (reviews || []).filter(
     (row) => (!uni || row.university === uni) && (row.status === "pending" || !row.status || row.status === "held")
   ).length
-  const pendingEmployers = (partners || []).filter((row) => row.status === "pending").length
+  const pendingEmployers = (invites || []).length
   const atRisk = snapshot.engagement.atRiskDepartments.length
   const jobPosts = snapshot.market.dailyJobPosts.reduce((sum, row) => sum + row.value, 0)
   const slice = snapshot.outcomes.slices.find((row) => row.checkpoint === "graduation") || snapshot.outcomes.slices[0]
@@ -161,7 +165,7 @@ export default async function CampusHomePage({
       copy:
         appsDelta == null
           ? `${fmtNum(snapshot.engagement.applicants)} applicants in ${windowLabel}`
-          : `${appsDelta > 0 ? "+" : ""}${appsDelta}% vs the first half of this window · ${fmtNum(snapshot.engagement.applicants)} applicants`,
+          : `${appsDelta > 0 ? "+" : ""}${appsDelta}% vs the prior days in this window · ${fmtNum(snapshot.engagement.applicants)} applicants`,
     },
     {
       icon: Handshake,

@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Filter, Search, X } from "lucide-react"
 import { employerIndustryOptions, employerSizeOptions } from "@/lib/campus/employer-directory"
+import { CampusFilterPendingBadge, useCampusFilterNav } from "@/components/campus/CampusFilterPending"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,9 +13,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 const KEEP_KEYS = ["campus", "range", "from", "to"] as const
 
 export function EmployerDirectoryFilters() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const params = useSearchParams()
+  const { pending, pathname, params, navigate } = useCampusFilterNav()
   const industries = useMemo(() => employerIndustryOptions(), [])
   const sizes = useMemo(() => employerSizeOptions(), [])
 
@@ -77,7 +75,7 @@ export function EmployerDirectoryFilters() {
   function apply(overrides?: Record<string, string | null>) {
     const next = buildQuery(overrides)
     setOpen(false)
-    router.push(next.toString() ? `${pathname}?${next.toString()}` : pathname)
+    navigate(next.toString() ? `${pathname}?${next.toString()}` : pathname)
   }
 
   function clearFilters() {
@@ -92,7 +90,7 @@ export function EmployerDirectoryFilters() {
       const value = params.get(key)
       if (value) next.set(key, value)
     }
-    router.push(next.toString() ? `${pathname}?${next.toString()}` : pathname)
+    navigate(next.toString() ? `${pathname}?${next.toString()}` : pathname)
   }
 
   const filterFields = (
@@ -180,7 +178,7 @@ export function EmployerDirectoryFilters() {
   )
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" aria-busy={pending || undefined}>
       <form
         className="flex flex-wrap items-center gap-2"
         onSubmit={(e) => {
@@ -198,9 +196,10 @@ export function EmployerDirectoryFilters() {
             aria-label="Search by company name"
           />
         </div>
-        <Button type="submit" size="sm" className="rounded-full">
+        <Button type="submit" size="sm" className="rounded-full" loading={pending} loadingText="Updating…">
           Search
         </Button>
+        <CampusFilterPendingBadge pending={pending} />
 
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -224,7 +223,7 @@ export function EmployerDirectoryFilters() {
               <Button type="button" variant="ghost" className="rounded-full" onClick={clearFilters}>
                 Clear all
               </Button>
-              <Button type="button" className="rounded-full" onClick={() => apply()}>
+              <Button type="button" className="rounded-full" loading={pending} loadingText="Updating…" onClick={() => apply()}>
                 Apply filters
               </Button>
             </SheetFooter>

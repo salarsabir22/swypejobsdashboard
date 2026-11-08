@@ -22,11 +22,16 @@ export function fmtSourced(row: SourcedNumber, kind: "pct" | "num" = "num") {
   return kind === "pct" ? fmtPct(row.value) : fmtNum(row.value)
 }
 
+/** Compare the latest window slice to the prior equal slice (prefer ~7 days). */
 export function pctChange(series: number[]) {
-  if (series.length < 2) return null
-  const mid = Math.max(1, Math.floor(series.length / 2))
-  const prev = series.slice(0, mid).reduce((sum, n) => sum + n, 0)
-  const next = series.slice(mid).reduce((sum, n) => sum + n, 0)
+  if (series.length < 4) return null
+  const slice = Math.max(2, Math.min(7, Math.floor(series.length / 2)))
+  if (series.length < slice * 2) return null
+  const next = series.slice(-slice).reduce((sum, n) => sum + n, 0)
+  const prev = series.slice(-slice * 2, -slice).reduce((sum, n) => sum + n, 0)
   if (prev <= 0) return null
+  const total = prev + next
+  // One-sided windows (almost all volume in one slice) read as fake trends.
+  if (total > 0 && (prev / total < 0.15 || next / total < 0.15)) return null
   return Math.round(((next - prev) / prev) * 100)
 }

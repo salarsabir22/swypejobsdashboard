@@ -29,20 +29,29 @@ export default async function CommunityPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: channels } = await supabase
-    .from("community_channels")
-    .select("*, channel_members(user_id)")
-    .order("name")
-
-  const { data: memberships } = await supabase.from("channel_members").select("channel_id").eq("user_id", user.id)
+  const [{ data: channels }, { data: memberships }, { data: memberRows }] = await Promise.all([
+    supabase.from("community_channels").select("id, name, slug, category, description").order("name").limit(80),
+    supabase.from("channel_members").select("channel_id").eq("user_id", user.id).limit(80),
+    supabase.from("channel_members").select("channel_id").limit(2000),
+  ])
 
   const joinedIds = new Set(memberships?.map((m) => m.channel_id) || [])
+  const memberCountByChannel = new Map<string, number>()
+  for (const row of memberRows || []) {
+    const id = row.channel_id as string
+    memberCountByChannel.set(id, (memberCountByChannel.get(id) || 0) + 1)
+  }
 
-  const totalMembers = (channels || []).reduce((sum, ch) => sum + (ch.channel_members?.length || 0), 0)
+  const totalMembers = [...memberCountByChannel.values()].reduce((sum, n) => sum + n, 0)
   const joinedCount = joinedIds.size
 
-  type Ch = NonNullable<typeof channels>[number]
-  const byCategory = (channels || []).reduce((acc: Record<string, Ch[]>, ch) => {
+  type Ch = NonNullable<typeof channels>[number] & { memberCount: number }
+  const withCounts: Ch[] = (channels || []).map((ch) => ({
+    ...ch,
+    memberCount: memberCountByChannel.get(ch.id) || 0,
+  }))
+
+  const byCategory = withCounts.reduce((acc: Record<string, Ch[]>, ch) => {
     const cat = ch.category || "general"
     if (!acc[cat]) acc[cat] = []
     acc[cat].push(ch)
@@ -50,13 +59,13 @@ export default async function CommunityPage() {
   }, {})
 
   for (const cat of Object.keys(byCategory)) {
-    byCategory[cat].sort((a, b) => (b.channel_members?.length || 0) - (a.channel_members?.length || 0))
+    byCategory[cat].sort((a, b) => b.memberCount - a.memberCount)
   }
 
   const categoryCount = Object.keys(byCategory).length
-  const allSorted = (channels || []).slice().sort((a, b) => (b.channel_members?.length || 0) - (a.channel_members?.length || 0))
+  const allSorted = withCounts.slice().sort((a, b) => b.memberCount - a.memberCount)
   const topChannel = allSorted[0]
-  const channelTotal = channels?.length || 0
+  const channelTotal = withCounts.length
 
   return (
     <div className="space-y-10">
@@ -95,7 +104,7 @@ export default async function CommunityPage() {
         />
       ) : null}
 
-      {topChannel && (topChannel.channel_members?.length || 0) > 1 ? (
+      {topChannel && topChannel.memberCount > 1 ? (
         <Link href={`/community/${topChannel.id}`} className="block">
           <Card className="overflow-hidden border-border shadow-sm transition-colors hover:border-border">
             <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4">
@@ -111,7 +120,7 @@ export default async function CommunityPage() {
               </div>
               <div className="flex items-center gap-1.5 font-data text-xs text-muted-foreground sm:shrink-0">
                 <Users className="h-3.5 w-3.5" />
-                {topChannel.channel_members?.length || 0} members
+                {topChannel.memberCount} members
               </div>
             </CardContent>
           </Card>
@@ -136,7 +145,7 @@ export default async function CommunityPage() {
 
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
               {chans.map((channel) => {
-                const memberCount = channel.channel_members?.length || 0
+                const memberCount = channel.memberCount
                 const isJoined = joinedIds.has(channel.id)
                 const isPopular = memberCount >= 5
 

@@ -1,9 +1,14 @@
+import dynamic from "next/dynamic"
 import { createClient } from "@/lib/supabase/server"
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Users } from "lucide-react"
-import { ChannelChat } from "@/components/community/ChannelChat"
 import { JoinChannelButton } from "./JoinChannelButton"
+import { ChannelChatSkeleton } from "@/components/skeletons"
+
+const ChannelChat = dynamic(() => import("@/components/community/ChannelChat").then((m) => m.ChannelChat), {
+  loading: () => <ChannelChatSkeleton />,
+})
 
 export default async function ChannelPage({ params }: { params: Promise<{ channelId: string }> }) {
   const { channelId } = await params
@@ -13,19 +18,25 @@ export default async function ChannelPage({ params }: { params: Promise<{ channe
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: channel } = await supabase.from("community_channels").select("*").eq("id", channelId).single()
+  const { data: channel } = await supabase
+    .from("community_channels")
+    .select("id, name, description")
+    .eq("id", channelId)
+    .single()
   if (!channel) notFound()
 
-  const { data: membership } = await supabase
-    .from("channel_members")
-    .select("user_id")
-    .eq("channel_id", channelId)
-    .eq("user_id", user.id)
-    .maybeSingle()
-  const { count: memberCount } = await supabase
-    .from("channel_members")
-    .select("*", { count: "exact", head: true })
-    .eq("channel_id", channelId)
+  const [{ data: membership }, { count: memberCount }] = await Promise.all([
+    supabase
+      .from("channel_members")
+      .select("user_id")
+      .eq("channel_id", channelId)
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("channel_members")
+      .select("user_id", { count: "exact", head: true })
+      .eq("channel_id", channelId),
+  ])
   const isMember = !!membership
 
   return (

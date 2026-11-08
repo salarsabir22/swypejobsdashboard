@@ -41,7 +41,7 @@ export function ProfilePosts({
     const supabase = createClient()
     const { posts: rows, missing: tableMissing } = await fetchFeedPosts(supabase, {
       authorId: profileUserId,
-      limit: 40,
+      limit: 12,
     })
     setMissing(tableMissing)
     setPosts(rows)

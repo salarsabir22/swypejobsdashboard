@@ -15,19 +15,21 @@ export default async function AnnouncementsPage() {
 
   const student = await readStudentCampusMembership(supabase, user)
   const campusConnected = student.campusConnected !== false
-  const { data, error } = await supabase
-    .from("campus_announcements")
-    .select("id, title, body, audience, requires_ack, expires_at, created_at, university")
-    .order("created_at", { ascending: false })
-    .limit(50)
+  const [{ data, error }, acksRes] = await Promise.all([
+    supabase
+      .from("campus_announcements")
+      .select("id, title, body, audience, requires_ack, expires_at, created_at, university")
+      .order("created_at", { ascending: false })
+      .limit(40),
+    supabase.from("announcement_acks").select("announcement_id").eq("user_id", user.id).limit(100),
+  ])
   const viewerGroup = student.isAlumni ? "alumni" : "students"
   const rows = (error || !campusConnected ? [] : data || []).filter((row) => {
     if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return false
     if (!belongsToCampus(row.university, student.university)) return false
     return announcementTargetsGroup(row.audience, viewerGroup)
   })
-  const { data: acks } = await supabase.from("announcement_acks").select("announcement_id").eq("user_id", user.id)
-  const done = new Set((acks || []).map((a) => a.announcement_id))
+  const done = new Set((acksRes.data || []).map((a) => a.announcement_id))
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">

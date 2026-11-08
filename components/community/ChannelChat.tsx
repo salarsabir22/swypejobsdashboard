@@ -26,11 +26,12 @@ export function ChannelChat({ channelId, currentUserId }: ChannelChatProps) {
   async function loadMessages() {
     const { data } = await supabase
       .from("channel_messages")
-      .select("*, profiles(id, full_name, avatar_url)")
+      .select("id, channel_id, sender_id, content, created_at, profiles(id, full_name, avatar_url)")
       .eq("channel_id", channelId)
-      .order("created_at", { ascending: true })
-      .limit(100)
-    setMessages((data as unknown as ChannelMessage[]) || [])
+      .order("created_at", { ascending: false })
+      .limit(50)
+    const rows = ((data as unknown as ChannelMessage[]) || []).slice().reverse()
+    setMessages(rows)
     setLoading(false)
   }
 
@@ -51,7 +52,7 @@ export function ChannelChat({ channelId, currentUserId }: ChannelChatProps) {
         async (payload) => {
           const { data: msgWithProfile } = await supabase
             .from("channel_messages")
-            .select("*, profiles(id, full_name, avatar_url)")
+            .select("id, channel_id, sender_id, content, created_at, profiles(id, full_name, avatar_url)")
             .eq("id", payload.new.id)
             .single()
           if (msgWithProfile) {
@@ -92,7 +93,7 @@ export function ChannelChat({ channelId, currentUserId }: ChannelChatProps) {
     const { data, error } = await supabase
       .from("channel_messages")
       .insert({ channel_id: channelId, sender_id: currentUserId, content })
-      .select("*, profiles(id, full_name, avatar_url)")
+      .select("id, channel_id, sender_id, content, created_at, profiles(id, full_name, avatar_url)")
       .single()
 
     if (error) {

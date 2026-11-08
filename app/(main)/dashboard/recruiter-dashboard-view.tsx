@@ -53,6 +53,7 @@ export async function RecruiterDashboardView({ userId, fullName }: { userId: str
   const since7 = sevenDaysAgo.toISOString()
   const since14 = fourteenDaysAgo.toISOString()
 
+  // Wave 1: jobs + profile + match scans (head counts stay exact; pipeline capped for stages).
   const [jobsRes, matchesRes, shortlistedRes, companyRes, profileRes, pipelineRes, recentMatchesRes, matchTimelineRes] =
     await Promise.all([
       supabase
@@ -69,14 +70,14 @@ export async function RecruiterDashboardView({ userId, fullName }: { userId: str
         .eq("id", userId)
         .maybeSingle(),
       supabase.from("profiles").select("profile_video_url").eq("id", userId).maybeSingle(),
-      supabase.from("matches").select("pipeline_status, is_archived").eq("recruiter_id", userId).limit(400),
+      supabase.from("matches").select("pipeline_status, is_archived").eq("recruiter_id", userId).limit(300),
       supabase
         .from("matches")
         .select("id, created_at, profiles!matches_student_id_fkey(full_name, avatar_url), jobs(title), conversations(id)")
         .eq("recruiter_id", userId)
         .order("created_at", { ascending: false })
         .limit(8),
-      supabase.from("matches").select("created_at").eq("recruiter_id", userId).gte("created_at", since).limit(400),
+      supabase.from("matches").select("created_at").eq("recruiter_id", userId).gte("created_at", since).limit(300),
     ])
 
   const jobs = (jobsRes.data || []) as JobRow[]
@@ -84,7 +85,7 @@ export async function RecruiterDashboardView({ userId, fullName }: { userId: str
 
   const [applicationsRes, appTimelineRes, jobViewsRes] = await Promise.all([
     jobIds.length > 0
-      ? supabase.from("job_swipes").select("job_id").in("job_id", jobIds).eq("direction", "right").limit(800)
+      ? supabase.from("job_swipes").select("job_id").in("job_id", jobIds).eq("direction", "right").limit(400)
       : Promise.resolve({ data: [] as JobSwipeRow[] }),
     jobIds.length > 0
       ? supabase
@@ -93,10 +94,10 @@ export async function RecruiterDashboardView({ userId, fullName }: { userId: str
           .in("job_id", jobIds)
           .eq("direction", "right")
           .gte("created_at", since)
-          .limit(400)
+          .limit(300)
       : Promise.resolve({ data: [] as CreatedRow[] }),
     jobIds.length > 0
-      ? supabase.from("job_views").select("job_id").in("job_id", jobIds).limit(800)
+      ? supabase.from("job_views").select("job_id").in("job_id", jobIds).limit(400)
       : Promise.resolve({ data: [] as JobViewRow[] }),
   ])
 

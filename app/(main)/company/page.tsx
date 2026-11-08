@@ -17,10 +17,12 @@ export default async function CompanyWorkspacePage() {
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+  const [{ data: profile }, accepted] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+    supabase.rpc("accept_company_invite"),
+  ])
   if (profile?.role !== "recruiter") redirect("/discover")
 
-  const accepted = await supabase.rpc("accept_company_invite")
   const schemaReady = !isCompanySchemaMissing(accepted.error)
 
   const membership = schemaReady
@@ -44,9 +46,14 @@ export default async function CompanyWorkspacePage() {
         .from("company_members")
         .select("user_id, role, hiring_area, profiles(full_name)")
         .eq("company_id", membership.data.company_id)
-        .order("created_at", { ascending: true }),
+        .order("created_at", { ascending: true })
+        .limit(50),
       role === "owner"
-        ? supabase.from("company_invites").select("email, full_name, hiring_area").eq("company_id", membership.data.company_id)
+        ? supabase
+            .from("company_invites")
+            .select("email, full_name, hiring_area")
+            .eq("company_id", membership.data.company_id)
+            .limit(50)
         : Promise.resolve({ data: [] as CompanyInvite[] }),
     ])
     company = (companyRow as CompanyProfile | null) || null

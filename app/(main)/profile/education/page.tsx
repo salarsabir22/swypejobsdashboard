@@ -9,23 +9,32 @@ import { Button } from "@/components/ui/button"
 export default async function EducationHistoryPage() {
   const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login?next=/profile/education")
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+
+  const [{ data: profile }, res] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("student_profiles")
+      .select("academic_history, university, degree, department, graduation_year, cgpa")
+      .eq("id", user.id)
+      .maybeSingle(),
+  ])
   if (profile?.role !== "student") redirect("/profile")
 
-  const res = await supabase.from("student_profiles").select("academic_history, university, degree, department, graduation_year, cgpa").eq("id", user.id).maybeSingle()
   const row = res.error ? null : res.data
   let records = parseAcademicHistory(row?.academic_history)
   if (!records.length && (row?.university || row?.degree)) {
-    records = [{
-      id: "primary",
-      institution: row?.university || "",
-      degree: row?.degree || "",
-      department: row?.department || "",
-      startYear: "",
-      endYear: row?.graduation_year ? String(row.graduation_year) : "",
-      cgpa: row?.cgpa ? String(row.cgpa) : "",
-      current: true,
-    }]
+    records = [
+      {
+        id: "primary",
+        institution: row?.university || "",
+        degree: row?.degree || "",
+        department: row?.department || "",
+        startYear: "",
+        endYear: row?.graduation_year ? String(row.graduation_year) : "",
+        cgpa: row?.cgpa ? String(row.cgpa) : "",
+        current: true,
+      },
+    ]
   }
 
   return (

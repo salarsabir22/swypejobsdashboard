@@ -10,18 +10,18 @@ export default async function CampusPendingPage({ searchParams }: { searchParams
   const university = snapshot.access.university
   const supabase = await createClient()
 
-  const [{ data: reviews }, { data: partners }, { data: rsvps }] = await Promise.all([
+  const [{ data: reviews }, { data: invites }, { data: rsvps }] = await Promise.all([
     supabase.from("campus_job_reviews").select("job_id, university, status").limit(200),
     university
-      ? supabase.from("campus_employer_partners").select("id, status").eq("university", university)
-      : supabase.from("campus_employer_partners").select("id, status").limit(80),
+      ? supabase.from("employer_invitations").select("id, status").eq("university", university).eq("status", "pending")
+      : supabase.from("employer_invitations").select("id, status").eq("status", "pending").limit(80),
     supabase.from("campus_event_rsvps").select("event_id").limit(1),
   ])
 
   const pendingJobs = (reviews || []).filter(
     (row) => (!university || row.university === university) && (row.status === "pending" || !row.status || row.status === "held")
   ).length
-  const pendingEmployers = (partners || []).filter((row) => row.status === "pending").length
+  const pendingEmployers = (invites || []).length
   const attention = snapshot.kpis.needingAttention.value ?? snapshot.attention.length
   const atRisk = snapshot.engagement.atRiskDepartments.length
   const rsvpNote = rsvps === null ? "Event RSVPs aren’t on this workspace yet." : "Open Events to review registrations."

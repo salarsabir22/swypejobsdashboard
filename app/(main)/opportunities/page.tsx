@@ -44,12 +44,14 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
     .select(`${OPPORTUNITY_FIELDS}, university`)
     .eq("is_active", true)
     .order("deadline", { ascending: true })
+    .limit(60)
   const listed = withCampus.error
     ? await supabase
         .from("international_opportunities")
         .select(OPPORTUNITY_FIELDS)
         .eq("is_active", true)
         .order("deadline", { ascending: true })
+        .limit(60)
     : withCampus
   const current = kind || "all"
   const rows = (listed.error ? [] : ((listed.data || []) as OpportunityRow[])).filter((row) => {

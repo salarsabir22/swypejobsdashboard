@@ -119,6 +119,7 @@ export function InterestedCandidatesPanel({
         .eq("job_id", jobId)
         .eq("direction", "right")
         .order("created_at", { ascending: false })
+        .limit(80)
       const applications = applicationsQuery.error
         ? (
             await supabase
@@ -127,6 +128,7 @@ export function InterestedCandidatesPanel({
               .eq("job_id", jobId)
               .eq("direction", "right")
               .order("created_at", { ascending: false })
+              .limit(80)
           ).data
         : applicationsQuery.data
 

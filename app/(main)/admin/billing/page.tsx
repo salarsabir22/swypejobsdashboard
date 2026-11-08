@@ -1,5 +1,5 @@
 import { requireAdminModule } from "@/lib/admin/access"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { AdminFrame } from "@/components/admin/AdminFrame"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
@@ -9,8 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 export default async function AdminBillingPage() {
   const admin = await requireAdminModule("billing")
-  const supabase = await createClient()
-  const { data: rows } = await supabase.from("employer_billing").select("*, recruiter_profiles(company_name)")
+  const supabase = createAdminClient()
+  const { data: rows } = await supabase
+    .from("employer_billing")
+    .select("recruiter_id, plan, status, mrr, recruiter_profiles(company_name)")
+    .order("mrr", { ascending: false })
+    .limit(200)
   const list = rows || []
   const mrr = list.reduce((s, r) => s + Number(r.mrr || 0), 0)
 

@@ -1,7 +1,13 @@
 "use client"
 
-import { ChatThread } from "@/components/chat/ChatThread"
+import dynamic from "next/dynamic"
 import type { ChatPeer } from "@/lib/chat/inbox"
+import { ChatInboxSkeleton } from "@/components/skeletons"
+
+const ChatThread = dynamic(() => import("@/components/chat/ChatThread").then((m) => m.ChatThread), {
+  ssr: false,
+  loading: () => <ChatInboxSkeleton />,
+})
 
 export function MatchChatClient({
   conversationId,

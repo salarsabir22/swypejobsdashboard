@@ -7,12 +7,14 @@ import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 export default async function AdminCompliancePage() {
   const admin = await requireAdminModule("compliance")
   const supabase = await createClient()
-  const { data: legal } = await supabase.from("legal_acceptances").select("document, version").limit(20)
-  const { data: incidents } = await supabase
-    .from("incident_log")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(20)
+  const [{ data: legal }, { data: incidents }] = await Promise.all([
+    supabase.from("legal_acceptances").select("document, version").limit(20),
+    supabase
+      .from("incident_log")
+      .select("id, title, severity, status, created_at")
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ])
 
   return (
     <AdminFrame

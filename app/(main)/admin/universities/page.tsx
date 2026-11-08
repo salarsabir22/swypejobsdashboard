@@ -1,5 +1,5 @@
 import { requireAdminModule } from "@/lib/admin/access"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { AdminFrame } from "@/components/admin/AdminFrame"
 import { UniversityCreateForm } from "@/components/admin/UniversityCreateForm"
 import { UniversityDecision } from "@/components/admin/UniversityDecision"
@@ -9,13 +9,12 @@ import { BreakdownList } from "@/components/campus/BreakdownList"
 
 export default async function AdminUniversitiesPage() {
   const admin = await requireAdminModule("universities")
-  const supabase = await createClient()
-  const { data: orgs, error: orgsError } = await supabase
-    .from("university_orgs")
-    .select("*")
-    .order("created_at", { ascending: false })
-  const { data: students } = await supabase.from("student_profiles").select("university")
-  const { data: staff } = await supabase.from("campus_staff").select("university, staff_role, user_id")
+  const sb = createAdminClient()
+  const [{ data: orgs, error: orgsError }, { data: students }, { data: staff }] = await Promise.all([
+    sb.from("university_orgs").select("id, name, plan, status, domain, ferpa_signed").order("created_at", { ascending: false }).limit(100),
+    sb.from("student_profiles").select("university").not("university", "is", null).limit(2000),
+    sb.from("campus_staff").select("university, staff_role, user_id").limit(500),
+  ])
   const bySchool = countBy((students || []).map((s) => s.university))
 
   return (

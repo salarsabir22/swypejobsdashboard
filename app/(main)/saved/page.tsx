@@ -54,18 +54,21 @@ export default async function SavedJobsPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect("/login?next=/saved")
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+  const [{ data: profile }, savedRes] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("job_swipes")
+      .select(
+        "id, created_at, job_id, jobs(id, title, is_active, job_type, location, is_remote, recruiter_profiles(company_name, logo_url))"
+      )
+      .eq("student_id", user.id)
+      .eq("direction", "saved")
+      .order("created_at", { ascending: false })
+      .limit(60),
+  ])
   if (profile?.role !== "student") redirect("/dashboard")
 
-  const { data } = await supabase
-    .from("job_swipes")
-    .select(
-      "id, created_at, job_id, jobs(id, title, is_active, job_type, location, is_remote, recruiter_profiles(company_name, logo_url))"
-    )
-    .eq("student_id", user.id)
-    .eq("direction", "saved")
-    .order("created_at", { ascending: false })
-    .limit(100)
+  const { data } = savedRes
 
   const rows = (data || []) as SavedRow[]
 

@@ -1,13 +1,17 @@
+import dynamic from "next/dynamic"
 import { createClient } from "@/lib/supabase/server"
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
-import { JobApplyForm } from "@/components/jobs/JobApplyForm"
 import { parseCoverLetters, parseResumeLibrary } from "@/lib/resume/schema"
 import { parseScreeningQuestions } from "@/lib/jobs/screening"
 import { studentEligibility } from "@/lib/jobs/targeting"
 import { deadlinePassed, formatDeadline } from "@/lib/jobs/deadline"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+
+const JobApplyForm = dynamic(() => import("@/components/jobs/JobApplyForm").then((m) => m.JobApplyForm), {
+  loading: () => <p className="text-sm text-muted-foreground" role="status">Loading application form…</p>,
+})
 
 export default async function JobApplyPage({ params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params

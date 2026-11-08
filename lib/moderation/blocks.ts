@@ -5,6 +5,7 @@ export async function getBlockedPeerIds(supabase: SupabaseClient, userId: string
     .from("blocks")
     .select("blocker_id, blocked_id")
     .or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`)
+    .limit(200)
 
   const ids = new Set<string>()
   if (error) return ids

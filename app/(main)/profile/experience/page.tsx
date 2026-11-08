@@ -10,14 +10,12 @@ export default async function ProfileExperiencePage() {
   const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login?next=/profile/experience")
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+  const [{ data: profile }, studentRes] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+    supabase.from("student_profiles").select("work_history, projects, certifications").eq("id", user.id).maybeSingle(),
+  ])
   if (profile?.role !== "student") redirect("/profile")
 
-  const studentRes = await supabase
-    .from("student_profiles")
-    .select("work_history, projects, certifications")
-    .eq("id", user.id)
-    .maybeSingle()
   // Column may not exist until the migration runs; the editor still renders and reports on save.
   const history = parseCareerHistory(studentRes.error ? null : studentRes.data)
 

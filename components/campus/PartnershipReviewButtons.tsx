@@ -10,9 +10,18 @@ export function PartnershipReviewButtons({ id }: { id: string }) {
   const router = useRouter()
   const setStatus = async (status: "active" | "declined") => {
     const supabase = createClient()
-    const { error } = await supabase.from("campus_employer_partners").update({ status, updated_at: new Date().toISOString() }).eq("id", id)
+    const { error } = await supabase
+      .from("campus_employer_partners")
+      .update({
+        notes: status === "active" ? "Approved by CDC" : "Declined by CDC",
+        tier: status === "active" ? "preferred" : "standard",
+      })
+      .eq("id", id)
     if (error) toast({ variant: "destructive", title: "Couldn’t update", description: error.message })
-    else router.refresh()
+    else {
+      toast({ title: status === "active" ? "Employer approved" : "Employer declined" })
+      router.refresh()
+    }
   }
   return (
     <div className="flex flex-wrap gap-2">

@@ -1,5 +1,6 @@
 import { cache } from "react"
-import { createClient } from "@/lib/supabase/server"
+import { unstable_cache } from "next/cache"
+import { createAdminClient } from "@/lib/supabase/admin"
 import type { CampusAccess, CampusSnapshot, OutcomeSlice, AttentionStudent } from "@/lib/campus/types"
 import {
   average,
@@ -17,10 +18,11 @@ import {
 import { inCampusRange, inCampusRangeTail, parseCampusRange, type CampusRangeBounds } from "@/lib/campus/range"
 import { sameCampus } from "@/lib/jobs/curation"
 
-const LIMIT = 800
-const IN_CAP = 400
+const LIMIT = 400
+const IN_CAP = 300
 const OFFER = new Set(["offer", "hired"])
 const INTERVIEW = new Set(["interview", "offer", "hired"])
+const SNAPSHOT_REVALIDATE_SECONDS = 60
 
 type StudentRow = {
   id: string
@@ -73,15 +75,14 @@ function sourced(value: number | null, n: number, source: CampusSnapshot["kpis"]
   return { value, n, source, note }
 }
 
-export const loadCampusSnapshot = cache(async (
+async function buildCampusSnapshot(
   access: CampusAccess,
-  universityFilter?: string | null,
-  rangeId?: string | null,
-  bounds?: CampusRangeBounds | null
-): Promise<CampusSnapshot> => {
-  const supabase = await createClient()
-  const university = universityFilter ?? access.university
-  const period = parseCampusRange(rangeId, bounds || undefined)
+  university: string | null | undefined,
+  period: ReturnType<typeof parseCampusRange>
+): Promise<CampusSnapshot> {
+  // Service role: campus capability already gated by requireCampusCapability.
+  // Avoids cookie/RLS round-trips and enables cross-request caching.
+  const supabase = createAdminClient()
   const missingTables: string[] = []
 
   const uni = university || ""
@@ -601,7 +602,7 @@ export const loadCampusSnapshot = cache(async (
   const employersActive = new Set([...employersPosted, ...employersWithApps]).size
 
   return {
-    access: { ...access, university },
+    access: { ...access, university: university ?? null },
     missingTables: [...new Set(missingTables)],
     period,
     kpis: {
@@ -775,5 +776,46 @@ export const loadCampusSnapshot = cache(async (
     alerts,
     attention,
     alumni,
+  }
+}
+
+export const loadCampusSnapshot = cache(async (
+  access: CampusAccess,
+  universityFilter?: string | null,
+  rangeId?: string | null,
+  bounds?: CampusRangeBounds | null
+): Promise<CampusSnapshot> => {
+  const university = universityFilter ?? access.university
+  const period = parseCampusRange(rangeId, bounds || undefined)
+  const cacheKey = [
+    "campus-snapshot-v3",
+    university || "all",
+    access.staffRole,
+    period.id,
+    period.from || "",
+    period.to || "",
+    String(period.days ?? "all"),
+  ]
+
+  const cached = await unstable_cache(
+    async () =>
+      buildCampusSnapshot(
+        {
+          ...access,
+          // Cache is shared per campus/role/range — not per user id.
+          userId: "campus-cache",
+          university: university || null,
+          universities: university ? [university] : access.universities,
+        },
+        university,
+        period
+      ),
+    cacheKey,
+    { revalidate: SNAPSHOT_REVALIDATE_SECONDS }
+  )()
+
+  return {
+    ...cached,
+    access: { ...access, university: university || access.university },
   }
 })

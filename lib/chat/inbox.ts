@@ -42,6 +42,7 @@ export async function loadInbox(
     .from("conversations")
     .select("id, match_id, created_at, matches(student_id, recruiter_id, jobs(title))")
     .order("created_at", { ascending: false })
+    .limit(40)
 
   if (error || !convos?.length) return []
 
@@ -68,19 +69,25 @@ export async function loadInbox(
 
   if (!parsed.length) return []
 
-  const [{ data: profiles }, { data: messages }, blocked, mutesRes] = await Promise.all([
+  const convoIds = parsed.map((c) => c.id)
+  const [{ data: profiles }, { data: messages }, { data: unreadRows }, blocked, mutesRes] = await Promise.all([
     supabase.from("profiles").select("id, full_name, avatar_url").in("id", [...peerIds]),
+    // Recent messages only — enough to derive last message per thread.
     supabase
       .from("messages")
       .select("id, conversation_id, content, created_at, sender_id, is_read, message_type")
-      .in(
-        "conversation_id",
-        parsed.map((c) => c.id)
-      )
+      .in("conversation_id", convoIds)
       .order("created_at", { ascending: false })
-      .limit(800),
+      .limit(Math.min(200, convoIds.length * 4)),
+    supabase
+      .from("messages")
+      .select("conversation_id")
+      .in("conversation_id", convoIds)
+      .eq("is_read", false)
+      .neq("sender_id", userId)
+      .limit(400),
     getBlockedPeerIds(supabase, userId),
-    supabase.from("conversation_mutes").select("conversation_id").eq("user_id", userId),
+    supabase.from("conversation_mutes").select("conversation_id").eq("user_id", userId).limit(100),
   ])
 
   const mutedIds = new Set((mutesRes.data || []).map((row) => row.conversation_id as string))
@@ -101,9 +108,10 @@ export async function loadInbox(
         message_type: (msg as { message_type?: string | null }).message_type ?? "text",
       })
     }
-    if (!msg.is_read && msg.sender_id !== userId) {
-      unreadByConvo.set(conversationId, (unreadByConvo.get(conversationId) ?? 0) + 1)
-    }
+  }
+  for (const row of unreadRows ?? []) {
+    const conversationId = row.conversation_id as string
+    unreadByConvo.set(conversationId, (unreadByConvo.get(conversationId) ?? 0) + 1)
   }
 
   return parsed

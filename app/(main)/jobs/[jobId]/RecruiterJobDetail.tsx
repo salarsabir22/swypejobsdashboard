@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { ArrowLeft, Pencil } from "lucide-react"
@@ -14,6 +15,7 @@ import { JobToggleButton } from "./JobToggleButton"
 import { InterestedCandidatesPanel } from "./InterestedCandidatesPanel"
 import { JobInsights } from "./JobInsights"
 import { ShareButton } from "@/components/share/ShareButton"
+import { Skeleton } from "@/components/ui/skeleton"
 
 function formatJobType(raw: string) {
   return raw.replace(/_/g, " ")
@@ -32,17 +34,11 @@ export async function RecruiterJobDetail({
 }) {
   const supabase = await createClient()
 
-  const { count: matchCount } = await supabase
-    .from("matches")
-    .select("*", { count: "exact", head: true })
-    .eq("job_id", jobId)
-
-  const { data: recruiter } = await supabase
-    .from("recruiter_profiles")
-    .select("company_name, calendly_url")
-    .eq("id", userId)
-    .maybeSingle()
-  const { data: me } = await supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle()
+  const [{ count: matchCount }, { data: recruiter }, { data: me }] = await Promise.all([
+    supabase.from("matches").select("id", { count: "exact", head: true }).eq("job_id", jobId),
+    supabase.from("recruiter_profiles").select("company_name, calendly_url").eq("id", userId).maybeSingle(),
+    supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+  ])
 
   const pay = formatSalary({
     min: job.salary_min,
@@ -73,7 +69,22 @@ export async function RecruiterJobDetail({
         </Button>
       </div>
 
-      <JobInsights jobId={jobId} matches={matchCount || 0} />
+      <Suspense
+        fallback={
+          <Card className="shadow-sm">
+            <CardContent className="space-y-4 p-5">
+              <Skeleton className="h-6 w-40" />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 rounded-xl" />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        }
+      >
+        <JobInsights jobId={jobId} matches={matchCount || 0} />
+      </Suspense>
 
       <InterestedCandidatesPanel
         recruiterId={userId}

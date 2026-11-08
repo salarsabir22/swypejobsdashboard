@@ -30,24 +30,29 @@ export default async function JobsPage({
   } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+  const [{ data: profile }, { data: recruiterProfile }, { data: jobs }] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", user.id).single(),
+    supabase.from("recruiter_profiles").select("*").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("jobs")
+      .select("*")
+      .eq("recruiter_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(80),
+  ])
   if (profile?.role !== "recruiter") redirect("/discover")
-
-  const { data: recruiterProfile } = await supabase.from("recruiter_profiles").select("*").eq("id", user.id).maybeSingle()
-
-  const { data: jobs } = await supabase.from("jobs").select("*").eq("recruiter_id", user.id).order("created_at", { ascending: false })
 
   const jobIds = (jobs || []).map((j: Job) => j.id)
 
   const [appResult, matchResult, viewResult] = await Promise.all([
     jobIds.length > 0
-      ? supabase.from("job_swipes").select("job_id").in("job_id", jobIds).eq("direction", "right")
+      ? supabase.from("job_swipes").select("job_id").in("job_id", jobIds).eq("direction", "right").limit(400)
       : Promise.resolve({ data: [] }),
     jobIds.length > 0
-      ? supabase.from("matches").select("job_id").eq("recruiter_id", user.id)
+      ? supabase.from("matches").select("job_id").eq("recruiter_id", user.id).limit(400)
       : Promise.resolve({ data: [] }),
     jobIds.length > 0
-      ? supabase.from("candidate_swipes").select("job_id").eq("recruiter_id", user.id)
+      ? supabase.from("candidate_swipes").select("job_id").eq("recruiter_id", user.id).limit(400)
       : Promise.resolve({ data: [] }),
   ])
 

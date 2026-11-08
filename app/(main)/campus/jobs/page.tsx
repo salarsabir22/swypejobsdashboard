@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Briefcase } from "lucide-react"
 import { loadCampusPage } from "@/lib/campus/page-data"
 import { createClient } from "@/lib/supabase/server"
+import { humanLabel } from "@/lib/status-label"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
@@ -9,10 +10,8 @@ import { StatusBadge } from "@/components/ui/status-badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 
-const STAGES = ["chatting", "interview", "offer", "hired"] as const
-
 export default async function CampusJobsPage({ searchParams }: { searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }> }) {
-  const { snapshot, params } = await loadCampusPage(searchParams, "view_actions")
+  const { snapshot } = await loadCampusPage(searchParams, "view_actions")
   const university = snapshot.access.university
   const supabase = await createClient()
 
@@ -47,38 +46,50 @@ export default async function CampusJobsPage({ searchParams }: { searchParams: P
       id: job.id,
       title: job.title,
       company: company?.company_name || "Employer",
-      type: job.job_type || "role",
+      type: humanLabel(job.job_type, "Role"),
       listing,
       review: reviewMap.get(job.id) || "unreviewed",
       ...pipeline,
     }
   })
 
-  const stageCounts = STAGES.map((stage) => ({
-    label: stage === "chatting" ? "Applied" : stage === "offer" ? "Interview+" : stage[0].toUpperCase() + stage.slice(1),
-    value: (matches || []).filter((m) =>
-      stage === "chatting"
-        ? !m.pipeline_status || m.pipeline_status === "chatting"
-        : stage === "interview"
-          ? m.pipeline_status === "interview" || m.pipeline_status === "offer"
-          : m.pipeline_status === stage
-    ).length,
-  }))
+  const listedIds = new Set(rows.map((row) => row.id))
+  const listedMatches = (matches || []).filter((match) => listedIds.has(match.job_id))
+  const stageCounts = [
+    {
+      label: "Applied",
+      value: listedMatches.length,
+    },
+    {
+      label: "Shortlisted",
+      value: listedMatches.filter((m) => m.is_shortlisted).length,
+    },
+    {
+      label: "Interview",
+      value: listedMatches.filter((m) => m.pipeline_status === "interview" || m.pipeline_status === "offer").length,
+    },
+    {
+      label: "Hired",
+      value: listedMatches.filter((m) => m.pipeline_status === "hired").length,
+    },
+  ]
 
   return (
     <CampusFrame
       snapshot={snapshot}
       title="Jobs & applications"
-      description="Active, expired, and archived jobs and internships. Hiring stages: Applied, Shortlisted, Interview, Hired."
+      description="Active, expired, and archived jobs and internships. Hiring stages match the listings table below."
     >
-      <DashboardPanel title="Hiring stages this cycle" description="Campus-visible matches on the platform pipeline.">
+      <DashboardPanel
+        title="Hiring stages for listings below"
+        description={`Totals for the ${rows.length} roles in this table (latest 80), not the whole campus history.`}
+      >
         <div className="flex flex-wrap gap-3 text-sm">
           {stageCounts.map((row) => (
             <span key={row.label} className="rounded-full bg-secondary px-3 py-1.5">
               {row.label} · {row.value}
             </span>
           ))}
-          <span className="rounded-full bg-secondary px-3 py-1.5">Shortlisted · {(matches || []).filter((m) => m.is_shortlisted).length}</span>
         </div>
       </DashboardPanel>
       <DashboardPanel title="Listings">

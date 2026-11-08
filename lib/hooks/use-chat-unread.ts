@@ -10,6 +10,7 @@ export function useChatUnread() {
     let cancelled = false
 
     const load = async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return
       try {
         const res = await fetch("/api/chat/unread", { method: "GET" })
         const data = (await res.json().catch(() => ({}))) as { totalUnreadCount?: number }
@@ -20,7 +21,7 @@ export function useChatUnread() {
     }
 
     void load()
-    const timer = window.setInterval(() => void load(), 20000)
+    const timer = window.setInterval(() => void load(), 60000)
     const supabase = createClient()
     const channel = supabase
       .channel("chat-unread-badge")
@@ -30,12 +31,17 @@ export function useChatUnread() {
       .subscribe()
 
     const onFocus = () => void load()
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void load()
+    }
     window.addEventListener("focus", onFocus)
+    document.addEventListener("visibilitychange", onVisibility)
 
     return () => {
       cancelled = true
       window.clearInterval(timer)
       window.removeEventListener("focus", onFocus)
+      document.removeEventListener("visibilitychange", onVisibility)
       void supabase.removeChannel(channel)
     }
   }, [])

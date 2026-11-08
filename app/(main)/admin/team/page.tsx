@@ -1,19 +1,21 @@
 import { requireAdminModule } from "@/lib/admin/access"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { AdminFrame } from "@/components/admin/AdminFrame"
 import { AuditLogFilter, TeamInviteForm, TeamRoleSelect } from "@/components/admin/TeamAdminPanel"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 
 export default async function AdminTeamPage() {
   const admin = await requireAdminModule("team")
-  const supabase = await createClient()
-  const { data: admins } = await supabase.from("profiles").select("id, full_name, created_at").eq("role", "admin")
-  const { data: staff } = await supabase.from("platform_staff").select("*")
-  const { data: audit } = await supabase
-    .from("platform_audit_log")
-    .select("id, created_at, action, entity, entity_id")
-    .order("created_at", { ascending: false })
-    .limit(100)
+  const supabase = createAdminClient()
+  const [{ data: admins }, { data: staff }, { data: audit }] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, created_at").eq("role", "admin").limit(100),
+    supabase.from("platform_staff").select("user_id, staff_role, modules").limit(100),
+    supabase
+      .from("platform_audit_log")
+      .select("id, created_at, action, entity, entity_id")
+      .order("created_at", { ascending: false })
+      .limit(100),
+  ])
 
   return (
     <AdminFrame

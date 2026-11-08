@@ -26,7 +26,11 @@ export default async function StudentCareerOfficePage() {
   if (shell.role === "university") redirect("/campus")
   if (shell.role === "recruiter") redirect("/partnerships")
 
-  const membership = await readStudentCampusMembership(supabase, user)
+  const [membership, rsvpsRes, acksRes] = await Promise.all([
+    readStudentCampusMembership(supabase, user),
+    supabase.from("campus_event_rsvps").select("event_id").eq("student_id", user.id).limit(80),
+    supabase.from("announcement_acks").select("announcement_id").eq("user_id", user.id).limit(100),
+  ])
   const university = canonicalizeUniversity(membership.university || shell.university) || null
   const isAlumni = membership.isAlumni || Boolean(shell.isAlumni)
   const campusConnected = membership.campusConnected !== false
@@ -37,10 +41,8 @@ export default async function StudentCareerOfficePage() {
     campusConnected,
   })
 
-  const { data: rsvps } = await supabase.from("campus_event_rsvps").select("event_id").eq("student_id", user.id)
-  const going = new Set((rsvps || []).map((r) => r.event_id))
-  const { data: acks } = await supabase.from("announcement_acks").select("announcement_id").eq("user_id", user.id)
-  const done = new Set((acks || []).map((a) => a.announcement_id))
+  const going = new Set((rsvpsRes.data || []).map((r) => r.event_id))
+  const done = new Set((acksRes.data || []).map((a) => a.announcement_id))
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">

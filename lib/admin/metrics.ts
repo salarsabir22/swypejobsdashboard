@@ -1,14 +1,16 @@
 import { cache } from "react"
-import { createClient } from "@/lib/supabase/server"
+import { unstable_cache } from "next/cache"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { countBy, inLastDays, pct } from "@/lib/campus/helpers"
 import type { AdminSnapshot } from "@/lib/admin/types"
 import type { AdminStaffRole } from "@/lib/admin/access"
 
 /** Sample size for traffic / matching charts (not queue KPIs). */
-const SAMPLE = 2500
+const SAMPLE = 1200
+const SNAPSHOT_REVALIDATE_SECONDS = 60
 
-export const loadAdminSnapshot = cache(async (staffRole: AdminStaffRole): Promise<AdminSnapshot> => {
-  const supabase = await createClient()
+async function buildAdminSnapshot(staffRole: AdminStaffRole): Promise<AdminSnapshot> {
+  const supabase = createAdminClient()
   const missingTables: string[] = []
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
   const dayAgo = new Date(Date.now() - 86400000).toISOString()
@@ -192,4 +194,14 @@ export const loadAdminSnapshot = cache(async (staffRole: AdminStaffRole): Promis
       coldStartUsers: students.filter((s) => !swipes.some((sw) => sw.student_id === s.id)).length,
     },
   }
+}
+
+export const loadAdminSnapshot = cache(async (staffRole: AdminStaffRole): Promise<AdminSnapshot> => {
+  const cached = await unstable_cache(
+    async () => buildAdminSnapshot(staffRole),
+    ["admin-snapshot-v1", staffRole],
+    { revalidate: SNAPSHOT_REVALIDATE_SECONDS },
+  )()
+
+  return { ...cached, staffRole }
 })

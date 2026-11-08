@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   const { data: partner } = await staff.admin
     .from("campus_employer_partners")
-    .select("id, university, recruiter_id, company_name, status")
+    .select("id, university, recruiter_id, company_name, notes, tier")
     .eq("recruiter_id", employerId)
     .eq("university", campus)
     .maybeSingle()

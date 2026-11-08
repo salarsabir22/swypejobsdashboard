@@ -1,8 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { CalendarRange } from "lucide-react"
 import {
   CAMPUS_RANGE_OPTIONS,
@@ -12,6 +10,7 @@ import {
   todayIso,
   type CampusRangeId,
 } from "@/lib/campus/range"
+import { CampusFilterPendingBadge, useCampusFilterNav } from "@/components/campus/CampusFilterPending"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
@@ -27,9 +26,7 @@ export function CampusRangeFilter({
   from?: string | null
   to?: string | null
 }) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const params = useSearchParams()
+  const { pending, pathname, params, navigate } = useCampusFilterNav()
   const paramFrom = parseIsoDate(params.get("from")) || currentFrom || null
   const paramTo = parseIsoDate(params.get("to")) || currentTo || null
   const isCustom = Boolean(paramFrom && paramTo) || current === "custom" || params.get("range") === "custom"
@@ -66,30 +63,31 @@ export function CampusRangeFilter({
     const next = new URLSearchParams(params.toString())
     applyCampusRangeParams(next, { id: "custom", from: start, to: end })
     setOpen(false)
-    router.push(next.toString() ? `${pathname}?${next.toString()}` : pathname)
+    navigate(next.toString() ? `${pathname}?${next.toString()}` : pathname)
   }
 
-  const customLabel =
-    paramFrom && paramTo ? formatCustomRangeLabel(paramFrom, paramTo) : "Custom"
+  const customLabel = paramFrom && paramTo ? formatCustomRangeLabel(paramFrom, paramTo) : "Custom"
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Report time range">
+    <div
+      className={cn("flex flex-wrap items-center gap-1.5", pending && "opacity-80")}
+      role="group"
+      aria-label="Report time range"
+      aria-busy={pending || undefined}
+    >
       {CAMPUS_RANGE_OPTIONS.map((option) => {
         const selected = active === option.id
         return (
           <Button
             key={option.id}
-            asChild
+            type="button"
             size="sm"
             variant={selected ? "default" : "outline"}
-            className={cn(
-              "h-9 rounded-full px-3.5 text-[13px] font-medium",
-              !selected && "text-muted-foreground"
-            )}
+            aria-current={selected ? "page" : undefined}
+            className={cn("h-9 rounded-full px-3.5 text-[13px] font-medium", !selected && "text-muted-foreground")}
+            onClick={() => navigate(hrefForPreset(option.id))}
           >
-            <Link href={hrefForPreset(option.id)} aria-current={selected ? "page" : undefined}>
-              {option.label}
-            </Link>
+            {option.label}
           </Button>
         )
       })}
@@ -158,12 +156,14 @@ export function CampusRangeFilter({
             <Button type="button" variant="ghost" size="sm" className="rounded-full" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" size="sm" className="rounded-full" onClick={applyCustom}>
+            <Button type="button" size="sm" className="rounded-full" loading={pending} onClick={applyCustom}>
               Apply
             </Button>
           </div>
         </PopoverContent>
       </Popover>
+
+      <CampusFilterPendingBadge pending={pending} />
     </div>
   )
 }

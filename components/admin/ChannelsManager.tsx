@@ -24,6 +24,7 @@ export type ChannelRow = {
   name: string
   description?: string | null
   category?: string | null
+  memberCount?: number
   channel_members?: { user_id: string }[]
 }
 
@@ -40,10 +41,50 @@ export function ChannelsManager({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [loadingMembers, setLoadingMembers] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState("general")
+
+  const toggleMembers = async (channelId: string) => {
+    if (expanded === channelId) {
+      setExpanded(null)
+      return
+    }
+    setExpanded(channelId)
+    const current = channels.find((c) => c.id === channelId)
+    if (current?.channel_members && current.channel_members.length > 0) return
+    setLoadingMembers(channelId)
+    try {
+      const res = await fetch("/api/admin/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "list_members", channelId }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        members?: { user_id: string }[]
+      }
+      if (!res.ok) {
+        toast({ variant: "destructive", title: data.error || "Could not load members" })
+        return
+      }
+      setChannels((prev) =>
+        prev.map((ch) =>
+          ch.id === channelId
+            ? {
+                ...ch,
+                channel_members: data.members || [],
+                memberCount: (data.members || []).length,
+              }
+            : ch,
+        ),
+      )
+    } finally {
+      setLoadingMembers(null)
+    }
+  }
 
   const createChannel = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -111,11 +152,15 @@ export function ChannelsManager({
         return
       }
       setChannels((prev) =>
-        prev.map((ch) =>
-          ch.id === channelId
-            ? { ...ch, channel_members: (ch.channel_members || []).filter((m) => m.user_id !== userId) }
-            : ch,
-        ),
+        prev.map((ch) => {
+          if (ch.id !== channelId) return ch
+          const nextMembers = (ch.channel_members || []).filter((m) => m.user_id !== userId)
+          return {
+            ...ch,
+            channel_members: nextMembers,
+            memberCount: Math.max(0, (ch.memberCount ?? nextMembers.length + 1) - 1),
+          }
+        }),
       )
       toast({ title: "Member removed" })
     } finally {
@@ -183,7 +228,7 @@ export function ChannelsManager({
                     {ch.description ? <p className="truncate text-[13px] text-muted-foreground">{ch.description}</p> : null}
                     <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                       <Users className="h-3 w-3" />
-                      {ch.channel_members?.length || 0} members
+                      {ch.memberCount ?? ch.channel_members?.length ?? 0} members
                     </p>
                   </div>
                   <Button
@@ -191,7 +236,9 @@ export function ChannelsManager({
                     variant="outline"
                     size="sm"
                     className="rounded-full"
-                    onClick={() => setExpanded((prev) => (prev === ch.id ? null : ch.id))}
+                    loading={loadingMembers === ch.id}
+                    loadingText="…"
+                    onClick={() => void toggleMembers(ch.id)}
                   >
                     Members
                   </Button>
@@ -210,7 +257,9 @@ export function ChannelsManager({
                 </div>
                 {expanded === ch.id ? (
                   <ul className="space-y-2 rounded-xl border border-border bg-muted/30 p-3 text-[13px]">
-                    {(ch.channel_members || []).length ? (
+                    {loadingMembers === ch.id ? (
+                      <li className="text-muted-foreground">Loading members…</li>
+                    ) : (ch.channel_members || []).length ? (
                       (ch.channel_members || []).map((m) => (
                         <li key={m.user_id} className="flex items-center justify-between gap-2">
                           <span className="truncate font-mono text-[12px]">{m.user_id}</span>

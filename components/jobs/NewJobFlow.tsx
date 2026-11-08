@@ -1,11 +1,20 @@
 "use client"
 
 import { useState } from "react"
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
-import { JobEditor } from "@/components/jobs/JobEditor"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+
+const JobEditor = dynamic(() => import("@/components/jobs/JobEditor").then((m) => m.JobEditor), {
+  ssr: false,
+  loading: () => (
+    <div className="mx-auto max-w-3xl space-y-4 p-6 text-sm text-muted-foreground" role="status">
+      Loading job editor…
+    </div>
+  ),
+})
 
 const ATS = [
   { id: "greenhouse", label: "Greenhouse" },

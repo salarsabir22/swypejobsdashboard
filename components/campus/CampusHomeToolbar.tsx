@@ -1,8 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { CalendarRange, ChevronDown, Download } from "lucide-react"
 import {
   CAMPUS_RANGE_OPTIONS,
@@ -13,6 +11,7 @@ import {
   todayIso,
   type CampusRangeId,
 } from "@/lib/campus/range"
+import { CampusFilterPendingBadge, useCampusFilterNav } from "@/components/campus/CampusFilterPending"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import {
@@ -47,9 +46,7 @@ export function CampusHomeToolbar({
   campus?: string | null
   canExport?: boolean
 }) {
-  const pathname = usePathname()
-  const router = useRouter()
-  const params = useSearchParams()
+  const { pending, pathname, params, navigate } = useCampusFilterNav()
   const paramFrom = parseIsoDate(params.get("from")) || currentFrom || null
   const paramTo = parseIsoDate(params.get("to")) || currentTo || null
   const isCustom = Boolean(paramFrom && paramTo) || current === "custom"
@@ -85,7 +82,7 @@ export function CampusHomeToolbar({
     const next = new URLSearchParams(params.toString())
     applyCampusRangeParams(next, { id: "custom", from: start, to: end })
     setCustomOpen(false)
-    router.push(next.toString() ? `${pathname}?${next.toString()}` : pathname)
+    navigate(next.toString() ? `${pathname}?${next.toString()}` : pathname)
   }
 
   const exportQuery = new URLSearchParams({ dataset: "overview" })
@@ -103,7 +100,8 @@ export function CampusHomeToolbar({
       : RANGE_LABEL[active] || "Last 30 days"
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-wrap items-center justify-end gap-2" aria-busy={pending || undefined}>
+      <CampusFilterPendingBadge pending={pending} />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="h-11 rounded-full px-4">
@@ -113,8 +111,15 @@ export function CampusHomeToolbar({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[13rem]">
           {CAMPUS_RANGE_OPTIONS.filter((option) => option.id !== "day").map((option) => (
-            <DropdownMenuItem key={option.id} asChild>
-              <Link href={hrefFor(option.id)}>{RANGE_LABEL[option.id]}</Link>
+            <DropdownMenuItem
+              key={option.id}
+              disabled={pending}
+              onSelect={(event) => {
+                event.preventDefault()
+                navigate(hrefFor(option.id))
+              }}
+            >
+              {RANGE_LABEL[option.id]}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -180,7 +185,7 @@ export function CampusHomeToolbar({
             <Button type="button" variant="ghost" size="sm" className="rounded-full" onClick={() => setCustomOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" size="sm" className="rounded-full" onClick={applyCustom}>
+            <Button type="button" size="sm" className="rounded-full" loading={pending} onClick={applyCustom}>
               Apply
             </Button>
           </div>

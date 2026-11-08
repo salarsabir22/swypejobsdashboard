@@ -26,8 +26,8 @@ export default async function CampusUsersPage({ searchParams }: { searchParams: 
   }))
 
   const { data: pendingEmployers } = university
-    ? await supabase.from("campus_employer_partners").select("id, status").eq("university", university).eq("status", "pending")
-    : await supabase.from("campus_employer_partners").select("id, status").eq("status", "pending").limit(40)
+    ? await supabase.from("employer_invitations").select("id").eq("university", university).eq("status", "pending")
+    : await supabase.from("employer_invitations").select("id").eq("status", "pending").limit(40)
 
   return (
     <CampusFrame

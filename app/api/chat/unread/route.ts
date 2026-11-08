@@ -12,31 +12,45 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { data: convos } = await supabase.from("conversations").select("id")
+    // Cap conversation scan — badge does not need the full chat history graph.
+    const { data: convos } = await supabase.from("conversations").select("id").limit(100)
     const ids = (convos ?? []).map((c) => c.id as string)
     if (!ids.length) {
-      return NextResponse.json({ totalUnreadCount: 0, unreadChannels: 0 })
+      return NextResponse.json(
+        { totalUnreadCount: 0, unreadChannels: 0 },
+        { headers: { "Cache-Control": "private, max-age=30" } }
+      )
     }
 
     const { data: mutes } = await supabase
       .from("conversation_mutes")
       .select("conversation_id")
       .eq("user_id", user.id)
+      .limit(100)
     const muted = new Set((mutes ?? []).map((m) => m.conversation_id as string))
+    const audibleIds = ids.filter((id) => !muted.has(id))
+    if (!audibleIds.length) {
+      return NextResponse.json(
+        { totalUnreadCount: 0, unreadChannels: 0 },
+        { headers: { "Cache-Control": "private, max-age=30" } }
+      )
+    }
 
-    const { data: unread } = await supabase
+    // Count only — badge does not need every unread row.
+    const { count } = await supabase
       .from("messages")
-      .select("id, conversation_id")
-      .in("conversation_id", ids)
+      .select("id", { count: "exact", head: true })
+      .in("conversation_id", audibleIds)
       .eq("is_read", false)
       .neq("sender_id", user.id)
 
-    const audible = (unread ?? []).filter((m) => !muted.has(m.conversation_id as string))
-    const unreadChannels = new Set(audible.map((m) => m.conversation_id)).size
-    return NextResponse.json({
-      totalUnreadCount: audible.length,
-      unreadChannels,
-    })
+    return NextResponse.json(
+      {
+        totalUnreadCount: count ?? 0,
+        unreadChannels: 0,
+      },
+      { headers: { "Cache-Control": "private, max-age=30" } }
+    )
   } catch (error) {
     console.error("[api/chat/unread]", error)
     return NextResponse.json({ totalUnreadCount: 0, unreadChannels: 0 })

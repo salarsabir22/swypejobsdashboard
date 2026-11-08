@@ -1,7 +1,7 @@
 import { requireAdminModule } from "@/lib/admin/access"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { AdminFrame } from "@/components/admin/AdminFrame"
-import { BroadcastForm } from "@/components/admin/AdminActions"
+import { BroadcastForm } from "@/components/admin/BroadcastForm"
 import { BannerManager, TicketDecision } from "@/components/admin/CommsControls"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import Link from "next/link"
@@ -9,18 +9,20 @@ import { Button } from "@/components/ui/button"
 
 export default async function AdminCommsPage() {
   const admin = await requireAdminModule("comms")
-  const supabase = await createClient()
-  const { data: broadcasts } = await supabase
-    .from("platform_broadcasts")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(20)
-  const { data: tickets } = await supabase
-    .from("support_tickets")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(20)
-  const { data: banners } = await supabase.from("platform_banners").select("id, message").eq("is_active", true)
+  const supabase = createAdminClient()
+  const [{ data: broadcasts }, { data: tickets }, { data: banners }] = await Promise.all([
+    supabase
+      .from("platform_broadcasts")
+      .select("id, title, channel, segment, created_at")
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("support_tickets")
+      .select("id, subject, status, priority, created_at")
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase.from("platform_banners").select("id, message").eq("is_active", true).limit(20),
+  ])
 
   return (
     <AdminFrame

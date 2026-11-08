@@ -49,7 +49,8 @@ export async function StudentMatchesView({ userId }: { userId: string }) {
       .from("matches")
       .select("*, jobs(id, title, job_type, recruiter_id, recruiter_profiles(company_name, logo_url)), conversations(id)")
       .eq("student_id", userId)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(100),
     supabase
       .from("job_swipes")
       .select("id", { count: "exact", head: true })
@@ -65,7 +66,8 @@ export async function StudentMatchesView({ userId }: { userId: string }) {
       .select("id, job_id, created_at, jobs(id, title, job_type, recruiter_id, recruiter_profiles(company_name, logo_url))")
       .eq("student_id", userId)
       .eq("direction", "right")
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(100),
     supabase
       .from("job_swipes")
       .select(
@@ -75,7 +77,7 @@ export async function StudentMatchesView({ userId }: { userId: string }) {
       .eq("direction", "left")
       .order("created_at", { ascending: false })
       .limit(60),
-    supabase.from("profile_views").select("viewer_id, created_at").eq("student_id", userId),
+    supabase.from("profile_views").select("viewer_id, created_at").eq("student_id", userId).limit(200),
   ])
 
   const matches = (matchesRes.data || []) as MatchListItem[]

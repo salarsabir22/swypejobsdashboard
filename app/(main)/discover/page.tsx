@@ -35,12 +35,17 @@ export default async function DiscoverPage() {
     )
   }
 
-  const membership = await readStudentCampusMembership(supabase, user)
-  let studentRes = await supabase
-    .from("student_profiles")
-    .select("skills, preferred_job_categories, still_enrolled, current_semester, degree, graduation_year, cgpa, is_alumni, gender, department, preferred_locations, university")
-    .eq("id", user.id)
-    .maybeSingle()
+  const [membership, studentPrimary] = await Promise.all([
+    readStudentCampusMembership(supabase, user),
+    supabase
+      .from("student_profiles")
+      .select(
+        "skills, preferred_job_categories, still_enrolled, current_semester, degree, graduation_year, cgpa, is_alumni, gender, department, preferred_locations, university"
+      )
+      .eq("id", user.id)
+      .maybeSingle(),
+  ])
+  let studentRes = studentPrimary
   if (studentRes.error) {
     // cgpa / is_alumni columns may not exist until the migrations run.
     studentRes = await supabase

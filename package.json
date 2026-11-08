@@ -11,7 +11,13 @@
     "seed:real": "node --env-file=.env.local scripts/seed-real-data.mjs --confirm",
     "seed:iobm": "node --env-file=.env.local scripts/seed-iobm-campus.mjs",
     "seed:iobm-dashboards": "node --env-file=.env.local scripts/seed-iobm-dashboard-data.mjs",
-    "seed:career-surveys": "node --env-file=.env.local scripts/apply-career-surveys.mjs"
+    "seed:career-surveys": "node --env-file=.env.local scripts/apply-career-surveys.mjs",
+    "browser:doctor": "agent-browser doctor",
+    "browser:open": "agent-browser open http://localhost:3000",
+    "test:live": "node scripts/live-batch-smoke.mjs",
+    "test:live:cdc": "node scripts/live-batch-smoke.mjs --role=cdc --deep",
+    "test:live:all-deep": "node scripts/live-batch-smoke.mjs --role=all --deep --max-clicks=30",
+    "test:filters": "node scripts/test-campus-filters.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

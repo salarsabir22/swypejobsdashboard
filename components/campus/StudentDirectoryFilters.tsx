@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Filter, Search, X } from "lucide-react"
 import {
   directoryClassYearOptions,
   directoryCollegeOptions,
 } from "@/lib/campus/directory"
 import { iobmCollegeById, iobmCollegeByName } from "@/lib/sso/iobm-programs"
+import { CampusFilterPendingBadge, useCampusFilterNav } from "@/components/campus/CampusFilterPending"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,9 +22,7 @@ function collegeIdFromParam(value: string | null) {
 }
 
 export function StudentDirectoryFilters({ kind }: { kind: "students" | "alumni" }) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const params = useSearchParams()
+  const { pending, pathname, params, navigate } = useCampusFilterNav()
   const colleges = useMemo(() => directoryCollegeOptions(), [])
   const classYears = useMemo(() => directoryClassYearOptions(), [])
 
@@ -114,7 +112,7 @@ export function StudentDirectoryFilters({ kind }: { kind: "students" | "alumni" 
   function apply(overrides?: Record<string, string | null>) {
     const next = buildQuery(overrides)
     setOpen(false)
-    router.push(next.toString() ? `${pathname}?${next.toString()}` : pathname)
+    navigate(next.toString() ? `${pathname}?${next.toString()}` : pathname)
   }
 
   function clearFilters() {
@@ -135,7 +133,7 @@ export function StudentDirectoryFilters({ kind }: { kind: "students" | "alumni" 
       if (value) next.set(key, value)
     }
     next.set("kind", kind)
-    router.push(next.toString() ? `${pathname}?${next.toString()}` : pathname)
+    navigate(next.toString() ? `${pathname}?${next.toString()}` : pathname)
   }
 
   const filterFields = (
@@ -305,7 +303,7 @@ export function StudentDirectoryFilters({ kind }: { kind: "students" | "alumni" 
   )
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" aria-busy={pending || undefined}>
       <form
         className="flex flex-wrap items-center gap-2"
         onSubmit={(e) => {
@@ -323,9 +321,10 @@ export function StudentDirectoryFilters({ kind }: { kind: "students" | "alumni" 
             aria-label="Search by student name or student ID"
           />
         </div>
-        <Button type="submit" size="sm" className="rounded-full">
+        <Button type="submit" size="sm" className="rounded-full" loading={pending} loadingText="Updating…">
           Search
         </Button>
+        <CampusFilterPendingBadge pending={pending} />
 
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -351,7 +350,7 @@ export function StudentDirectoryFilters({ kind }: { kind: "students" | "alumni" 
               <Button type="button" variant="ghost" className="rounded-full" onClick={clearFilters}>
                 Clear all
               </Button>
-              <Button type="button" className="rounded-full" onClick={() => apply()}>
+              <Button type="button" className="rounded-full" loading={pending} loadingText="Updating…" onClick={() => apply()}>
                 Apply filters
               </Button>
             </SheetFooter>

@@ -17,20 +17,25 @@ export default async function ResumePage({
   } = await supabase.auth.getUser()
   if (!user) redirect("/login?next=/resume")
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, full_name, bio")
-    .eq("id", user.id)
-    .maybeSingle()
+  const [{ data: profile }, studentPrimary, swipesRes] = await Promise.all([
+    supabase.from("profiles").select("role, full_name, bio").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("student_profiles")
+      .select(
+        "university, degree, graduation_year, skills, linkedin_url, github_url, portfolio_url, resume_document, cover_letters, work_history, projects, certifications"
+      )
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("job_swipes")
+      .select("job_id")
+      .eq("student_id", user.id)
+      .in("direction", ["saved", "right"])
+      .limit(20),
+  ])
   if (profile?.role !== "student") redirect("/profile")
 
-  let studentQuery = await supabase
-    .from("student_profiles")
-    .select(
-      "university, degree, graduation_year, skills, linkedin_url, github_url, portfolio_url, resume_document, cover_letters, work_history, projects, certifications"
-    )
-    .eq("id", user.id)
-    .maybeSingle()
+  let studentQuery = studentPrimary
   if (studentQuery.error) {
     studentQuery = await supabase
       .from("student_profiles")
@@ -49,12 +54,7 @@ export default async function ResumePage({
     : studentQuery.data
   const career = parseCareerHistory(student as { work_history?: unknown; projects?: unknown; certifications?: unknown } | null)
 
-  const { data: swipes } = await supabase
-    .from("job_swipes")
-    .select("job_id")
-    .eq("student_id", user.id)
-    .in("direction", ["saved", "right"])
-    .limit(20)
+  const { data: swipes } = swipesRes
   const jobIds = [...new Set((swipes || []).map((row) => row.job_id).filter(Boolean))]
   const jobsQuery = jobIds.length
     ? await supabase

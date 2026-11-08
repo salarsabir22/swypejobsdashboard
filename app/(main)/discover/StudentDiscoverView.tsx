@@ -236,7 +236,7 @@ export function StudentDiscoverView({
 
       const supabase = createClient()
       const [{ data: swipeRows }, blocked, { data: weightRow }] = await Promise.all([
-        supabase.from("job_swipes").select("job_id, direction").eq("student_id", userId),
+        supabase.from("job_swipes").select("job_id, direction").eq("student_id", userId).limit(500),
         getBlockedPeerIds(supabase, userId),
         mode === "replace"
           ? supabase.from("ranking_weights").select("skills, location, recency, employer_tier").eq("id", 1).maybeSingle()
@@ -284,8 +284,14 @@ export function StudentDiscoverView({
           supabase
             .from("job_collection_items")
             .select("job_id, job_collections!inner(name, university, is_active)")
-            .eq("job_collections.is_active", true),
-          supabase.from("campus_job_reviews").select("job_id, university, status"),
+            .eq("job_collections.is_active", true)
+            .eq("job_collections.university", university)
+            .limit(120),
+          supabase
+            .from("campus_job_reviews")
+            .select("job_id, university, status")
+            .eq("university", university)
+            .limit(200),
         ])
         for (const row of collectionRes.data || []) {
           const col = Array.isArray(row.job_collections) ? row.job_collections[0] : row.job_collections

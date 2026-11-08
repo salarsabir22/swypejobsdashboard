@@ -67,7 +67,7 @@ export async function fetchFeedPosts(
   supabase: SupabaseClient,
   opts?: { authorId?: string; limit?: number }
 ): Promise<{ posts: PostRow[]; error: string | null; missing: boolean }> {
-  const limit = opts?.limit ?? 50
+  const limit = opts?.limit ?? 20
   let lastError: string | null = null
   let missing = false
 

@@ -1,7 +1,15 @@
+import dynamic from "next/dynamic"
 import { createClient } from "@/lib/supabase/server"
 import { notFound, redirect } from "next/navigation"
-import { JobEditor } from "@/components/jobs/JobEditor"
 import type { Job } from "@/types"
+
+const JobEditor = dynamic(() => import("@/components/jobs/JobEditor").then((m) => m.JobEditor), {
+  loading: () => (
+    <div className="mx-auto max-w-3xl space-y-4 p-6 text-sm text-muted-foreground" role="status">
+      Loading job editor…
+    </div>
+  ),
+})
 
 export default async function EditJobPage({ params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params

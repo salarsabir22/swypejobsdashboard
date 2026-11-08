@@ -7,9 +7,11 @@ import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 
 export default async function AdminAlertsPage() {
   const admin = await requireAdminModule("alerts")
-  const snap = await loadAdminSnapshot(admin.staffRole)
   const supabase = await createClient()
-  const { data: rules } = await supabase.from("automation_rules").select("*")
+  const [snap, { data: rules }] = await Promise.all([
+    loadAdminSnapshot(admin.staffRole),
+    supabase.from("automation_rules").select("id, name, trigger, action, is_active").limit(100),
+  ])
 
   const alerts = [
     snap.kpis.slaBreaches ? `${snap.kpis.slaBreaches} safety reports older than 24h` : null,

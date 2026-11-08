@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { isUniqueViolation } from "@/lib/swipe/errors"
 import { COVER_LETTER_QUESTION_ID } from "@/lib/resume/cover-letter"
-import { renderResumePdf } from "@/lib/resume/pdf"
 import { saveResumeDocuments, uploadResumePdf } from "@/lib/resume/persist"
 import type { CoverLetter, ResumeRecord } from "@/lib/resume/schema"
 
@@ -67,6 +66,7 @@ export function JobApplyForm({
     const chosen = savedResumes.find((doc) => doc.id === resumeId)
     if (chosen) {
       try {
+        const { renderResumePdf } = await import("@/lib/resume/pdf")
         const bytes = await renderResumePdf(chosen.resume)
         const path = await uploadResumePdf(supabase, userId, bytes)
         const nextDocuments = savedResumes.map((doc) => ({ ...doc, isProfile: doc.id === chosen.id }))

@@ -29,7 +29,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ to
     university: invite.university,
     recruiter_id: user.id,
     company_name: invite.company_name,
-    status: "active",
+    tier: "preferred",
     notes: "Accepted campus invitation",
   })
   if (partnerError && !/duplicate|unique/i.test(partnerError.message)) {

@@ -64,21 +64,24 @@ export async function StudentDashboardView({
   const period = parseCampusRange("month")
   const firstName = fullName?.split(" ")[0]
 
+  // One parallel round-trip: drop duplicate swipe/match scans; load feed alongside.
   const [
-    appliedRes,
-    savedRes,
-    matchesRes,
+    swipeStatsRes,
     swipeJobsRes,
     featuredRes,
     profileViewsRes,
     profileRes,
     studentRes,
-    matchStatusRes,
+    matchesRes,
     campusRsvps,
+    feed,
   ] = await Promise.all([
-    supabase.from("job_swipes").select("id, created_at").eq("student_id", userId).eq("direction", "right").limit(400),
-    supabase.from("job_swipes").select("id, created_at").eq("student_id", userId).eq("direction", "saved").limit(400),
-    supabase.from("matches").select("id, created_at").eq("student_id", userId).limit(400),
+    supabase
+      .from("job_swipes")
+      .select("direction, created_at")
+      .eq("student_id", userId)
+      .in("direction", ["right", "saved"])
+      .limit(200),
     supabase
       .from("job_swipes")
       .select("id, created_at, direction, jobs(id, title, description, job_type, category, location, is_remote, created_at, recruiter_profiles(company_name, logo_url))")
@@ -91,20 +94,22 @@ export async function StudentDashboardView({
       .select("id, title, description, job_type, category, location, is_remote, created_at, recruiter_profiles(company_name, logo_url)")
       .eq("is_active", true)
       .order("created_at", { ascending: false })
-      .limit(16),
-    supabase.from("profile_views").select("id, created_at").eq("student_id", userId).limit(400),
+      .limit(12),
+    supabase.from("profile_views").select("created_at").eq("student_id", userId).limit(200),
     supabase.from("profiles").select("avatar_url, bio, profile_video_url").eq("id", userId).maybeSingle(),
     supabase
       .from("student_profiles")
       .select("university, skills, preferred_job_categories, resume_url, linkedin_url")
       .eq("id", userId)
       .maybeSingle(),
-    supabase.from("matches").select("pipeline_status, is_archived").eq("student_id", userId).limit(400),
-    supabase.from("campus_event_rsvps").select("event_id").eq("student_id", userId),
+    supabase.from("matches").select("created_at, pipeline_status, is_archived").eq("student_id", userId).limit(200),
+    supabase.from("campus_event_rsvps").select("event_id").eq("student_id", userId).limit(80),
+    fetchFeedPosts(supabase, { limit: 3 }),
   ])
 
-  const appliedRows = appliedRes.data || []
-  const savedRows = savedRes.data || []
+  const swipeStats = swipeStatsRes.data || []
+  const appliedRows = swipeStats.filter((row) => row.direction === "right")
+  const savedRows = swipeStats.filter((row) => row.direction === "saved")
   const matchRows = matchesRes.data || []
   const viewRows = profileViewsRes.data || []
   const applied = appliedRows.filter((row) => inCampusRange(row.created_at, period)).length
@@ -138,7 +143,7 @@ export async function StudentDashboardView({
     video: profileRes.data?.profile_video_url,
     linkedin: studentRes.data?.linkedin_url,
   })
-  const interviews = (matchStatusRes.data || []).filter((row) =>
+  const interviews = matchRows.filter((row) =>
     ["interview", "offer", "hired"].includes(row.pipeline_status || "")
   ).length
   const matchRate = appliedRows.length ? Math.round((matchRows.length / appliedRows.length) * 100) : 0
@@ -155,7 +160,6 @@ export async function StudentDashboardView({
     isAlumni,
   })
   const going = new Set((campusRsvps.data || []).map((row) => row.event_id))
-  const feed = await fetchFeedPosts(supabase, { limit: 3 })
   const event = campus.events[0]
 
   return (

@@ -16,7 +16,7 @@ export default async function PartnershipsPage() {
   const { data: company } = await supabase.from("recruiter_profiles").select("company_name").eq("id", user.id).maybeSingle()
   const { data: rows, error } = await supabase
     .from("campus_employer_partners")
-    .select("id, university, status, notes, created_at")
+    .select("id, university, tier, notes, created_at")
     .eq("recruiter_id", user.id)
     .order("created_at", { ascending: false })
 
@@ -50,7 +50,10 @@ export default async function PartnershipsPage() {
                     <p className="font-medium">{row.university}</p>
                     {row.notes ? <p className="text-sm text-muted-foreground">{row.notes}</p> : null}
                   </div>
-                  <StatusBadge value={row.status} />
+                  <div className="flex flex-wrap gap-1.5">
+                    <StatusBadge value="active" />
+                    {row.tier ? <StatusBadge value={row.tier} /> : null}
+                  </div>
                 </li>
               ))}
             </ul>

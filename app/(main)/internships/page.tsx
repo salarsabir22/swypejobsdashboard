@@ -17,13 +17,24 @@ export default async function InternshipsPage() {
   const { university } = await readStudentCampusMembership(supabase, user)
   const internshipFields =
     "id, title, location, is_remote, application_deadline, distribution_scope, target_universities, recruiter_id, recruiter_profiles(company_name, is_approved)"
-  const withDeadline = await supabase
-    .from("jobs")
-    .select(internshipFields)
-    .eq("is_active", true)
-    .eq("job_type", "internship")
-    .order("created_at", { ascending: false })
-    .limit(40)
+  const [withDeadline, reviewsRes, recordsRes] = await Promise.all([
+    supabase
+      .from("jobs")
+      .select(internshipFields)
+      .eq("is_active", true)
+      .eq("job_type", "internship")
+      .order("created_at", { ascending: false })
+      .limit(40),
+    university
+      ? supabase.from("campus_job_reviews").select("job_id, university, status").eq("university", university).limit(200)
+      : supabase.from("campus_job_reviews").select("job_id, university, status").limit(200),
+    supabase
+      .from("experiential_records")
+      .select("id, employer_name, role_title, start_date, end_date, status, kind")
+      .eq("student_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(40),
+  ])
   const listed = withDeadline.error
     ? await supabase
         .from("jobs")
@@ -34,9 +45,8 @@ export default async function InternshipsPage() {
         .limit(40)
     : withDeadline
   const jobs = listed.data
-  const { data: reviews } = await supabase.from("campus_job_reviews").select("job_id, university, status")
   const reviewMap = new Map(
-    (reviews || [])
+    (reviewsRes.data || [])
       .filter((row) => row.job_id && row.university)
       .map((row) => [`${row.job_id}:${String(row.university).trim().toLowerCase()}`, row.status as string])
   )
@@ -47,11 +57,7 @@ export default async function InternshipsPage() {
     return jobVisibleOnCampus(job, university, reviewMap)
   })
 
-  const { data: records, error } = await supabase
-    .from("experiential_records")
-    .select("id, employer_name, role_title, start_date, end_date, status, kind")
-    .eq("student_id", user.id)
-    .order("created_at", { ascending: false })
+  const { data: records, error } = recordsRes
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">

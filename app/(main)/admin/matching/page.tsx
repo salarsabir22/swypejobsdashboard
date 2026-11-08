@@ -2,7 +2,7 @@ import { requireAdminModule } from "@/lib/admin/access"
 import { loadAdminSnapshot } from "@/lib/admin/metrics"
 import { createClient } from "@/lib/supabase/server"
 import { AdminFrame } from "@/components/admin/AdminFrame"
-import { RankingForm } from "@/components/admin/AdminActions"
+import { RankingForm } from "@/components/admin/RankingForm"
 import { FeatureFlagToggles } from "@/components/admin/FeatureFlagToggles"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
@@ -11,10 +11,12 @@ import { GitCompare, Sparkles, Users, Zap } from "lucide-react"
 
 export default async function AdminMatchingPage() {
   const admin = await requireAdminModule("matching")
-  const snap = await loadAdminSnapshot(admin.staffRole)
   const supabase = await createClient()
-  const { data: weights } = await supabase.from("ranking_weights").select("*").eq("id", 1).maybeSingle()
-  const { data: flags } = await supabase.from("feature_flags").select("*")
+  const [snap, { data: weights }, { data: flags }] = await Promise.all([
+    loadAdminSnapshot(admin.staffRole),
+    supabase.from("ranking_weights").select("skills, location, recency, employer_tier").eq("id", 1).maybeSingle(),
+    supabase.from("feature_flags").select("key, enabled, rollout").limit(100),
+  ])
 
   return (
     <AdminFrame

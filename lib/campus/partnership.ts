@@ -63,19 +63,7 @@ export async function listDisconnectedSubjectIds(opts: {
   const admin = createAdminClient()
   const ids = new Set<string>()
 
-  if (opts.subject === "employer") {
-    const { data } = await admin
-      .from("campus_employer_partners")
-      .select("recruiter_id, status")
-      .eq("university", university)
-      .eq("status", "suspended")
-      .limit(5000)
-    for (const row of data || []) {
-      if (row.recruiter_id) ids.add(row.recruiter_id)
-    }
-    // Also include explicit partnership records if present
-  }
-
+  // Disconnect state is stored on campus_saved_views (partner table has no reliable status column).
   const { data } = await admin
     .from("campus_saved_views")
     .select("id, path, filters, created_at, user_id")
@@ -100,37 +88,40 @@ export async function getCampusPartnership(opts: {
   const university = directoryUniversity(opts.university)
   const admin = createAdminClient()
 
-  if (opts.subject === "employer") {
-    const { data: partner } = await admin
-      .from("campus_employer_partners")
-      .select("id, status, notes, recruiter_id, updated_at")
-      .eq("university", university)
-      .eq("recruiter_id", opts.userId)
-      .maybeSingle()
-    if (partner) {
-      const disconnected = partner.status === "suspended"
-      return {
-        id: partner.id,
-        university,
-        subject: "employer" as const,
-        userId: opts.userId,
-        status: (disconnected ? "disconnected" : "active") as CampusPartnershipStatus,
-        reason: partner.notes || null,
-        message: null,
-        updatedBy: null,
-        updatedAt: partner.updated_at || new Date().toISOString(),
-      } satisfies CampusPartnershipRecord
-    }
-  }
-
   const path = partnershipPath(university, opts.subject, opts.userId)
   const { data } = await admin
     .from("campus_saved_views")
     .select("id, path, filters, created_at, user_id")
     .eq("path", path)
     .maybeSingle()
-  if (!data) return null
-  return parseRecord(data)
+  if (data) {
+    const parsed = parseRecord(data)
+    if (parsed) return parsed
+  }
+
+  if (opts.subject === "employer") {
+    const { data: partner } = await admin
+      .from("campus_employer_partners")
+      .select("id, notes, recruiter_id, created_at")
+      .eq("university", university)
+      .eq("recruiter_id", opts.userId)
+      .maybeSingle()
+    if (partner) {
+      return {
+        id: partner.id,
+        university,
+        subject: "employer" as const,
+        userId: opts.userId,
+        status: "active",
+        reason: partner.notes || null,
+        message: null,
+        updatedBy: null,
+        updatedAt: partner.created_at || new Date().toISOString(),
+      } satisfies CampusPartnershipRecord
+    }
+  }
+
+  return null
 }
 
 export async function isCampusPartnershipActive(opts: {
@@ -165,7 +156,6 @@ export async function setCampusPartnershipStatus(opts: {
   const now = new Date().toISOString()
 
   if (opts.subject === "employer") {
-    const partnerStatus = opts.status === "disconnected" ? "suspended" : "active"
     const notes =
       opts.status === "disconnected"
         ? [opts.reason, opts.message].filter(Boolean).join(" — ") || "Disconnected by career office"
@@ -173,7 +163,7 @@ export async function setCampusPartnershipStatus(opts: {
 
     const { data: existing } = await admin
       .from("campus_employer_partners")
-      .select("id, company_name")
+      .select("id")
       .eq("university", university)
       .eq("recruiter_id", opts.userId)
       .maybeSingle()
@@ -181,11 +171,7 @@ export async function setCampusPartnershipStatus(opts: {
     if (existing?.id) {
       const { error } = await admin
         .from("campus_employer_partners")
-        .update({
-          status: partnerStatus,
-          notes,
-          updated_at: now,
-        })
+        .update({ notes })
         .eq("id", existing.id)
       if (error) throw new Error(error.message)
     } else if (opts.status === "disconnected") {
@@ -197,11 +183,9 @@ export async function setCampusPartnershipStatus(opts: {
       const { error } = await admin.from("campus_employer_partners").insert({
         university,
         recruiter_id: opts.userId,
-        company_name: recruiter?.company_name || "Employer",
-        status: "suspended",
         notes,
         created_at: now,
-        updated_at: now,
+        ...(recruiter?.company_name ? { company_name: recruiter.company_name } : {}),
       })
       if (error) throw new Error(error.message)
     }
@@ -209,8 +193,6 @@ export async function setCampusPartnershipStatus(opts: {
     if (opts.status === "disconnected") {
       await stripUniversityFromEmployerJobs({ recruiterId: opts.userId, university })
     }
-
-    // Keep a mirrored audit-friendly record
   }
 
   const path = partnershipPath(university, opts.subject, opts.userId)
@@ -287,9 +269,14 @@ export async function listActiveEmployerPartnerUniversities(recruiterId: string)
   const admin = createAdminClient()
   const { data } = await admin
     .from("campus_employer_partners")
-    .select("university, status")
+    .select("university")
     .eq("recruiter_id", recruiterId)
-    .eq("status", "active")
     .limit(100)
-  return [...new Set((data || []).map((row) => directoryUniversity(row.university)).filter(Boolean))]
+  const universities = [...new Set((data || []).map((row) => directoryUniversity(row.university)).filter(Boolean))]
+  const active: string[] = []
+  for (const university of universities) {
+    const ok = await isCampusPartnershipActive({ university, subject: "employer", userId: recruiterId })
+    if (ok) active.push(university)
+  }
+  return active
 }

@@ -182,10 +182,10 @@ async function jobStatsForRecruiters(recruiterIds: string[]) {
 type PartnerRow = {
   id: string
   company_name?: string | null
-  status?: string | null
   recruiter_id?: string | null
-  updated_at?: string | null
   created_at?: string | null
+  tier?: string | null
+  notes?: string | null
 }
 
 type RecruiterRow = {
@@ -236,7 +236,7 @@ export async function loadCampusEmployerDirectory(opts: {
 
   const { data: partners, error: partnerError } = await admin
     .from("campus_employer_partners")
-    .select("id, company_name, status, recruiter_id, updated_at, created_at")
+    .select("id, company_name, recruiter_id, created_at, tier, notes")
     .eq("university", university)
     .order("created_at", { ascending: false })
     .limit(5000)
@@ -297,8 +297,8 @@ export async function loadCampusEmployerDirectory(opts: {
         employeeCount: recruiter?.employee_count || null,
         websiteUrl: website,
         linkedinUrl: linkedinFromWebsite(website),
-        lastActiveAt: pickLatest(profile?.updated_at, recruiter?.updated_at, partner.updated_at, partner.created_at),
-        status: partner.status || null,
+        lastActiveAt: pickLatest(profile?.updated_at, recruiter?.updated_at, partner.created_at),
+        status: "active",
       })
     } else {
       baseRows.push({
@@ -309,8 +309,8 @@ export async function loadCampusEmployerDirectory(opts: {
         employeeCount: null,
         websiteUrl: null,
         linkedinUrl: null,
-        lastActiveAt: pickLatest(partner.updated_at, partner.created_at),
-        status: partner.status || null,
+        lastActiveAt: pickLatest(partner.created_at),
+        status: "active",
       })
     }
   }

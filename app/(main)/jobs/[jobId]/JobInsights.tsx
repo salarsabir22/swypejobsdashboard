@@ -26,10 +26,10 @@ export async function JobInsights({ jobId, matches }: { jobId: string; matches: 
     supabase.from("job_views").select("id", { count: "exact", head: true }).eq("job_id", jobId),
     supabase.from("job_swipes").select("id", { count: "exact", head: true }).eq("job_id", jobId).eq("direction", "right"),
     supabase.from("job_swipes").select("id", { count: "exact", head: true }).eq("job_id", jobId).eq("direction", "saved"),
-    supabase.from("job_swipes").select("student_id").eq("job_id", jobId).eq("direction", "right").limit(500),
+    supabase.from("job_swipes").select("student_id").eq("job_id", jobId).eq("direction", "right").limit(120),
   ])
 
-  const ids = [...new Set((swipes || []).map((row) => row.student_id as string))].slice(0, 150)
+  const ids = [...new Set((swipes || []).map((row) => row.student_id as string))].slice(0, 80)
   let students: {
     degree?: string | null
     graduation_year?: number | null

@@ -1,10 +1,16 @@
+import { Suspense } from "react"
 import { loadCampusPage } from "@/lib/campus/page-data"
 import { CampusFrame } from "@/components/campus/CampusFrame"
+import { FocusAnchor } from "@/components/campus/FocusAnchor"
 import { SsoDesk } from "@/components/campus/SsoDesk"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
 import { listCampusIdentities, listOpenConflicts } from "@/lib/sso/identity"
 
-export default async function CampusSettingsPage({ searchParams }: { searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string }> }) {
+export default async function CampusSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ campus?: string; range?: string; from?: string; to?: string; focus?: string }>
+}) {
   const { snapshot } = await loadCampusPage(searchParams, "view_sso")
   const [identities, conflicts] = await Promise.all([listCampusIdentities(), listOpenConflicts()])
 
@@ -14,8 +20,13 @@ export default async function CampusSettingsPage({ searchParams }: { searchParam
       title="Settings & integrations"
       description="SSO, identity conflicts, and approved external connections. Confirm the live IdP protocol with IoBM before changing SAML, OIDC, or JWT settings."
     >
+      <Suspense fallback={null}>
+        <FocusAnchor id="sso" />
+      </Suspense>
       <DashboardPanel title="Campus SSO">
-        <SsoDesk identities={identities.rows} conflicts={conflicts.rows} missingTable={identities.missingTable || conflicts.missingTable} />
+        <div id="sso" className="scroll-mt-24">
+          <SsoDesk identities={identities.rows} conflicts={conflicts.rows} missingTable={identities.missingTable || conflicts.missingTable} />
+        </div>
       </DashboardPanel>
       <div className="grid gap-4 lg:grid-cols-2">
         <DashboardPanel title="Identity protocol">

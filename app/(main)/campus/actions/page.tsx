@@ -1,6 +1,6 @@
-import { loadCampusPage } from "@/lib/campus/page-data"
-import { canCampus } from "@/lib/campus/rbac"
-import { createClient } from "@/lib/supabase/server"
+import { loadCampusSnapshot } from "@/lib/campus/metrics"
+import { canCampus, requireCampusCapability, scopedCampus } from "@/lib/campus/rbac"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { AttentionStudentList } from "@/components/campus/AttentionStudentList"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { EventForm, JobReviewButtons, NudgeForm } from "@/components/campus/CampusActions"
@@ -11,8 +11,22 @@ export default async function CampusActionsPage({
 }: {
   searchParams: Promise<{ campus?: string; segment?: string; range?: string; from?: string; to?: string }>
 }) {
-  const { snapshot, params } = await loadCampusPage(searchParams, "view_actions")
-  const segment = (params as { segment?: string }).segment
+  const params = await searchParams
+  const access = await requireCampusCapability("view_actions")
+  const universityScope = scopedCampus(access, params.campus)
+  const admin = createAdminClient()
+
+  const [snapshot, jobsRes] = await Promise.all([
+    loadCampusSnapshot(access, universityScope, params.range, { from: params.from, to: params.to }),
+    admin
+      .from("jobs")
+      .select("id, title, location, job_type, is_active, recruiter_profiles(company_name)")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(12),
+  ])
+
+  const segment = params.segment
   const canMutate = canCampus(snapshot.access, "mutate")
   const university = snapshot.access.university || snapshot.attention[0]?.university || "Campus"
 
@@ -21,13 +35,7 @@ export default async function CampusActionsPage({
   const zero = snapshot.engagement.zeroActivity
   const list = segment === "quiet" ? quiet : segment === "zero" ? zero : segment === "seniors" ? seniors : snapshot.attention
 
-  const supabase = await createClient()
-  const { data: jobs } = await supabase
-    .from("jobs")
-    .select("id, title, location, job_type, is_active, recruiter_profiles(company_name)")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(12)
+  const jobs = jobsRes.data
   const jobRows = (jobs || []) as {
     id: string
     title: string

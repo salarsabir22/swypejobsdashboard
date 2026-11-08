@@ -38,7 +38,11 @@ export default async function ProfilePage() {
   const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login")
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, role, full_name, avatar_url, cover_url, bio, profile_video_url, email_notifications, created_at")
+    .eq("id", user.id)
+    .single()
   const isStudent = profile?.role === "student"
   const isRecruiter = profile?.role === "recruiter"
 
@@ -53,22 +57,34 @@ export default async function ProfilePage() {
     postsCountRes,
   ] = await Promise.all([
     isStudent
-      ? supabase.from("student_profiles").select("*").eq("id", user.id).maybeSingle()
+      ? supabase
+          .from("student_profiles")
+          .select(
+            "id, university, degree, department, graduation_year, skills, resume_url, linkedin_url, github_url, still_enrolled, current_semester, cgpa, is_alumni, gender, mentorship_opt_in, preferred_locations, work_history, projects, certifications",
+          )
+          .eq("id", user.id)
+          .maybeSingle()
       : Promise.resolve({ data: null as any }),
     isRecruiter
-      ? supabase.from("recruiter_profiles").select("*").eq("id", user.id).maybeSingle()
+      ? supabase
+          .from("recruiter_profiles")
+          .select(
+            "id, company_name, logo_url, website_url, description, industry, company_size, is_approved, linkedin_url",
+          )
+          .eq("id", user.id)
+          .maybeSingle()
       : Promise.resolve({ data: null as any }),
     supabase
       .from("matches")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .or(`student_id.eq.${user.id},recruiter_id.eq.${user.id}`),
     isStudent
       ? supabase
           .from("job_swipes")
-          .select("*", { count: "exact", head: true })
+          .select("id", { count: "exact", head: true })
           .eq("student_id", user.id)
           .eq("direction", "right")
-      : supabase.from("jobs").select("*", { count: "exact", head: true }).eq("recruiter_id", user.id),
+      : supabase.from("jobs").select("id", { count: "exact", head: true }).eq("recruiter_id", user.id),
     isStudent
       ? supabase
           .from("job_swipes")
@@ -78,7 +94,7 @@ export default async function ProfilePage() {
           .eq("student_id", user.id)
           .eq("direction", "saved")
           .order("created_at", { ascending: false })
-          .limit(40)
+          .limit(12)
       : Promise.resolve({ data: [] as any[] }),
     isStudent
       ? supabase
@@ -95,7 +111,7 @@ export default async function ProfilePage() {
           .select("id, title, is_active")
           .eq("recruiter_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(40)
+          .limit(12)
       : Promise.resolve({ data: [] as any[] }),
     supabase.from("feed_posts").select("id", { count: "exact", head: true }).eq("author_id", user.id),
   ])

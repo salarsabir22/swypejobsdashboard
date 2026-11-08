@@ -1,8 +1,7 @@
 import { cn } from "@/lib/utils"
 
 /**
- * swypejobs wordmark. Uses the Bagoss Condensed stack (see `.lp-logo-font` in globals.css),
- * which needs licensed files in public/fonts/. Until then it falls back to Outfit.
+ * swypejobs wordmark. Uses `.lp-logo-font` (Outfit) — Bagoss Condensed is not bundled.
  */
 export function Logo({
   size = 32,

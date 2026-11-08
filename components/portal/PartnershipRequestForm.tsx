@@ -44,8 +44,8 @@ export function PartnershipRequestForm({ companyName }: { companyName: string })
       university: university.trim(),
       recruiter_id: user?.id,
       company_name: companyName,
-      status: "pending",
-      notes: notes.trim() || null,
+      tier: "standard",
+      notes: notes.trim() || "Partnership request from employer",
     })
     setBusy(false)
     if (error) toast({ variant: "destructive", title: "Couldn’t send request", description: error.message })
