@@ -48,6 +48,7 @@ export default async function CampusCollectionsPage({
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Curated jobs"
       description="Listings selected for student and alumni visibility. Feature or remove a job here without unpublishing the employer’s original posting."
     >

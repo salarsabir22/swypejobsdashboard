@@ -17,6 +17,7 @@ export default async function CampusSettingsPage({
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Settings & integrations"
       description="SSO, identity conflicts, and approved external connections. Confirm the live IdP protocol with IoBM before changing SAML, OIDC, or JWT settings."
     >

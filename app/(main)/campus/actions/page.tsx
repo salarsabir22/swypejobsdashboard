@@ -51,6 +51,7 @@ export default async function CampusActionsPage({
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       showSources
       exportDataset="departments"
       title="Action tools"

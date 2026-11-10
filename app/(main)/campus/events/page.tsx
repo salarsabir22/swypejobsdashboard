@@ -49,6 +49,7 @@ export default async function CampusEventsPage({
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Events & career fairs"
       description="Create fairs, workshops, and info sessions. Set virtual or on-site details, visibility, and optional Google Meet scheduling without leaving SwypeJobs."
       actions={

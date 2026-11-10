@@ -35,6 +35,7 @@ export default async function CampusCommunicationPage({ searchParams }: { search
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Communication"
       description="Employer and student message history on this campus. Built-in CDC broadcast messaging is optional in the IoBM source; the live product uses match chat plus campus nudges."
     >

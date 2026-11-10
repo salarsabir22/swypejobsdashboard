@@ -20,7 +20,7 @@ export default async function CampusAnnouncementsPage({ searchParams }: { search
     .limit(20)
 
   return (
-    <CampusFrame snapshot={snapshot} title="Announcements" description="Target any mix of students, alumni, and employers — or everyone. Required acknowledgement is tracked per person.">
+    <CampusFrame snapshot={snapshot} showRange={false} title="Announcements" description="Target any mix of students, alumni, and employers — or everyone. Required acknowledgement is tracked per person.">
       <DashboardPanel title="Publish">
         <AnnouncementForm university={university} />
       </DashboardPanel>

@@ -50,6 +50,7 @@ export default async function CampusEmployersPage({
     return (
       <CampusFrame
         snapshot={snapshot}
+        showRange={false}
         title="Partners & stakeholders"
         description="Employer directory for this campus."
       >
@@ -103,6 +104,7 @@ export default async function CampusEmployersPage({
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Partners & stakeholders"
       description={`${directory.university} employer directory — search, filter, message, suspend, or create groups.`}
     >

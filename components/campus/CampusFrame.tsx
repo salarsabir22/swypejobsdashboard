@@ -27,6 +27,7 @@ export function CampusFrame({
   children: ReactNode
   showSources?: boolean
   exportDataset?: CampusExportDataset
+  /** Keep true for period-scoped reports; false for queues, directories, settings, curation. */
   showRange?: boolean
   hideEyebrow?: boolean
   actions?: ReactNode
@@ -34,12 +35,17 @@ export function CampusFrame({
   const campusLabel = snapshot.access.university || "All campuses"
   const canExport = canCampus(snapshot.access, "export")
   const period = snapshot.period
+  const eyebrowParts = [
+    campusLabel,
+    formatIobmStaffRole(snapshot.access.staffRole),
+    showRange ? period?.label || "1 month" : null,
+  ].filter(Boolean)
 
   return (
     <div className="space-y-6">
       <header className="space-y-4">
         <DashboardPageHeader
-          eyebrow={hideEyebrow ? undefined : `${campusLabel} · ${formatIobmStaffRole(snapshot.access.staffRole)} · ${period?.label || "1 month"}`}
+          eyebrow={hideEyebrow ? undefined : eyebrowParts.join(" · ")}
           title={title}
           description={description}
           action={actions}

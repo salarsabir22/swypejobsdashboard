@@ -38,6 +38,7 @@ export default async function CampusPendingPage({ searchParams }: { searchParams
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Pending items"
       description="One queue for employer verifications, job approvals, applications, event registrations, international listings, and low-activity alerts."
     >

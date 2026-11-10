@@ -7,6 +7,7 @@ export default async function CampusOpportunitiesPage({ searchParams }: { search
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="International opportunities"
       description="Publish study abroad, exchange, dual degree, and scholarship listings. Students browse them with the visa link attached."
     >

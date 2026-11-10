@@ -65,6 +65,7 @@ export default async function CampusPeoplePage({
     return (
       <CampusFrame
         snapshot={snapshot}
+        showRange={false}
         title="Partners & stakeholders"
         description="Students, alumni, and employers linked to this campus."
       >
@@ -114,6 +115,7 @@ export default async function CampusPeoplePage({
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Partners & stakeholders"
       description={`${directory.university} directory. Browse students and alumni, open profiles, message, suspend, or mark graduates.`}
     >

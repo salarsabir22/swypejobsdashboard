@@ -32,6 +32,7 @@ export default async function CampusUsersPage({ searchParams }: { searchParams: 
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Users & access"
       description="Student, alumni, and employer verification plus CDC roles. Escalations go to the CDC Super Admin. Permissions follow the IoBM staff role, not a second matrix."
     >

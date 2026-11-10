@@ -20,7 +20,7 @@ export default async function CampusApprovalsPage({ searchParams }: { searchPara
   const rows = (reviews || []).filter((row) => !university || row.university === university)
 
   return (
-    <CampusFrame snapshot={snapshot} title="Approvals" description="Verify employer-facing listings and internships. Individual and bulk review: approve or hold. Job approval is optional in the IoBM source — a hold only affects this campus.">
+    <CampusFrame snapshot={snapshot} showRange={false} title="Approvals" description="Verify employer-facing listings and internships. Individual and bulk review: approve or hold. Job approval is optional in the IoBM source — a hold only affects this campus.">
       <DashboardPanel title="Queue">
         {error ? (
           <DashboardEmptyState

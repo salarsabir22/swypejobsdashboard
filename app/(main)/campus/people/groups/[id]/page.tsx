@@ -89,6 +89,7 @@ export default async function CampusGroupDetailPage({
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Partners & stakeholders"
       description={`${directoryUniversity(group.university)} · ${group.name}`}
     >

@@ -20,6 +20,7 @@ export default async function CampusServicesPage({ searchParams }: { searchParam
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Mentorship & career services"
       description="Alumni mentorship, career surveys for HEC/NBEAC, CDC advising, and today’s employer interviews with your students."
     >

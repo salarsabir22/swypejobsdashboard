@@ -29,7 +29,12 @@ export default async function CampusGroupsPage({
 
   if (!university && snapshot.access.role !== "admin") {
     return (
-      <CampusFrame snapshot={snapshot} title="Partners & stakeholders" description="Campus directory groups.">
+      <CampusFrame
+        snapshot={snapshot}
+        showRange={false}
+        title="Partners & stakeholders"
+        description="Campus directory groups."
+      >
         <DashboardEmptyState
           icon={UsersRound}
           title="Campus not set"
@@ -58,6 +63,7 @@ export default async function CampusGroupsPage({
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Partners & stakeholders"
       description="Named cohorts saved from student, alumni, or employer directories."
     >

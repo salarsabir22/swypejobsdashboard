@@ -77,6 +77,7 @@ export default async function CampusJobsPage({ searchParams }: { searchParams: P
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Jobs & applications"
       description="Active, expired, and archived jobs and internships. Hiring stages match the listings table below."
     >

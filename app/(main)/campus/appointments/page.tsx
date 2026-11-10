@@ -10,6 +10,7 @@ export default async function CampusAppointmentsPage({ searchParams }: { searchP
   return (
     <CampusFrame
       snapshot={snapshot}
+      showRange={false}
       title="Advising & interviews"
       description="Student CDC session requests, plus students who have employer interviews scheduled today."
     >
