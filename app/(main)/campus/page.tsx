@@ -17,6 +17,7 @@ import { loadCampusSnapshot } from "@/lib/campus/metrics"
 import { canCampus, requireCampusCapability, scopedCampus } from "@/lib/campus/rbac"
 import { campusQueryHref } from "@/lib/campus/reports"
 import { fmtNum, fmtSourced, pctChange } from "@/lib/campus/format"
+import { nextCampusEvent } from "@/lib/campus/helpers"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { CampusHomeKpi } from "@/components/campus/CampusHomeKpi"
@@ -74,16 +75,7 @@ export default async function CampusHomePage({
   const currRate = currCohort && currCohort.n ? currCohort.placed / currCohort.n : null
   const placeDelta =
     prevRate != null && prevRate > 0 && currRate != null ? Math.round(((currRate - prevRate) / prevRate) * 100) : null
-  const now = Date.now()
-  const event =
-    [...snapshot.operations.events]
-      .sort((a, b) => {
-        const at = a.starts_at ? new Date(a.starts_at).getTime() : Number.POSITIVE_INFINITY
-        const bt = b.starts_at ? new Date(b.starts_at).getTime() : Number.POSITIVE_INFINITY
-        return at - bt
-      })
-      .find((row) => !row.starts_at || new Date(row.starts_at).getTime() >= now - 6 * 60 * 60 * 1000) ||
-    snapshot.operations.events[0]
+  const event = nextCampusEvent(snapshot.operations.events)
   const international = snapshot.market.internationalPrograms
   const windowLabel =
     snapshot.period.id === "custom"
@@ -161,6 +153,7 @@ export default async function CampusHomePage({
   const insights = [
     {
       icon: TrendingUp,
+      href: "/campus/applications",
       value: fmtNum(snapshot.engagement.applicationsMonth),
       copy:
         appsDelta == null
@@ -169,11 +162,13 @@ export default async function CampusHomePage({
     },
     {
       icon: Handshake,
+      href: "/campus/operations",
       value: nps.row.value == null ? "—" : fmtNum(Math.round(nps.row.value)),
       copy: nps.row.n ? `${nps.label} from ${nps.row.n} live survey responses` : `${nps.label} · no responses yet`,
     },
     {
       icon: Globe,
+      href: "/campus/opportunities",
       value: fmtNum(international),
       copy: "Live international programs on this campus",
     },
@@ -210,7 +205,7 @@ export default async function CampusHomePage({
           tone="navy"
         />
         <CampusHomeKpi
-          href={href("/campus/market")}
+          href={href("/campus/market#employers")}
           icon={Users}
           label="Active employers"
           value={fmtNum(snapshot.market.activeEmployers ?? snapshot.kpis.employersEngaged.value)}
@@ -227,7 +222,7 @@ export default async function CampusHomePage({
           tone="blue"
         />
         <CampusHomeKpi
-          href={href("/campus/outcomes")}
+          href={href("/campus/outcomes#placements")}
           icon={Handshake}
           label="Placements"
           value={placed != null ? fmtNum(placed) : fmtSourced(snapshot.kpis.placementRate, "pct")}
@@ -315,13 +310,20 @@ export default async function CampusHomePage({
             <h2 className="mb-4 font-heading text-lg font-semibold text-[#051C2C]">Key insights</h2>
             <div className="grid gap-3 sm:grid-cols-3">
               {insights.map((item) => (
-                <div key={item.copy} className="campus-chip rounded-[1.5rem] bg-white p-4">
+                <Link
+                  key={item.href}
+                  href={href(item.href)}
+                  className="campus-chip group rounded-[1.5rem] bg-white p-4 transition-shadow hover:shadow-[0_18px_32px_-22px_rgba(5,28,44,0.5)]"
+                >
                   <span className={cn("grid size-10 place-items-center rounded-full", ICON)}>
                     <item.icon className="h-4 w-4" aria-hidden />
                   </span>
                   <p className="mt-3 text-xl font-semibold tabular-nums text-[#051C2C]">{item.value}</p>
                   <p className="mt-1 text-[13px] leading-snug text-[rgba(5,28,44,0.58)]">{item.copy}</p>
-                </div>
+                  <p className="mt-2 text-[12px] font-semibold text-[#2251FF] opacity-0 transition-opacity group-hover:opacity-100">
+                    Open list →
+                  </p>
+                </Link>
               ))}
             </div>
           </CardContent>

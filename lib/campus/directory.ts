@@ -5,6 +5,7 @@ import { studentIsAlumni } from "@/lib/jobs/targeting"
 import { IOBM_UNIVERSITY_NAME } from "@/lib/sso/iobm"
 import { IOBM_COLLEGES, iobmCollegeById, iobmCollegeByName } from "@/lib/sso/iobm-programs"
 import { canonicalizeUniversity } from "@/lib/campus/student-campus"
+import { sameCampus } from "@/lib/jobs/curation"
 import { listDisconnectedSubjectIds } from "@/lib/campus/partnership"
 
 export const CAMPUS_DIRECTORY_PAGE_SIZE = 50
@@ -90,6 +91,18 @@ export function formatLastActive(iso: string | null | undefined) {
 export function directoryUniversity(name: string | null | undefined) {
   const value = canonicalizeUniversity(name) || name?.trim() || ""
   return value || IOBM_UNIVERSITY_NAME
+}
+
+/**
+ * Rows carry several spellings of the same campus ("IoBM", "IOBM", "Institute
+ * of Business Management, Karachi"). An exact equе filter hid every student
+ * that was visible in the snapshot numbers, so match the known spellings.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function withCampusMatch(builder: any, university: string) {
+  const spellings = ["iobm", "institute of business management"].filter((needle) => sameCampus(university, needle))
+  if (!spellings.length) return builder.eq("university", university)
+  return builder.or(spellings.map((needle) => `university.ilike.%${needle}%`).join(","))
 }
 
 function completionFor(row: StudentRow, profile: ProfileJoin) {
@@ -264,15 +277,18 @@ async function resolveSearchIds(university: string, q: string) {
 
   const [{ data: byName }, { data: byId }] = await Promise.all([
     admin.from("profiles").select("id, full_name").ilike("full_name", `%${needle}%`).limit(400),
-    admin
-      .from("student_profiles")
-      .select("id")
-      .eq("university", university)
-      .ilike("campus_student_id", `%${needle}%`)
-      .limit(400),
+    withCampusMatch(
+      admin.from("student_profiles").select("id").ilike("campus_student_id", `%${needle}%`),
+      university
+    ).limit(400),
   ])
 
-  return [...new Set([...(byName || []).map((r) => r.id), ...(byId || []).map((r) => r.id)])]
+  return [
+    ...new Set([
+      ...(byName || []).map((r) => r.id),
+      ...((byId || []) as { id: string }[]).map((r) => r.id),
+    ]),
+  ]
 }
 
 function applySqlFilters(
@@ -364,10 +380,10 @@ async function queryPage(opts: {
   const admin = createAdminClient()
 
   async function run(select: string) {
-    let builder = admin
-      .from("student_profiles")
-      .select(select, { count: "exact" })
-      .eq("university", opts.university)
+    let builder = withCampusMatch(
+      admin.from("student_profiles").select(select, { count: "exact" }),
+      opts.university
+    )
       .order("updated_at", { ascending: false })
       .range(opts.from, opts.to)
     builder = applySqlFilters(builder, {
@@ -382,10 +398,10 @@ async function queryPage(opts: {
   let result: { data: any; error: { message: string } | null; count: number | null } = await run(SELECT_FULL)
   if (result.error) result = await run(SELECT_BASIC)
   if (result.error && /is_alumni/i.test(result.error.message)) {
-    let builder = admin
-      .from("student_profiles")
-      .select(SELECT_BASIC, { count: "exact" })
-      .eq("university", opts.university)
+    let builder = withCampusMatch(
+      admin.from("student_profiles").select(SELECT_BASIC, { count: "exact" }),
+      opts.university
+    )
       .order("updated_at", { ascending: false })
       .range(opts.from, opts.to)
     if (opts.searchIds?.length) builder = builder.in("id", opts.searchIds.slice(0, 400))
@@ -410,10 +426,7 @@ async function fetchAllMatchingRows(opts: {
   let select = SELECT_FULL
 
   while (offset < 20000) {
-    let builder = admin
-      .from("student_profiles")
-      .select(select)
-      .eq("university", opts.university)
+    let builder = withCampusMatch(admin.from("student_profiles").select(select), opts.university)
       .order("updated_at", { ascending: false })
       .range(offset, offset + pageSize - 1)
     builder = applySqlFilters(builder, {

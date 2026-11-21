@@ -219,14 +219,14 @@ export function studentCompleteness(opts: {
   projects?: boolean
 }): { percent: number; items: CompletenessItem[] } {
   const items: CompletenessItem[] = [
-    { id: "photo", label: "Profile photo", done: Boolean(opts.avatar), href: "/onboarding" },
-    { id: "bio", label: "Bio", done: Boolean(opts.bio?.trim()), href: "/onboarding" },
-    { id: "school", label: "Education", done: Boolean(opts.university), href: "/onboarding" },
-    { id: "skills", label: "At least 3 skills", done: (opts.skills?.length ?? 0) >= 3, href: "/onboarding" },
+    { id: "photo", label: "Profile photo", done: Boolean(opts.avatar), href: "/profile" },
+    { id: "bio", label: "Bio", done: Boolean(opts.bio?.trim()), href: "/profile/details" },
+    { id: "school", label: "Education", done: Boolean(opts.university), href: "/profile/education" },
+    { id: "skills", label: "At least 3 skills", done: (opts.skills?.length ?? 0) >= 3, href: "/profile/details" },
     { id: "resume", label: "Resume", done: Boolean(opts.resume), href: "/resume" },
-    { id: "video", label: "Intro video", done: Boolean(opts.video), href: "/onboarding" },
-    { id: "linkedin", label: "LinkedIn", done: Boolean(opts.linkedin), href: "/onboarding" },
-    { id: "experience", label: "Internship or job history", done: Boolean(opts.experience), href: "/profile/experience" },
+    { id: "video", label: "Intro video", done: Boolean(opts.video), href: "/profile" },
+    { id: "linkedin", label: "LinkedIn", done: Boolean(opts.linkedin), href: "/profile/details" },
+    { id: "experience", label: "Work experience", done: Boolean(opts.experience), href: "/profile/experience" },
     { id: "projects", label: "A project", done: Boolean(opts.projects), href: "/profile/experience" },
   ]
   const done = items.filter((i) => i.done).length

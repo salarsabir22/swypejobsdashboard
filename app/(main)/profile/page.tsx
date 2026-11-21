@@ -13,6 +13,8 @@ import {
   Clock,
   Globe,
   Users,
+  Mail,
+  Phone,
 } from "lucide-react"
 import { formatDate } from "@/lib/utils"
 import Link from "next/link"
@@ -21,7 +23,8 @@ import { ShareButton } from "@/components/share/ShareButton"
 import { CompletenessCard } from "@/components/profile/CompletenessCard"
 import { ProfileHero } from "@/components/profile/ProfileHero"
 import { recruiterCompleteness, studentCompleteness } from "@/lib/profile/completeness"
-import { currentRole, formatWorkDates, parseCareerHistory } from "@/lib/profile/career"
+import { currentRole, formatWorkDates, parseCareerHistory, WORK_KIND_LABEL } from "@/lib/profile/career"
+import { mergeContact } from "@/lib/profile/contact"
 import { studentIsAlumni } from "@/lib/jobs/targeting"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -130,6 +133,13 @@ export default async function ProfilePage() {
     : null
   const career = parseCareerHistory(sp)
   const alumni = isStudent && studentIsAlumni(sp)
+  const contactRes = isStudent
+    ? await supabase.from("student_profiles").select("phone, personal_email").eq("id", user.id).maybeSingle()
+    : null
+  const contact = mergeContact(
+    contactRes && !contactRes.error ? (contactRes.data as { phone?: unknown; personal_email?: unknown } | null) : null,
+    user.user_metadata as Record<string, unknown> | null
+  )
   const nowRole = currentRole(career.work)
   const completeness = isStudent
     ? studentCompleteness({
@@ -189,7 +199,7 @@ export default async function ProfilePage() {
               </Button>
             ) : null}
             <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link href="/onboarding">
+              <Link href={isStudent ? "/profile/details" : "/onboarding"}>
                 <Edit className="h-4 w-4" />
                 Edit
               </Link>
@@ -289,12 +299,57 @@ export default async function ProfilePage() {
             />
           ) : null}
 
-          <Card className="shadow-sm">
+          <Card id="about" className="shadow-sm">
             <CardContent className="p-5">
-              <h2 className="mb-2 font-data text-[10px] uppercase tracking-wide text-muted-foreground">About</h2>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h2 className="font-data text-[10px] uppercase tracking-wide text-muted-foreground">About</h2>
+                {isStudent ? (
+                  <Link href="/profile/details#about" className="font-body text-xs text-primary hover:underline">
+                    Edit
+                  </Link>
+                ) : null}
+              </div>
               <p className="font-body text-sm leading-relaxed">{profile?.bio || "No bio yet. Add a short summary so people know what you do."}</p>
             </CardContent>
           </Card>
+
+          {isStudent ? (
+            <Card id="contact" className="shadow-sm">
+              <CardContent className="space-y-3 p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="font-data text-[10px] uppercase tracking-wide text-muted-foreground">Contact</h2>
+                  <Link href="/profile/details#contact" className="font-body text-xs text-primary hover:underline">
+                    Edit
+                  </Link>
+                </div>
+                <div className="space-y-2 font-body text-sm">
+                  <p className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    {contact.phone ? (
+                      <a href={`tel:${contact.phone}`} className="hover:text-primary hover:underline">
+                        {contact.phone}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">No phone number yet</span>
+                    )}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    {contact.personalEmail ? (
+                      <a href={`mailto:${contact.personalEmail}`} className="break-all hover:text-primary hover:underline">
+                        {contact.personalEmail}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">No personal email yet</span>
+                    )}
+                  </p>
+                </div>
+                <p className="font-body text-[11px] leading-relaxed text-muted-foreground">
+                  Shared with recruiters you match with. Editable any time.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <ProfileVideoBlock userId={user.id} initialVideoUrl={(profile as any)?.profile_video_url ?? null} />
 
@@ -318,16 +373,21 @@ export default async function ProfilePage() {
                 <CardContent className="p-5">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <h2 className="font-data text-[10px] uppercase tracking-wide text-muted-foreground">Education</h2>
-                    {alumni ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        <Badge className="font-normal">Alumni</Badge>
-                        {sp?.mentorship_opt_in ? (
-                          <Badge variant="outline" className="font-normal">
-                            Mentor
-                          </Badge>
-                        ) : null}
-                      </div>
-                    ) : null}
+                    <span className="flex flex-wrap items-center gap-2">
+                      {alumni ? (
+                        <>
+                          <Badge className="font-normal">Alumni</Badge>
+                          {sp?.mentorship_opt_in ? (
+                            <Badge variant="outline" className="font-normal">
+                              Mentor
+                            </Badge>
+                          ) : null}
+                        </>
+                      ) : null}
+                      <Link href="/profile/education" className="font-body text-xs text-primary hover:underline">
+                        Edit
+                      </Link>
+                    </span>
                   </div>
                   {sp?.university ? (
                     <div>
@@ -337,6 +397,9 @@ export default async function ProfilePage() {
                       </p>
                       {sp.college ? <p className="mt-1 font-body text-sm text-muted-foreground">{sp.college}</p> : null}
                       {sp.degree ? <p className="mt-1 font-body text-sm text-muted-foreground">{sp.degree}</p> : null}
+                      {sp.cgpa ? (
+                        <p className="mt-1 font-body text-sm text-muted-foreground">CGPA {Number(sp.cgpa).toFixed(2)} / 4.00</p>
+                      ) : null}
                       {sp.campus_student_id ? (
                         <p className="mt-1 font-data text-xs text-muted-foreground">ID {sp.campus_student_id}</p>
                       ) : null}
@@ -388,16 +451,20 @@ export default async function ProfilePage() {
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <h2 className="font-data text-[10px] uppercase tracking-wide text-muted-foreground">Experience</h2>
                     <span className="flex gap-3">
-                      <Link href="/profile/education" className="font-body text-xs text-primary hover:underline">Degrees</Link>
                       <Link href="/profile/experience" className="font-body text-xs text-primary hover:underline">
                         {career.work.length || career.projects.length || career.certifications.length ? "Edit" : "Add"}
                       </Link>
                     </span>
                   </div>
                   {career.work.length === 0 && career.projects.length === 0 && career.certifications.length === 0 ? (
-                    <p className="font-body text-sm text-muted-foreground">
-                      Add internships, jobs, projects, and certifications so employers can see what you’ve done.
-                    </p>
+                    <div className="space-y-3">
+                      <p className="font-body text-sm text-muted-foreground">
+                        Add full-time roles, internships, projects, and fellowships so employers can see what you’ve done.
+                      </p>
+                      <Button asChild variant="outline" size="sm" className="rounded-full">
+                        <Link href="/profile/experience">Add experience</Link>
+                      </Button>
+                    </div>
                   ) : (
                     <div className="space-y-5">
                       {career.work.length ? (
@@ -409,7 +476,7 @@ export default async function ProfilePage() {
                                 <span className="font-normal text-muted-foreground"> · {w.name}</span>
                               </p>
                               <p className="mt-0.5 font-body text-xs text-muted-foreground">
-                                {w.kind === "internship" ? "Internship" : "Job"}
+                                {WORK_KIND_LABEL[w.kind]}
                                 {formatWorkDates(w) ? ` · ${formatWorkDates(w)}` : ""}
                               </p>
                               {w.summary ? <p className="mt-1 font-body text-sm text-foreground/90">{w.summary}</p> : null}
@@ -456,7 +523,12 @@ export default async function ProfilePage() {
 
               <Card className="shadow-sm">
                 <CardContent className="p-5">
-                  <h2 className="mb-3 font-data text-[10px] uppercase tracking-wide text-muted-foreground">Skills</h2>
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h2 className="font-data text-[10px] uppercase tracking-wide text-muted-foreground">Skills</h2>
+                    <Link href="/profile/details#skills" className="font-body text-xs text-primary hover:underline">
+                      Edit
+                    </Link>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {(sp?.skills || []).map((s: string) => (
                       <Badge key={s} variant="secondary" className="font-normal">
@@ -470,7 +542,12 @@ export default async function ProfilePage() {
 
               <Card className="shadow-sm">
                 <CardContent className="space-y-2 p-5">
-                  <h2 className="mb-2 font-data text-[10px] uppercase tracking-wide text-muted-foreground">Links</h2>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <h2 className="font-data text-[10px] uppercase tracking-wide text-muted-foreground">Links</h2>
+                    <Link href="/profile/details#links" className="font-body text-xs text-primary hover:underline">
+                      Edit
+                    </Link>
+                  </div>
                   {sp?.linkedin_url ? (
                     <a href={sp.linkedin_url} className="flex items-center gap-2 text-sm text-primary hover:underline" target="_blank" rel="noopener noreferrer">
                       <Linkedin className="h-4 w-4" /> LinkedIn

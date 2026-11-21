@@ -65,10 +65,11 @@ export function AppChrome({ user, children }: { user: AppShellUser; children: Re
         role: user.role,
         isAlumni: user.isAlumni,
         staffRole: user.staffRole,
+        accessGrants: user.accessGrants,
         adminModules: user.adminModules,
         pathname,
       }),
-    [user.role, user.isAlumni, user.staffRole, user.adminModules, pathname]
+    [user.role, user.isAlumni, user.staffRole, user.accessGrants, user.adminModules, pathname]
   )
 
   useEffect(() => {

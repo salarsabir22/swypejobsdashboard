@@ -1,6 +1,7 @@
 import { Layers } from "lucide-react"
 import { loadCampusSnapshot } from "@/lib/campus/metrics"
 import { requireCampusCapability, scopedCampus } from "@/lib/campus/rbac"
+import { jobVisibleOnCampus, reviewKey, sameCampus } from "@/lib/jobs/curation"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { CollectionManager } from "@/components/campus/CollectionManager"
@@ -17,7 +18,7 @@ export default async function CampusCollectionsPage({
   const university = scopedCampus(access, params.campus) || access.university || "Campus"
   const admin = createAdminClient()
 
-  const [snapshot, collectionsRes, jobsRes] = await Promise.all([
+  const [snapshot, collectionsRes, jobsRes, reviewsRes] = await Promise.all([
     loadCampusSnapshot(access, university, params.range, { from: params.from, to: params.to }),
     admin
       .from("job_collections")
@@ -27,11 +28,19 @@ export default async function CampusCollectionsPage({
       .limit(40),
     admin
       .from("jobs")
-      .select("id, title, recruiter_profiles(company_name)")
+      .select("id, title, job_type, category, is_active, created_at, distribution_scope, target_universities, recruiter_profiles(company_name)")
       .eq("is_active", true)
       .order("created_at", { ascending: false })
-      .limit(40),
+      .limit(300),
+    admin.from("campus_job_reviews").select("job_id, university, status").limit(2000),
   ])
+
+  // Only this campus's review decisions count; IoBM spellings are treated as one campus.
+  const reviews = new Map<string, string>()
+  for (const row of reviewsRes.error ? [] : reviewsRes.data || []) {
+    if (!sameCampus(row.university, university)) continue
+    reviews.set(reviewKey(row.job_id, university), row.status)
+  }
 
   const collectionIds = (collectionsRes.data || []).map((row) => row.id)
   const { data: itemRows } = collectionIds.length
@@ -50,9 +59,9 @@ export default async function CampusCollectionsPage({
       snapshot={snapshot}
       showRange={false}
       title="Curated jobs"
-      description="Listings selected for student and alumni visibility. Feature or remove a job here without unpublishing the employer’s original posting."
+      description="Listings selected for student and alumni visibility. The list defaults to CDC-approved live jobs; filter by type or category, then feature or remove a job without unpublishing the employer’s original posting."
     >
-      <DashboardPanel title="Collections">
+      <DashboardPanel title="Collections" description="CDC-approved, live listings are shown by default. Holds and rejections are excluded.">
         {collectionsRes.error ? (
           <DashboardEmptyState
             icon={Layers}
@@ -69,11 +78,24 @@ export default async function CampusCollectionsPage({
               is_active: c.is_active,
               jobIds: jobIdsByCollection.get(c.id) || [],
             }))}
-            jobs={(jobsRes.data || []).map((j) => {
-              const companyRel = j.recruiter_profiles as { company_name?: string } | { company_name?: string }[] | null
-              const company = Array.isArray(companyRel) ? companyRel[0]?.company_name : companyRel?.company_name
-              return { id: j.id, title: j.title, company }
-            })}
+            jobs={(jobsRes.data || [])
+              .filter((j) => {
+                if (!jobVisibleOnCampus(j, university, reviews)) return false
+                const status = reviews.get(reviewKey(j.id, university))
+                return status !== "rejected" && status !== "held"
+              })
+              .map((j) => {
+                const companyRel = j.recruiter_profiles as { company_name?: string } | { company_name?: string }[] | null
+                const company = Array.isArray(companyRel) ? companyRel[0]?.company_name : companyRel?.company_name
+                return {
+                  id: j.id,
+                  title: j.title,
+                  company,
+                  jobType: j.job_type || null,
+                  category: j.category || null,
+                  approval: reviews.get(reviewKey(j.id, university)) || "unreviewed",
+                }
+              })}
           />
         )}
       </DashboardPanel>

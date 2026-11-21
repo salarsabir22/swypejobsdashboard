@@ -1,4 +1,6 @@
+import Link from "next/link"
 import { campusReportData } from "@/lib/campus/page-data"
+import { campusQueryHref } from "@/lib/campus/reports"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
@@ -62,6 +64,56 @@ export default async function CampusOutcomesPage({
         </DashboardPanel>
         <DashboardPanel title="Median days to first offer" badge={fmtSourced(snapshot.outcomes.timeToFirstOfferDays)}>
           <SourceBadge source={snapshot.outcomes.timeToFirstOfferDays.source} />
+        </DashboardPanel>
+      </div>
+
+      <div id="placements">
+        <DashboardPanel
+          title="Placements"
+          description="Who was placed, with which employer, in what role. Platform rows come from matches marked hired; survey rows come from first-destination records."
+          badge={`${snapshot.outcomes.placements.length}${snapshot.outcomes.placements.length >= 100 ? " (top 100)" : ""}`}
+        >
+          {snapshot.outcomes.placements.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Major / class</TableHead>
+                  <TableHead>Employer</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Recorded</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {snapshot.outcomes.placements.map((row, index) => (
+                  <TableRow key={`${row.studentId}-${row.employer}-${index}`}>
+                    <TableCell>
+                      <Link
+                        href={campusQueryHref(`/campus/people?q=${encodeURIComponent(row.student)}`, snapshot)}
+                        className="font-medium hover:text-primary hover:underline"
+                      >
+                        {row.student}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {[row.major, row.year].filter(Boolean).join(" · ") || "—"}
+                    </TableCell>
+                    <TableCell>{row.employer}</TableCell>
+                    <TableCell className="text-muted-foreground">{row.role || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{row.location || "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {row.date ? new Date(row.date).toLocaleDateString() : "Survey record"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-[14px] text-muted-foreground">
+              No placement is recorded yet. A row appears here when a match is marked hired or a first-destination survey is imported.
+            </p>
+          )}
         </DashboardPanel>
       </div>
 

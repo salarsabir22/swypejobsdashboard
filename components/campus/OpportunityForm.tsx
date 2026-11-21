@@ -7,34 +7,75 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { OPPORTUNITY_KINDS } from "@/lib/campus/opportunities"
 
-const KINDS = [
-  { id: "study_abroad", label: "Study abroad" },
-  { id: "exchange", label: "Exchange" },
-  { id: "dual_degree", label: "Dual degree" },
-  { id: "scholarship", label: "Scholarship" },
-]
+export type OpportunityDraft = {
+  id?: string
+  kind: string
+  title: string
+  country: string
+  organization: string
+  summary: string
+  eligibility: string
+  visaUrl: string
+  applyUrl: string
+  deadline: string
+}
 
-export function OpportunityForm() {
-  const [kind, setKind] = useState(KINDS[0].id)
-  const [title, setTitle] = useState("")
-  const [country, setCountry] = useState("")
-  const [organization, setOrganization] = useState("")
-  const [summary, setSummary] = useState("")
-  const [eligibility, setEligibility] = useState("")
-  const [visaUrl, setVisaUrl] = useState("")
-  const [applyUrl, setApplyUrl] = useState("")
-  const [deadline, setDeadline] = useState("")
+const EMPTY_DRAFT: OpportunityDraft = {
+  kind: OPPORTUNITY_KINDS[0].id,
+  title: "",
+  country: "",
+  organization: "",
+  summary: "",
+  eligibility: "",
+  visaUrl: "",
+  applyUrl: "",
+  deadline: "",
+}
+
+export function OpportunityForm({
+  initial,
+  onSaved,
+}: {
+  initial?: OpportunityDraft
+  onSaved?: (message: string) => void
+}) {
+  const [id] = useState(initial?.id)
+  const [kind, setKind] = useState(initial?.kind || EMPTY_DRAFT.kind)
+  const [title, setTitle] = useState(initial?.title || "")
+  const [country, setCountry] = useState(initial?.country || "")
+  const [organization, setOrganization] = useState(initial?.organization || "")
+  const [summary, setSummary] = useState(initial?.summary || "")
+  const [eligibility, setEligibility] = useState(initial?.eligibility || "")
+  const [visaUrl, setVisaUrl] = useState(initial?.visaUrl || "")
+  const [applyUrl, setApplyUrl] = useState(initial?.applyUrl || "")
+  const [deadline, setDeadline] = useState(initial?.deadline || "")
   const [message, setMessage] = useState("")
   const [saving, setSaving] = useState(false)
 
   const save = async () => {
+    if (!title.trim()) {
+      setMessage("Add a title before saving.")
+      return
+    }
     setSaving(true)
     setMessage("")
     const res = await fetch("/api/campus/opportunities", {
-      method: "POST",
+      method: id ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind, title, country, organization, summary, eligibility, visaUrl, applyUrl, deadline }),
+      body: JSON.stringify({
+        id,
+        kind,
+        title,
+        country,
+        organization,
+        summary,
+        eligibility,
+        visaUrl,
+        applyUrl,
+        deadline,
+      }),
     })
     const body = (await res.json().catch(() => null)) as { error?: string } | null
     setSaving(false)
@@ -42,9 +83,19 @@ export function OpportunityForm() {
       setMessage(body?.error || "Couldn’t save")
       return
     }
-    setTitle("")
-    setSummary("")
-    setMessage("Listed. Students see it under International opportunities.")
+    if (!id) {
+      setTitle("")
+      setSummary("")
+      setEligibility("")
+      setCountry("")
+      setOrganization("")
+      setApplyUrl("")
+      setVisaUrl("")
+      setDeadline("")
+    }
+    const done = id ? "Changes saved." : "Listed. Students see it under International opportunities."
+    setMessage(done)
+    onSaved?.(done)
   }
 
   return (
@@ -57,8 +108,10 @@ export function OpportunityForm() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {KINDS.map((item) => (
-                <SelectItem key={item.id} value={item.id}>{item.label}</SelectItem>
+              {OPPORTUNITY_KINDS.map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -97,7 +150,9 @@ export function OpportunityForm() {
         </div>
       </div>
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
-      <Button type="button" className="rounded-full" onClick={() => void save()} loading={saving} loadingText="Saving…">Publish</Button>
+      <Button type="button" className="rounded-full" onClick={() => void save()} loading={saving} loadingText="Saving…">
+        {id ? "Save changes" : "Publish listing"}
+      </Button>
     </div>
   )
 }

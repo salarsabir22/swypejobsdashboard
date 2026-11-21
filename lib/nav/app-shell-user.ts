@@ -25,6 +25,8 @@ export type AppShellUser = {
   isAlumni?: boolean
   university?: string | null
   staffRole?: string | null
+  /** Per-staff permission switches; null/undefined means the role default applies. */
+  accessGrants?: string[] | null
 }
 
 /** One auth + profile round-trip per request (shared across layout/pages). */
@@ -66,6 +68,7 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
   let isAlumni = false
   let university: string | null = null
   let staffRole: string | null = null
+  let accessGrants: string[] | null = null
 
   if (role === "recruiter") {
     const { data: company } = await supabase
@@ -107,13 +110,23 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
       : (staff?.staff_role as AdminStaffRole) || "moderator"
     adminModules = normalizeModules(staffError ? ["all"] : (staff?.modules as string[] | null), staffRole)
   } else if (role === "university") {
-    const { data: campusStaff } = await supabase
+    const first = await supabase
       .from("campus_staff")
-      .select("staff_role, university")
+      .select("staff_role, university, access_grants")
       .eq("user_id", user.id)
       .maybeSingle()
+    let campusStaff = first.data as { staff_role?: string | null; university?: string | null; access_grants?: string[] | null } | null
+    if (first.error) {
+      const retry = await supabase
+        .from("campus_staff")
+        .select("staff_role, university")
+        .eq("user_id", user.id)
+        .maybeSingle()
+      campusStaff = retry.data
+    }
     staffRole = campusStaff?.staff_role || null
     university = campusStaff?.university || university
+    accessGrants = campusStaff?.access_grants ?? null
   }
 
   return {
@@ -127,5 +140,6 @@ export const loadAppShellUser = cache(async (requireOnboarding = false): Promise
     isAlumni,
     university,
     staffRole,
+    accessGrants,
   }
 })

@@ -7,12 +7,12 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ShareButton } from "@/components/share/ShareButton"
 import { ProfileViewTracker } from "@/components/profile/ProfileViewTracker"
 import { ReportBlockMenu } from "@/components/moderation/ReportBlockMenu"
-import { ArrowLeft, Calendar, FileText, Github, Globe, GraduationCap, Linkedin, MessageCircle } from "lucide-react"
+import { ArrowLeft, Calendar, FileText, Github, Globe, GraduationCap, Linkedin, Mail, MessageCircle, Phone } from "lucide-react"
 import { ProfilePosts } from "@/components/feed/ProfilePosts"
 import { ProfileHero } from "@/components/profile/ProfileHero"
 import { profileSharePath } from "@/lib/share/profile-path"
 import { signedStorageUrl } from "@/lib/storage/signed-url"
-import { currentRole, formatWorkDates, parseCareerHistory } from "@/lib/profile/career"
+import { currentRole, formatWorkDates, parseCareerHistory, WORK_KIND_LABEL } from "@/lib/profile/career"
 import { studentIsAlumni } from "@/lib/jobs/targeting"
 import type { UserRole } from "@/types"
 
@@ -52,6 +52,7 @@ export default async function CandidatePublicPage({
     ? await signedStorageUrl(supabase, "resumes", student?.resume_url)
     : null
 
+  let hasMatch = false
   let chatHref: string | null = null
   if (isRecruiter && user) {
     let matchQuery = supabase
@@ -64,7 +65,25 @@ export default async function CandidatePublicPage({
     const convRaw = match?.conversations as { id?: string } | { id?: string }[] | null | undefined
     const conv = Array.isArray(convRaw) ? convRaw[0] : convRaw
     chatHref = conv?.id ? `/chat/${conv.id}` : match?.id ? `/chat/${match.id}` : null
+
+    // Any match on this candidate (regardless of job) unlocks direct contact details.
+    if (!match) {
+      const { data: otherMatch } = await supabase
+        .from("matches")
+        .select("id")
+        .eq("recruiter_id", user.id)
+        .eq("student_id", id)
+        .limit(1)
+        .maybeSingle()
+      hasMatch = Boolean(otherMatch)
+    } else {
+      hasMatch = true
+    }
   }
+
+  const canSeeContact = isOwner || (recruiterRow?.is_approved === true && hasMatch)
+  const contactPhone = canSeeContact ? (student?.phone as string | null | undefined) || null : null
+  const contactEmail = canSeeContact ? (student?.personal_email as string | null | undefined) || null : null
 
   const links = [
     student?.linkedin_url && { href: student.linkedin_url, label: "LinkedIn", icon: Linkedin },
@@ -195,7 +214,7 @@ export default async function CandidatePublicPage({
                               <span className="font-normal text-muted-foreground"> · {w.name}</span>
                             </p>
                             <p className="mt-0.5 font-body text-xs text-muted-foreground">
-                              {w.kind === "internship" ? "Internship" : "Job"}
+                              {WORK_KIND_LABEL[w.kind]}
                               {formatWorkDates(w) ? ` · ${formatWorkDates(w)}` : ""}
                             </p>
                             {w.summary ? <p className="mt-1 font-body text-sm text-foreground/90">{w.summary}</p> : null}
@@ -276,6 +295,43 @@ export default async function CandidatePublicPage({
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24">
+          {contactPhone || contactEmail ? (
+            <Card className="shadow-none">
+              <CardContent className="p-5">
+                <h2 className="mb-3 font-heading text-sm font-semibold">Contact</h2>
+                <ul className="m-0 list-none space-y-1 p-0">
+                  {contactPhone ? (
+                    <li>
+                      <a
+                        href={`tel:${contactPhone}`}
+                        className="flex items-center gap-2.5 rounded-xl px-2 py-2 font-body text-sm text-foreground transition-colors hover:bg-muted"
+                      >
+                        <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{contactPhone}</span>
+                      </a>
+                    </li>
+                  ) : null}
+                  {contactEmail ? (
+                    <li>
+                      <a
+                        href={`mailto:${contactEmail}`}
+                        className="flex items-center gap-2.5 rounded-xl px-2 py-2 font-body text-sm text-foreground transition-colors hover:bg-muted"
+                      >
+                        <Mail className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{contactEmail}</span>
+                      </a>
+                    </li>
+                  ) : null}
+                </ul>
+                <p className="mt-2 px-2 font-body text-[11px] leading-relaxed text-muted-foreground">
+                  {isOwner
+                    ? "Only you and recruiters you match with see this."
+                    : "Shared because you matched with this candidate."}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
           <Card className="shadow-none">
             <CardContent className="p-5">
               <h2 className="mb-3 font-heading text-sm font-semibold">Credentials</h2>

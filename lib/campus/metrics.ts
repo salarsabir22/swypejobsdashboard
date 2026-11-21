@@ -352,10 +352,6 @@ async function buildCampusSnapshot(
   const internStudents = new Set(internApps.map((a) => a.student_id)).size
   const converted = outcomes.filter((o) => (o as { internship_converted?: boolean }).internship_converted).length
 
-  const salaries = outcomes
-    .map((o) => Number((o as { salary?: number | null }).salary))
-    .filter((n) => Number.isFinite(n) && n > 0)
-
   const salaryGroup = (keyFn: (o: Record<string, unknown>) => string) => {
     const groups = new Map<string, number[]>()
     for (const raw of outcomes) {
@@ -563,6 +559,56 @@ async function buildCampusSnapshot(
     }
   })
 
+  const platformPlacements: CampusSnapshot["outcomes"]["placements"] = hired.map((m) => {
+    const stu = studentMap.get(m.student_id)
+    const job = jobMap.get(m.job_id)
+    const recruiter = recruiterMap.get(m.recruiter_id)
+    return {
+      studentId: m.student_id,
+      student: stu?.profiles?.full_name || "Student",
+      major: stu?.degree ?? null,
+      year: stu?.graduation_year ?? null,
+      employer: recruiter?.company_name || "Employer",
+      role: job?.title ?? null,
+      location: job?.location ?? null,
+      date: m.created_at || null,
+      source: "platform" as const,
+    }
+  })
+  const surveyPlacements: CampusSnapshot["outcomes"]["placements"] = outcomes
+    .filter((o) => {
+      const status = (o as { status?: string }).status
+      return status === "employed" || status === "grad_school"
+    })
+    .map((raw) => {
+      const o = raw as { student_id?: string; status?: string; job_title?: string | null; location?: string | null }
+      const stu = studentMap.get(String(o.student_id || ""))
+      return {
+        studentId: String(o.student_id || ""),
+        student: stu?.profiles?.full_name || "Student",
+        major: stu?.degree ?? null,
+        year: stu?.graduation_year ?? null,
+        employer: o.status === "grad_school" ? "Graduate school" : "Employer not recorded",
+        role: o.job_title || null,
+        location: o.location || null,
+        date: null,
+        source: "survey" as const,
+      }
+    })
+  const placementKeys = new Set<string>()
+  const placements = [...platformPlacements, ...surveyPlacements]
+    .filter((row) => {
+      const key = `${row.studentId}|${row.employer}|${row.role || ""}`
+      if (placementKeys.has(key)) return false
+      placementKeys.add(key)
+      return true
+    })
+    .sort((a, b) => {
+      if (a.date && b.date && a.date !== b.date) return a.date < b.date ? 1 : -1
+      return a.student.localeCompare(b.student)
+    })
+    .slice(0, 100)
+
   const alerts = [
     quietSeniors.length
       ? { id: "seniors-no-apps", severity: "high" as const, title: "Seniors with no applications", detail: "Nudge this cohort before graduation.", href: "/campus/actions?segment=seniors", count: quietSeniors.length }
@@ -600,6 +646,36 @@ async function buildCampusSnapshot(
     appsInRange.map((a) => jobMap.get(a.job_id)?.recruiter_id).filter((id): id is string => Boolean(id))
   )
   const employersActive = new Set([...employersPosted, ...employersWithApps]).size
+
+  // One row per employer behind the employer numbers, so staff can see who they are.
+  const partnerIds = new Set(partners.map((partner) => (partner as { recruiter_id: string }).recruiter_id))
+  const jobsByRecruiter = new Map<string, number>()
+  for (const job of jobsInRange) jobsByRecruiter.set(job.recruiter_id, (jobsByRecruiter.get(job.recruiter_id) || 0) + 1)
+  const windowAppsByRecruiter = new Map<string, number>()
+  for (const app of appsInRange) {
+    const recruiterId = jobMap.get(app.job_id)?.recruiter_id
+    if (recruiterId) windowAppsByRecruiter.set(recruiterId, (windowAppsByRecruiter.get(recruiterId) || 0) + 1)
+  }
+  const employerIds = new Set<string>([
+    ...recruiters.map((recruiter) => recruiter.id),
+    ...employersPosted,
+    ...employersWithApps,
+  ])
+  const employerRows: CampusSnapshot["market"]["employers"] = [...employerIds]
+    .map((id) => {
+      const recruiter = recruiterMap.get(id)
+      return {
+        id,
+        name: recruiter?.company_name || "Employer",
+        industry: recruiter?.industry || null,
+        jobs: jobsByRecruiter.get(id) || 0,
+        applications: windowAppsByRecruiter.get(id) || 0,
+        hires: hiresByRecruiter.get(id) || 0,
+        relationship: partnerIds.has(id) ? ("partner" as const) : ("platform" as const),
+      }
+    })
+    .sort((a, b) => b.applications - a.applications || b.jobs - a.jobs || b.hires - a.hires || a.name.localeCompare(b.name))
+    .slice(0, 100)
 
   return {
     access: { ...access, university: university ?? null },
@@ -655,6 +731,7 @@ async function buildCampusSnapshot(
         ...outcomes.map((o) => (o as { employer_type?: string }).employer_type),
       ]),
       underemployed: sourced(outcomes.length ? pct(underemployed, outcomes.filter((o) => (o as { status?: string }).status === "employed").length) : null, underemployed, "survey"),
+      placements,
     },
     engagement: {
       registered: signup,
@@ -704,6 +781,7 @@ async function buildCampusSnapshot(
       byWorkMode: countBy(activeJobs.map((j) => workMode(j))),
       supplyGaps: supplyGaps.sort((a, b) => b.gap - a.gap),
       topEmployers,
+      employers: employerRows,
       repeatEmployers: [...hiresByRecruiter.values()].filter((n) => n > 1).length,
       responseRate: sourced(pct(responded, appCount), responded, "platform"),
       timeToRespondHours: sourced(average(recruiterFirstReply), recruiterFirstReply.length, "platform"),

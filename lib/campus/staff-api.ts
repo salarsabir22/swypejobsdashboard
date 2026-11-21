@@ -12,7 +12,20 @@ export async function requireCampusStaff() {
   if (!user) return { error: NextResponse.json({ error: "Sign in required." }, { status: 401 }) }
 
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
-  const { data: staff } = await supabase.from("campus_staff").select("university, staff_role").eq("user_id", user.id).maybeSingle()
+  const staffRes = await supabase
+    .from("campus_staff")
+    .select("university, staff_role, access_grants")
+    .eq("user_id", user.id)
+    .maybeSingle()
+  let staff = staffRes.error ? null : staffRes.data
+  if (staffRes.error) {
+    const retry = await supabase
+      .from("campus_staff")
+      .select("university, staff_role")
+      .eq("user_id", user.id)
+      .maybeSingle()
+    staff = retry.error ? null : (retry.data as typeof staff)
+  }
   const isAdmin = profile?.role === "admin"
   if (!isAdmin && !staff?.university) {
     return { error: NextResponse.json({ error: "Campus access required." }, { status: 403 }) }
@@ -24,6 +37,7 @@ export async function requireCampusStaff() {
     staffRole: isAdmin ? "admin" : ((staff?.staff_role as CampusStaffRole) || "faculty"),
     university: staff?.university || null,
     universities: staff?.university ? [staff.university] : [],
+    grants: (staff as { access_grants?: string[] | null } | null)?.access_grants ?? null,
   }
 
   return {

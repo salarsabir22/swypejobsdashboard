@@ -87,14 +87,15 @@ export function sidebarSectionsFor(opts: {
   role: UserRole | "admin"
   isAlumni?: boolean
   staffRole?: string | null
+  accessGrants?: string[] | null
   adminModules?: string[]
   pathname?: string
 }): SidebarSection[] {
-  const { role, isAlumni, staffRole, adminModules, pathname = "" } = opts
+  const { role, isAlumni, staffRole, accessGrants, adminModules, pathname = "" } = opts
   const onCampus = pathname === "/campus" || pathname.startsWith("/campus/")
 
   if (role === "university") {
-    return [{ items: fromCampus(campusNavForRole(staffRole)) }]
+    return [{ items: fromCampus(campusNavForRole(staffRole, accessGrants)) }]
   }
 
   if (role === "admin") {

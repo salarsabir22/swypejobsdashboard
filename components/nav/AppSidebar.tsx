@@ -9,6 +9,7 @@ import { withCampusFilters } from "@/lib/campus/range"
 import { isNavPathActive } from "@/components/nav/NavGroupMenu"
 import { NavUnreadBadge } from "@/components/nav/NavUnreadBadge"
 import { useChatUnread } from "@/lib/hooks/use-chat-unread"
+import { useAnnouncementUnread } from "@/lib/hooks/use-announcement-unread"
 import type { SidebarItem, SidebarSection } from "@/components/nav/sidebar-sections"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -32,6 +33,7 @@ function NavLink({
   active,
   collapsed,
   chatUnread,
+  announcementUnread,
   onNavigate,
 }: {
   item: SidebarItem
@@ -39,9 +41,11 @@ function NavLink({
   active: boolean
   collapsed: boolean
   chatUnread: number
+  announcementUnread: number
   onNavigate?: () => void
 }) {
   const Icon = item.icon
+  const badgeCount = item.href === "/chat" ? chatUnread : item.href === "/announcements" ? announcementUnread : 0
   const link = (
     <Link
       href={href}
@@ -59,7 +63,7 @@ function NavLink({
       {Icon ? (
         <span className="relative shrink-0">
           <Icon className="h-4 w-4" strokeWidth={1.75} />
-          {item.href === "/chat" ? <NavUnreadBadge count={chatUnread} /> : null}
+          <NavUnreadBadge count={badgeCount} />
         </span>
       ) : null}
       {collapsed ? (
@@ -67,7 +71,7 @@ function NavLink({
       ) : (
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <span className="truncate">{item.label}</span>
-          {item.href === "/chat" && !Icon ? <NavUnreadBadge count={chatUnread} /> : null}
+          {!Icon ? <NavUnreadBadge count={badgeCount} /> : null}
         </span>
       )}
     </Link>
@@ -108,6 +112,7 @@ function AppSidebarNav({
   const params = useSearchParams()
   const search = params.toString()
   const chatUnread = useChatUnread()
+  const announcementUnread = useAnnouncementUnread()
   const [open, setOpen] = useState<Record<string, boolean>>({})
 
   return (
@@ -134,6 +139,7 @@ function AppSidebarNav({
                     active={active}
                     collapsed={collapsed}
                     chatUnread={chatUnread}
+                    announcementUnread={announcementUnread}
                     onNavigate={onNavigate}
                   />
                   {!collapsed && item.children?.length ? (

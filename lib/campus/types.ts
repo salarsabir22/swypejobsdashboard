@@ -8,6 +8,8 @@ export type CampusAccess = {
   staffRole: CampusStaffRole | "admin"
   university: string | null
   universities: string[]
+  /** Explicit permission switches from Users & access. `null`/missing = role default. */
+  grants?: string[] | null
 }
 
 export type CountRow = { label: string; value: number }
@@ -103,6 +105,18 @@ export type CampusSnapshot = {
     geos: CountRow[]
     employerTypes: CountRow[]
     underemployed: SourcedNumber
+    /** One row per recorded placement, so the placement number can be opened. */
+    placements: {
+      studentId: string
+      student: string
+      major: string | null
+      year: number | null
+      employer: string
+      role: string | null
+      location: string | null
+      date: string | null
+      source: DataSource
+    }[]
   }
   engagement: {
     registered: number
@@ -145,6 +159,16 @@ export type CampusSnapshot = {
     byWorkMode: CountRow[]
     supplyGaps: { major: string; students: number; jobs: number; gap: number }[]
     topEmployers: { name: string; hires: number; apps: number }[]
+    /** Every employer behind the employer numbers: job posts, applications, hires. */
+    employers: {
+      id: string
+      name: string
+      industry: string | null
+      jobs: number
+      applications: number
+      hires: number
+      relationship: "partner" | "platform"
+    }[]
     repeatEmployers: number
     responseRate: SourcedNumber
     timeToRespondHours: SourcedNumber

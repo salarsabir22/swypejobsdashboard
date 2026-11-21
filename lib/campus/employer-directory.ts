@@ -19,6 +19,8 @@ export type CampusDirectoryEmployer = {
   lastActiveLabel: string
   suspended: boolean
   status: string | null
+  /** "partner" = campus partnership on file, "platform" = approved employer posting on SwypeJobs. */
+  relationship: "partner" | "platform"
 }
 
 export type CampusEmployerDirectoryFilters = {
@@ -241,7 +243,16 @@ export async function loadCampusEmployerDirectory(opts: {
     .order("created_at", { ascending: false })
     .limit(5000)
 
-  if (partnerError) {
+  // Approved employers that post on SwypeJobs are visible elsewhere in the
+  // console (reports, market), so they must be listed here as well.
+  const { data: approved, error: approvedError } = await admin
+    .from("recruiter_profiles")
+    .select("id, company_name, industry, employee_count, website_url, updated_at, created_at, profiles(full_name, updated_at)")
+    .eq("is_approved", true)
+    .order("company_name", { ascending: true })
+    .limit(5000)
+
+  if (partnerError && (approvedError || !approved?.length)) {
     return {
       employers: [] as CampusDirectoryEmployer[],
       total: 0,
@@ -254,16 +265,20 @@ export async function loadCampusEmployerDirectory(opts: {
     }
   }
 
-  const partnerRows = (partners || []) as PartnerRow[]
+  const partnerRows = (partnerError ? [] : partners || []) as PartnerRow[]
+  const approvedRows = (approvedError ? [] : approved || []) as RecruiterRow[]
   const recruiterIds = [...new Set(partnerRows.map((p) => p.recruiter_id).filter(Boolean) as string[])]
 
   const recruiterMap = new Map<string, RecruiterRow>()
+  for (const row of approvedRows) recruiterMap.set(row.id, row)
   for (let i = 0; i < recruiterIds.length; i += 100) {
     const chunk = recruiterIds.slice(i, i + 100)
+    const missing = chunk.filter((id) => !recruiterMap.has(id))
+    if (!missing.length) continue
     const { data } = await admin
       .from("recruiter_profiles")
       .select("id, company_name, industry, employee_count, website_url, updated_at, created_at, profiles(full_name, updated_at)")
-      .in("id", chunk)
+      .in("id", missing)
     for (const row of (data || []) as RecruiterRow[]) recruiterMap.set(row.id, row)
   }
 
@@ -271,7 +286,7 @@ export async function loadCampusEmployerDirectory(opts: {
   const seenRecruiters = new Set<string>()
   const baseRows: {
     id: string
-    partnerId: string
+    partnerId: string | null
     name: string
     industry: string | null
     employeeCount: string | null
@@ -279,6 +294,7 @@ export async function loadCampusEmployerDirectory(opts: {
     linkedinUrl: string | null
     lastActiveAt: string | null
     status: string | null
+    relationship: "partner" | "platform"
   }[] = []
 
   for (const partner of partnerRows) {
@@ -299,6 +315,7 @@ export async function loadCampusEmployerDirectory(opts: {
         linkedinUrl: linkedinFromWebsite(website),
         lastActiveAt: pickLatest(profile?.updated_at, recruiter?.updated_at, partner.created_at),
         status: "active",
+        relationship: "partner",
       })
     } else {
       baseRows.push({
@@ -311,8 +328,30 @@ export async function loadCampusEmployerDirectory(opts: {
         linkedinUrl: null,
         lastActiveAt: pickLatest(partner.created_at),
         status: "active",
+        relationship: "partner",
       })
     }
+  }
+
+  // Approved employers with no campus partnership row still count as campus
+  // market employers, so list them as platform relationships.
+  for (const recruiter of approvedRows) {
+    if (!recruiter.id || seenRecruiters.has(recruiter.id)) continue
+    seenRecruiters.add(recruiter.id)
+    const profile = asProfile(recruiter.profiles)
+    const website = recruiter.website_url || null
+    baseRows.push({
+      id: recruiter.id,
+      partnerId: null,
+      name: recruiter.company_name || "Employer",
+      industry: recruiter.industry || null,
+      employeeCount: recruiter.employee_count || null,
+      websiteUrl: website,
+      linkedinUrl: linkedinFromWebsite(website),
+      lastActiveAt: pickLatest(profile?.updated_at, recruiter.updated_at, recruiter.created_at),
+      status: "approved",
+      relationship: "platform",
+    })
   }
 
   let matched = baseRows
@@ -373,6 +412,7 @@ export async function loadCampusEmployerDirectory(opts: {
         ? row.status === "suspended"
         : suspended.has(row.id) || row.status === "suspended",
       status: row.status,
+      relationship: row.relationship,
     }
   })
 

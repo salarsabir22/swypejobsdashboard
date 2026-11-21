@@ -30,7 +30,8 @@ export default async function ProfileExperiencePage() {
         <div className="min-w-0">
           <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-[2.25rem]">Experience</h1>
           <p className="font-body text-sm text-muted-foreground">
-            Internships, jobs, projects, and certifications. Update any time; alumni can keep their employment history current here.
+            Full-time roles, internships, projects, and fellowships. Add or edit any time; alumni can keep their
+            employment history current here.
           </p>
         </div>
       </div>

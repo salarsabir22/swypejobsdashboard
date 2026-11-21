@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/lib/hooks/use-toast"
+import { CopyInviteLink } from "@/components/campus/CopyInviteLink"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,6 +19,7 @@ export function EmployerInviteForm({ university }: { university: string }) {
   const [website, setWebsite] = useState("")
   const [sector, setSector] = useState("")
   const [message, setMessage] = useState("")
+  const [invite, setInvite] = useState<{ url: string; company: string; email: string; emailed: boolean } | null>(null)
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,8 +37,13 @@ export function EmployerInviteForm({ university }: { university: string }) {
     }
     toast({
       title: json.emailed ? "Invitation emailed" : "Invitation created",
-      description: json.emailed ? undefined : "Email isn’t configured, so share the invite link from the list after refresh.",
+      description: json.emailed
+        ? undefined
+        : "Email isn’t configured, so copy the invite link below and send it yourself.",
     })
+    if (json.inviteUrl) {
+      setInvite({ url: json.inviteUrl, company: companyName, email: contactEmail, emailed: Boolean(json.emailed) })
+    }
     setCompanyName("")
     setContactEmail("")
     router.refresh()
@@ -71,6 +78,15 @@ export function EmployerInviteForm({ university }: { university: string }) {
       <Button type="submit" className="rounded-full sm:col-span-2" loading={busy}>
         Send invitation
       </Button>
+      {invite ? (
+        <div className="space-y-2 rounded-2xl border border-border bg-secondary/40 p-3 sm:col-span-2">
+          <p className="text-sm font-medium">
+            {invite.emailed ? `Invitation emailed to ${invite.email}` : `Invite ready for ${invite.company}`}
+          </p>
+          <p className="break-all text-xs text-muted-foreground">{invite.url}</p>
+          <CopyInviteLink url={invite.url} email={invite.email} company={invite.company} />
+        </div>
+      ) : null}
     </form>
   )
 }

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getCampusAccess } from "@/lib/campus/access"
 import { campusNavScope } from "@/lib/campus/staff-roles"
+import { capabilitiesFromPermissions } from "@/lib/campus/staff-permissions"
 import type { CampusAccess } from "@/lib/campus/types"
 
 export type CampusCapability =
@@ -10,6 +11,7 @@ export type CampusCapability =
   | "view_reports"
   | "view_equity"
   | "view_actions"
+  | "view_international"
   | "view_sso"
   | "export"
   | "mutate"
@@ -21,6 +23,7 @@ const ALL: CampusCapability[] = [
   "view_reports",
   "view_equity",
   "view_actions",
+  "view_international",
   "view_sso",
   "export",
   "mutate",
@@ -35,6 +38,8 @@ const SCOPE_CAPS: Record<string, CampusCapability[]> = {
 
 export function campusCapabilities(access: CampusAccess) {
   if (access.role === "admin" || access.staffRole === "admin") return new Set(ALL)
+  // Explicit per-staff switches (Users & access) replace the role default when set.
+  if (Array.isArray(access.grants)) return new Set(capabilitiesFromPermissions(access.grants))
   const scope = campusNavScope(access.staffRole)
   return new Set(SCOPE_CAPS[scope] || SCOPE_CAPS.faculty)
 }

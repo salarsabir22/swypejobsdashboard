@@ -1,7 +1,8 @@
-import { Calendar, Plus } from "lucide-react"
+import { Calendar, Plus, Users } from "lucide-react"
 import { loadCampusPage } from "@/lib/campus/page-data"
 import { canCampus } from "@/lib/campus/rbac"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { eventFormatLabel, parseEventSummary } from "@/lib/campus/event-meta"
 import { formatAnnouncementAudience } from "@/lib/campus/announcement-audience"
 import { CampusFrame } from "@/components/campus/CampusFrame"
@@ -36,6 +37,36 @@ export default async function CampusEventsPage({
     .eq("university", university)
     .order("starts_at", { ascending: true })
     .limit(40)
+
+  const eventRows = (events || []).filter((row) => !String(row.summary || "").startsWith("INTERNATIONAL_PROGRAM"))
+
+  // RSVPs per event plus the attendee names, so the CDC can see who is coming.
+  const admin = createAdminClient()
+  const eventIds = eventRows.map((row) => row.id)
+  const { data: rsvpRows } = eventIds.length
+    ? await admin
+        .from("campus_event_rsvps")
+        .select("event_id, student_id, hired_from_event")
+        .in("event_id", eventIds)
+        .limit(5000)
+    : { data: [] as { event_id: string; student_id: string; hired_from_event: boolean | null }[] }
+  const rsvpStudentIds = [...new Set((rsvpRows || []).map((row) => row.student_id).filter(Boolean))]
+  const { data: rsvpStudents } = rsvpStudentIds.length
+    ? await admin.from("profiles").select("id, full_name").in("id", rsvpStudentIds)
+    : { data: [] as { id: string; full_name: string | null }[] }
+  const nameById = new Map((rsvpStudents || []).map((row) => [row.id, row.full_name]))
+
+  const rsvpsByEvent = new Map<string, { id: string; name: string; hired: boolean }[]>()
+  for (const row of rsvpRows || []) {
+    const list = rsvpsByEvent.get(row.event_id) || []
+    list.push({
+      id: row.student_id,
+      name: nameById.get(row.student_id) || "Student",
+      hired: row.hired_from_event === true,
+    })
+    rsvpsByEvent.set(row.event_id, list)
+  }
+  const totalRsvps = (rsvpRows || []).length
 
   const calendarNotice =
     params.calendar === "connected"
@@ -88,36 +119,66 @@ export default async function CampusEventsPage({
         />
       )}
 
-      <DashboardPanel title="Upcoming">
-        {events?.length ? (
+      <DashboardPanel
+        title="Upcoming"
+        badge={`${totalRsvps.toLocaleString()} RSVP${totalRsvps === 1 ? "" : "s"}`}
+        description="Each event shows how many students RSVP’d and who they are."
+      >
+        {eventRows.length ? (
           <ul className="space-y-2">
-            {events
-              .filter((row) => !String(row.summary || "").startsWith("INTERNATIONAL_PROGRAM"))
-              .map((row) => {
-                const { description, meta } = parseEventSummary(row.summary)
-                return (
-                  <li key={row.id} className="space-y-1 rounded-2xl border border-border px-4 py-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-medium">{row.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {row.starts_at ? new Date(row.starts_at).toLocaleString() : "Date to be announced"}
-                          {" · "}
-                          {eventFormatLabel(meta.format)}
-                          {row.location ? ` · ${row.location}` : ""}
-                        </p>
-                      </div>
+            {eventRows.map((row) => {
+              const { description, meta } = parseEventSummary(row.summary)
+              const attendees = rsvpsByEvent.get(row.id) || []
+              return (
+                <li key={row.id} className="space-y-1 rounded-2xl border border-border px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium">{row.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {row.starts_at ? new Date(row.starts_at).toLocaleString() : "Date to be announced"}
+                        {" · "}
+                        {eventFormatLabel(meta.format)}
+                        {row.location ? ` · ${row.location}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium tabular-nums">
+                        <Users className="size-3.5" strokeWidth={1.75} />
+                        {attendees.length} RSVP{attendees.length === 1 ? "" : "s"}
+                      </span>
                       <StatusBadge value={row.kind} />
                     </div>
-                    <p className="text-[13px] text-muted-foreground">
-                      Visibility: {formatAnnouncementAudience(meta.audiences.join(","))}
-                      {meta.groupIds.length ? ` · ${meta.groupIds.length} group${meta.groupIds.length === 1 ? "" : "s"}` : ""}
-                      {meta.targets.length ? ` · ${meta.targets.length} named invitee${meta.targets.length === 1 ? "" : "s"}` : ""}
-                    </p>
-                    {description ? <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p> : null}
-                  </li>
-                )
-              })}
+                  </div>
+                  <p className="text-[13px] text-muted-foreground">
+                    Visibility: {formatAnnouncementAudience(meta.audiences.join(","))}
+                    {meta.groupIds.length ? ` · ${meta.groupIds.length} group${meta.groupIds.length === 1 ? "" : "s"}` : ""}
+                    {meta.targets.length ? ` · ${meta.targets.length} named invitee${meta.targets.length === 1 ? "" : "s"}` : ""}
+                  </p>
+                  {description ? <p className="line-clamp-2 text-sm text-muted-foreground">{description}</p> : null}
+                  {attendees.length ? (
+                    <details className="text-[13px]">
+                      <summary className="cursor-pointer font-medium text-primary">Who’s coming</summary>
+                      <ul className="mt-2 flex flex-wrap gap-1.5">
+                        {attendees
+                          .slice()
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map((attendee) => (
+                            <li
+                              key={attendee.id}
+                              className="rounded-full border border-border px-2.5 py-0.5 text-muted-foreground"
+                            >
+                              {attendee.name}
+                              {attendee.hired ? " · hired" : ""}
+                            </li>
+                          ))}
+                      </ul>
+                    </details>
+                  ) : (
+                    <p className="text-[13px] text-muted-foreground">No RSVPs yet.</p>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         ) : (
           <DashboardEmptyState

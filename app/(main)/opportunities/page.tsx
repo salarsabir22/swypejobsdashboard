@@ -6,6 +6,7 @@ import { belongsToCampus, readStudentCampusMembership } from "@/lib/campus/stude
 import { deadlineLabel } from "@/lib/jobs/deadline"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
+import { OpportunityViewTracker } from "@/components/opportunities/OpportunityViewTracker"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { cn } from "@/lib/utils"
 
@@ -86,6 +87,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
           )
         })}
       </div>
+      <OpportunityViewTracker ids={rows.map((row) => row.id)} />
       {!rows.length ? (
         <DashboardEmptyState
           icon={Globe}

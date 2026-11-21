@@ -9,6 +9,17 @@ import {
   ChevronRight, Send, Bell, Video, Lock, Globe
 } from "lucide-react"
 import { CompanyPicker } from "@/components/profile/CompanyPicker"
+import { ExperienceList } from "@/components/profile/ExperienceList"
+import { parseCareerHistory, serializeCareerHistory, validateWorkHistory, type CareerHistory } from "@/lib/profile/career"
+import { JOB_CATEGORIES, SKILL_SUGGESTIONS } from "@/lib/profile/options"
+import {
+  contactFromMetadata,
+  contactIssues,
+  isValidPersonalEmail,
+  isValidPhone,
+  mergeContact,
+  saveStudentContact,
+} from "@/lib/profile/contact"
 import { isCompanySchemaMissing } from "@/lib/companies"
 import { UniversityPicker } from "@/components/profile/UniversityPicker"
 import { COMPANY_INDUSTRIES, EMPLOYEE_RANGES } from "@/lib/company-options"
@@ -46,18 +57,14 @@ import {
 /* ─────────────────────────────────────────────
    Constants
 ───────────────────────────────────────────── */
-const SKILL_SUGGESTIONS = [
-  "JavaScript", "TypeScript", "React", "Python", "Node.js", "SQL",
-  "Java", "C++", "Data Analysis", "Machine Learning", "UX Design",
-  "Product Management", "Marketing", "Finance", "Go", "Figma",
-]
-const JOB_CATEGORIES = [
-  "Software Engineering", "Data Science", "Product Management", "Design",
-  "Marketing", "Finance", "Operations", "Sales", "HR", "Consulting",
-]
 const STEPS_STUDENT = [
-  { title: "Photo & bio", description: "Photo and short bio (optional).", required: false },
+  {
+    title: "Photo, bio & contact",
+    description: "Photo, short bio, phone number, and a personal email so employers can reach you.",
+    required: true,
+  },
   { title: "Education", description: "School, degree, and graduation year.", required: true },
+  { title: "Experience", description: "Jobs, internships, projects, or fellowships (optional).", required: false },
   { title: "Skills & interests", description: "Skills and preferred role categories.", required: true },
   { title: "Links & resume", description: "LinkedIn (required), other links, CV, and optional intro video.", required: true },
 ]
@@ -1114,6 +1121,8 @@ export default function OnboardingPage() {
 
   /* Student fields */
   const [bio, setBio] = useState("")
+  const [phone, setPhone] = useState("")
+  const [personalEmail, setPersonalEmail] = useState("")
   const [university, setUniversity] = useState("")
   const [campusLocked, setCampusLocked] = useState(false)
   const [campusStudentId, setCampusStudentId] = useState("")
@@ -1129,6 +1138,8 @@ export default function OnboardingPage() {
   const [skills, setSkills] = useState<string[]>([])
   const [skillInput, setSkillInput] = useState("")
   const [preferredCategories, setPreferredCategories] = useState<string[]>([])
+  const [career, setCareer] = useState<CareerHistory>({ work: [], projects: [], certifications: [] })
+  const [careerDirty, setCareerDirty] = useState(false)
   const [linkedinUrl, setLinkedinUrl] = useState("")
   const [githubUrl, setGithubUrl] = useState("")
   const [portfolioUrl, setPortfolioUrl] = useState("")
@@ -1231,9 +1242,25 @@ export default function OnboardingPage() {
       if (profile?.bio) setBio(profile.bio)
       if (profile?.avatar_url) setAvatarPreview(profile.avatar_url)
 
+      // Contact details: profile columns when present, auth metadata otherwise.
+      const metadata = user.user_metadata as Record<string, unknown> | null
+      const metaContact = contactFromMetadata(metadata)
+      if (metaContact.phone) setPhone(metaContact.phone)
+      if (metaContact.personalEmail) setPersonalEmail(metaContact.personalEmail)
+      const contactRes = await supabase
+        .from("student_profiles")
+        .select("phone, personal_email")
+        .eq("id", user.id)
+        .maybeSingle()
+      if (!contactRes.error && contactRes.data) {
+        const merged = mergeContact(contactRes.data as { phone?: unknown; personal_email?: unknown }, metadata)
+        if (merged.phone) setPhone(merged.phone)
+        if (merged.personalEmail) setPersonalEmail(merged.personalEmail)
+      }
+
       let studentRes = await supabase
         .from("student_profiles")
-        .select("university, degree, graduation_year, institution_type, still_enrolled, current_semester, cgpa, is_alumni, mentorship_opt_in, college, campus_student_id, skills, preferred_job_categories, linkedin_url, github_url, portfolio_url, resume_url")
+        .select("university, degree, graduation_year, institution_type, still_enrolled, current_semester, cgpa, is_alumni, mentorship_opt_in, college, campus_student_id, skills, preferred_job_categories, linkedin_url, github_url, portfolio_url, resume_url, work_history, projects, certifications")
         .eq("id", user.id)
         .maybeSingle()
       if (studentRes.error) {
@@ -1271,6 +1298,7 @@ export default function OnboardingPage() {
         if (student.github_url) setGithubUrl(student.github_url)
         if (student.portfolio_url) setPortfolioUrl(student.portfolio_url)
         if (student.resume_url) setExistingResumeUrl(student.resume_url)
+        setCareer(parseCareerHistory(student as { work_history?: unknown; projects?: unknown; certifications?: unknown }))
         const collegeFromName = iobmCollegeByName(student.college)
         const collegeFromProgram = iobmCollegeIdForProgram(student.degree)
         if (collegeFromName) setIobmCollegeId(collegeFromName.id)
@@ -1339,6 +1367,8 @@ export default function OnboardingPage() {
         return [
           { label: "Short bio added", done: bio.trim().length >= 30 },
           { label: "Photo uploaded (recommended)", done: Boolean(avatarPreview || avatarFile) },
+          { label: "Phone number added", done: isValidPhone(phone) },
+          { label: "Personal email added", done: isValidPersonalEmail(personalEmail) },
         ]
       }
       if (step === 1) {
@@ -1362,6 +1392,17 @@ export default function OnboardingPage() {
         return items
       }
       if (step === 2) {
+        return [
+          { label: "At least one role added (optional)", done: career.work.length > 0 },
+          {
+            label: "Title and company on every entry",
+            done:
+              career.work.length > 0 &&
+              career.work.every((entry) => entry.position.trim() && entry.name.trim()),
+          },
+        ]
+      }
+      if (step === 3) {
         return [
           { label: "At least 3 skills", done: skills.length >= 3 },
           { label: "At least 1 preferred category", done: preferredCategories.length >= 1 },
@@ -1389,6 +1430,13 @@ export default function OnboardingPage() {
   const canProceed = () => {
     setStepError(null)
     if (role === "student") {
+      if (step === 0) {
+        const contactError = contactIssues({ phone, personalEmail })
+        if (contactError) {
+          setStepError(contactError)
+          return false
+        }
+      }
       if (step === 1) {
         if (!university.trim() || !degree.trim() || !graduationYear) {
           setStepError("Please complete your university, degree, and graduation year.")
@@ -1411,6 +1459,13 @@ export default function OnboardingPage() {
         }
       }
       if (step === 2) {
+        const invalid = validateWorkHistory(career.work)
+        if (invalid) {
+          setStepError(invalid)
+          return false
+        }
+      }
+      if (step === 3) {
         if (skills.length < 3) {
           setStepError("Add at least 3 skills so matching works properly.")
           return false
@@ -1420,7 +1475,7 @@ export default function OnboardingPage() {
           return false
         }
       }
-      if (step === 3) {
+      if (step === 4) {
         if (!isLinkedInUrl(linkedinUrl)) {
           setStepError("Add your LinkedIn profile URL (e.g. https://linkedin.com/in/your-name). It’s required.")
           return false
@@ -1495,6 +1550,8 @@ export default function OnboardingPage() {
         const iobmCollege = campusLocked ? iobmCollegeById(iobmCollegeId) : null
         const studentData: Record<string, unknown> = {
           id: user.id, university, degree,
+          phone: phone.trim() || null,
+          personal_email: personalEmail.trim() || null,
           graduation_year: graduationYear ? parseInt(graduationYear) : null,
           institution_type: campusLocked ? "university" : institutionType,
           still_enrolled: stillEnrolled,
@@ -1511,6 +1568,12 @@ export default function OnboardingPage() {
           studentData.college = iobmCollege?.name ?? null
           studentData.department = iobmCollege?.shortName ?? null
         }
+        if (careerDirty) {
+          const serialized = serializeCareerHistory(career)
+          studentData.work_history = serialized.work_history
+          studentData.projects = serialized.projects
+          studentData.certifications = serialized.certifications
+        }
         let { data: updated, error: studentErr } = await supabase.from("student_profiles").update(studentData).eq("id", user.id).select()
         if (studentErr) {
           delete studentData.institution_type
@@ -1522,6 +1585,11 @@ export default function OnboardingPage() {
           delete studentData.campus_student_id
           delete studentData.college
           delete studentData.department
+          delete studentData.phone
+          delete studentData.personal_email
+          delete studentData.work_history
+          delete studentData.projects
+          delete studentData.certifications
           const retry = await supabase.from("student_profiles").update(studentData).eq("id", user.id).select()
           updated = retry.data
           studentErr = retry.error
@@ -1531,6 +1599,8 @@ export default function OnboardingPage() {
           if (
             insert.error &&
             (studentData.institution_type ||
+              studentData.phone ||
+              studentData.personal_email ||
               studentData.still_enrolled ||
               studentData.current_semester ||
               studentData.cgpa !== undefined ||
@@ -1546,9 +1616,15 @@ export default function OnboardingPage() {
             delete studentData.campus_student_id
             delete studentData.college
             delete studentData.department
+            delete studentData.phone
+            delete studentData.personal_email
+            delete studentData.work_history
+            delete studentData.projects
+            delete studentData.certifications
             await supabase.from("student_profiles").insert(studentData)
           }
         }
+        await saveStudentContact(supabase, user.id, { phone, personalEmail })
         window.location.href = "/dashboard"
       } else if (role === "recruiter") {
         const recruiterData: Record<string, unknown> = {
@@ -1758,8 +1834,36 @@ export default function OnboardingPage() {
                       maxLength={300}
                     />
                     <div className="mt-1.5 flex items-start justify-between">
-                      <HelpText>Two or three sentences: background and what you&apos;re looking for.</HelpText>
+                      <HelpText>Two or three sentences: background and what you&apos;re looking for — editable later under Profile → Edit details.</HelpText>
                       <span className="ml-2 shrink-0 font-data text-[10px] text-muted-foreground">{bio.length}/300</span>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label className={labelClass}>Phone number</Label>
+                      <Input
+                        className={inputFieldClass}
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        placeholder="+92 300 1234567"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                      />
+                      <HelpText>How employers reach you for shortlisting. Required even for university students.</HelpText>
+                    </div>
+                    <div>
+                      <Label className={labelClass}>Personal email</Label>
+                      <Input
+                        className={inputFieldClass}
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        placeholder="you@gmail.com"
+                        value={personalEmail}
+                        onChange={(e) => setPersonalEmail(e.target.value)}
+                      />
+                      <HelpText>Where recruiters reach you after graduation — not your university inbox.</HelpText>
                     </div>
                   </div>
                 </div>
@@ -1968,8 +2072,27 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              {/* ── STUDENT STEP 2: Skills ── */}
+              {/* ── STUDENT STEP 2: Experience ── */}
               {role === "student" && step === 2 && (
+                <div className="space-y-4">
+                  <ExperienceList
+                    entries={career.work}
+                    onChange={(work) => {
+                      setCareer((prev) => ({ ...prev, work }))
+                      setCareerDirty(true)
+                      setStepError(null)
+                    }}
+                    emptyHint="Add a job, internship, project, or fellowship — or skip this and add it later from your profile."
+                  />
+                  <HelpText>
+                    Optional, but it makes your profile stand out. Everything here can be added or edited any time from
+                    Profile → Experience.
+                  </HelpText>
+                </div>
+              )}
+
+              {/* ── STUDENT STEP 3: Skills ── */}
+              {role === "student" && step === 3 && (
                 <div className="space-y-5">
                   <div>
                     <div className="mb-1.5 flex items-center justify-between">
@@ -2040,7 +2163,7 @@ export default function OnboardingPage() {
                         ))}
                       </div>
                     )}
-                    <HelpText>Add up to 20 skills so we can match you to relevant roles.</HelpText>
+                    <HelpText>Add up to 20 skills so we can match you to relevant roles — editable later under Profile → Edit details.</HelpText>
                   </div>
 
                   <div>
@@ -2063,13 +2186,13 @@ export default function OnboardingPage() {
                         </Button>
                       ))}
                     </div>
-                    <HelpText>You can change these later in your profile.</HelpText>
+                    <HelpText>You can change these later under Profile → Edit details.</HelpText>
                   </div>
                 </div>
               )}
 
-              {/* ── STUDENT STEP 3: Links & Resume ── */}
-              {role === "student" && step === 3 && (
+              {/* ── STUDENT STEP 4: Links & Resume ── */}
+              {role === "student" && step === 4 && (
                 <div className="space-y-4">
                   {[
                     { label: "LinkedIn URL", value: linkedinUrl, setter: setLinkedinUrl, placeholder: "https://linkedin.com/in/your-name", required: true },

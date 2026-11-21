@@ -66,6 +66,18 @@ export function inLastDays(iso: string | null | undefined, days: number) {
   return new Date(iso).getTime() >= Date.now() - days * 86400000
 }
 
+/** Next upcoming event, falling back to the earliest one. Lives here so pages stay render-pure. */
+export function nextCampusEvent<T extends { starts_at?: string | null }>(events: T[]): T | undefined {
+  if (!events.length) return undefined
+  const cutoff = Date.now() - 6 * 60 * 60 * 1000
+  const byStart = [...events].sort((a, b) => {
+    const at = a.starts_at ? new Date(a.starts_at).getTime() : Number.POSITIVE_INFINITY
+    const bt = b.starts_at ? new Date(b.starts_at).getTime() : Number.POSITIVE_INFINITY
+    return at - bt
+  })
+  return byStart.find((row) => !row.starts_at || new Date(row.starts_at).getTime() >= cutoff) || events[0]
+}
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 export function lastDayKeys(days: number) {

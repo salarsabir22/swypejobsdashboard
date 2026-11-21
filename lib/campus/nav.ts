@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { campusNavScope } from "@/lib/campus/staff-roles"
+import { capabilitiesFromPermissions } from "@/lib/campus/staff-permissions"
 
 type CampusCapability =
   | "view_home"
@@ -25,6 +26,7 @@ type CampusCapability =
   | "view_reports"
   | "view_equity"
   | "view_actions"
+  | "view_international"
   | "view_sso"
   | "export"
   | "mutate"
@@ -54,7 +56,7 @@ export const CAMPUS_NAV: CampusNavItem[] = [
     ],
   },
   { href: "/campus/events", label: "Events & Career Fairs", icon: Calendar, capability: "view_events" },
-  { href: "/campus/opportunities", label: "International Programs", icon: Globe, capability: "view_actions" },
+  { href: "/campus/opportunities", label: "International Programs", icon: Globe, capability: "view_international" },
   { href: "/campus/services", label: "Mentorship & Career Services", icon: Handshake, capability: "view_advising" },
   { href: "/campus/announcements", label: "Announcements", icon: Bell, capability: "view_actions" },
   {
@@ -87,15 +89,17 @@ function allowed(caps: Set<CampusCapability>, capability: CampusCapability) {
 }
 
 const SCOPE_CAPS: Record<string, CampusCapability[]> = {
-  full: ["view_home", "view_advising", "view_events", "view_reports", "view_equity", "view_actions", "view_sso", "export", "mutate"],
-  department: ["view_home", "view_advising", "view_events", "view_reports", "view_equity", "view_actions", "export", "mutate"],
+  full: ["view_home", "view_advising", "view_events", "view_reports", "view_equity", "view_actions", "view_international", "view_sso", "export", "mutate"],
+  department: ["view_home", "view_advising", "view_events", "view_reports", "view_equity", "view_actions", "view_international", "export", "mutate"],
   reports: ["view_home", "view_reports", "view_equity", "export"],
   faculty: ["view_home", "view_advising", "view_events"],
 }
 
-export function campusNavForRole(staffRole?: string | null): CampusNavItem[] {
+export function campusNavForRole(staffRole?: string | null, grants?: string[] | null): CampusNavItem[] {
   const scope = staffRole === "admin" ? "full" : campusNavScope(staffRole) || "full"
-  const caps = new Set(SCOPE_CAPS[scope] || SCOPE_CAPS.full)
+  const caps = Array.isArray(grants) && staffRole !== "admin"
+    ? new Set(capabilitiesFromPermissions(grants))
+    : new Set(SCOPE_CAPS[scope] || SCOPE_CAPS.full)
   return CAMPUS_NAV.flatMap((item) => {
     const children = (item.children || []).filter((child) => allowed(caps, child.capability))
     if (!allowed(caps, item.capability) && !children.length) return []
@@ -104,8 +108,8 @@ export function campusNavForRole(staffRole?: string | null): CampusNavItem[] {
 }
 
 /** Flat groups for legacy dropdowns (platform admin on /campus). */
-export function campusNavGroups(staffRole?: string | null): CampusNavGroup[] {
-  const items = campusNavForRole(staffRole)
+export function campusNavGroups(staffRole?: string | null, grants?: string[] | null): CampusNavGroup[] {
+  const items = campusNavForRole(staffRole, grants)
   const primary = items
     .filter((item) => !item.children)
     .map((item) => ({ href: item.href, label: item.label, capability: item.capability }))

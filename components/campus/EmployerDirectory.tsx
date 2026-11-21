@@ -190,6 +190,11 @@ export function EmployerDirectory({
                         Disconnected
                       </Badge>
                     ) : null}
+                    {row.relationship === "platform" ? (
+                      <Badge variant="secondary" className="ml-2 align-middle text-[11px]">
+                        Platform
+                      </Badge>
+                    ) : null}
                   </TableCell>
                   <TableCell>{row.industry || "—"}</TableCell>
                   <TableCell>

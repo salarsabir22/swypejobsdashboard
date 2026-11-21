@@ -10,17 +10,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { moveById } from "@/lib/resume/schema"
+import { ExperienceList } from "@/components/profile/ExperienceList"
 import {
   emptyCertification,
   emptyProject,
-  emptyWork,
   serializeCareerHistory,
+  validateWorkHistory,
   type CareerHistory,
   type CertificationEntry,
   type ProjectEntry,
-  type WorkEntry,
 } from "@/lib/profile/career"
 
 export function CareerHistoryEditor({ userId, initial }: { userId: string; initial: CareerHistory }) {
@@ -35,23 +34,16 @@ export function CareerHistoryEditor({ userId, initial }: { userId: string; initi
     setDirty(true)
   }
 
-  const patchWork = (id: string, patch: Partial<WorkEntry>) =>
-    update({ work: history.work.map((w) => (w.id === id ? { ...w, ...patch } : w)) })
   const patchProject = (id: string, patch: Partial<ProjectEntry>) =>
     update({ projects: history.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) })
   const patchCert = (id: string, patch: Partial<CertificationEntry>) =>
     update({ certifications: history.certifications.map((c) => (c.id === id ? { ...c, ...patch } : c)) })
 
   const save = async () => {
-    for (const w of history.work) {
-      if ((w.name.trim() || w.position.trim()) && (!w.name.trim() || !w.position.trim())) {
-        toast({ variant: "destructive", title: "Incomplete entry", description: "Each role needs both an organisation and a title." })
-        return
-      }
-      if (w.startDate && w.endDate && !w.current && w.endDate < w.startDate) {
-        toast({ variant: "destructive", title: "Check the dates", description: `${w.position} at ${w.name} ends before it starts.` })
-        return
-      }
+    const invalid = validateWorkHistory(history.work)
+    if (invalid) {
+      toast({ variant: "destructive", title: "Check your experience", description: invalid })
+      return
     }
     setSaving(true)
     const supabase = createClient()
@@ -73,87 +65,19 @@ export function CareerHistoryEditor({ userId, initial }: { userId: string; initi
 
   return (
     <div className="space-y-6">
-      {/* Work & internships */}
+      {/* Work, internships, projects, fellowships */}
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 font-heading text-lg">
-            <Briefcase className="h-4 w-4 text-muted-foreground" /> Internships & jobs
+            <Briefcase className="h-4 w-4 text-muted-foreground" /> Professional experience
           </CardTitle>
-          <CardDescription>Most recent first. Tick “current” for the role you’re in right now.</CardDescription>
+          <CardDescription>
+            Jobs, internships, projects, and fellowships. Most recent first — tick “I currently work here” for your
+            present role.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {history.work.map((w, index) => (
-            <div key={w.id} className="space-y-3 rounded-2xl border border-border bg-secondary/40 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[13px] font-medium text-muted-foreground">Role {index + 1}</p>
-                <RowControls
-                  onUp={() => update({ work: moveById(history.work, w.id, -1) })}
-                  onDown={() => update({ work: moveById(history.work, w.id, 1) })}
-                  onRemove={() => update({ work: history.work.filter((x) => x.id !== w.id) })}
-                  first={index === 0}
-                  last={index === history.work.length - 1}
-                />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Organisation">
-                  <Input value={w.name} onChange={(e) => patchWork(w.id, { name: e.target.value })} placeholder="e.g. Engro, HBL, a startup" />
-                </Field>
-                <Field label="Title">
-                  <Input value={w.position} onChange={(e) => patchWork(w.id, { position: e.target.value })} placeholder="e.g. Marketing intern" />
-                </Field>
-                <Field label="Type">
-                  <Select value={w.kind} onValueChange={(v) => patchWork(w.id, { kind: v as WorkEntry["kind"] })}>
-                    <SelectTrigger className="h-11 rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="internship">Internship</SelectItem>
-                      <SelectItem value="job">Job</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Start">
-                    <Input type="month" value={w.startDate || ""} onChange={(e) => patchWork(w.id, { startDate: e.target.value || undefined })} />
-                  </Field>
-                  <Field label="End">
-                    <Input
-                      type="month"
-                      value={w.current ? "" : w.endDate || ""}
-                      disabled={w.current}
-                      onChange={(e) => patchWork(w.id, { endDate: e.target.value || undefined })}
-                    />
-                  </Field>
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-[13px] font-medium">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-[var(--primary)]"
-                  checked={w.current}
-                  onChange={(e) => patchWork(w.id, { current: e.target.checked, endDate: e.target.checked ? undefined : w.endDate })}
-                />
-                I currently work here
-              </label>
-              <Field label="What you did (optional)">
-                <Textarea
-                  rows={3}
-                  value={w.summary || ""}
-                  onChange={(e) => patchWork(w.id, { summary: e.target.value })}
-                  placeholder="One or two lines on what you owned or shipped."
-                  className="rounded-xl"
-                />
-              </Field>
-            </div>
-          ))}
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={() => update({ work: [...history.work, emptyWork("internship")] })}>
-              <Plus className="h-4 w-4" /> Add internship
-            </Button>
-            <Button type="button" variant="outline" onClick={() => update({ work: [...history.work, emptyWork("job")] })}>
-              <Plus className="h-4 w-4" /> Add job
-            </Button>
-          </div>
+        <CardContent>
+          <ExperienceList entries={history.work} onChange={(work) => update({ work })} />
         </CardContent>
       </Card>
 

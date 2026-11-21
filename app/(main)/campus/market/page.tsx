@@ -1,9 +1,12 @@
+import Link from "next/link"
 import { campusReportData } from "@/lib/campus/page-data"
+import { campusQueryHref } from "@/lib/campus/reports"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { CampusTrendChart } from "@/components/campus/CampusTrendChart"
 import { BreakdownList } from "@/components/campus/BreakdownList"
 import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
+import { Badge } from "@/components/ui/badge"
 import { fmtSourced } from "@/lib/campus/format"
 import { Briefcase, Building2, Clock, Repeat } from "lucide-react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -23,8 +26,18 @@ export default async function CampusMarketPage({
       title="Employer and job market"
       description={`Job posts and employer activity for ${snapshot.period.label.toLowerCase()}. Who is hiring, what they post, and where student supply does not meet demand.`}
     >
-      <div id="employers" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <DashboardKpiCard icon={Building2} label="Employers recruiting" value={snapshot.market.activeEmployers} hint={`${snapshot.market.newEmployers} joined this period`} />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <DashboardKpiCard
+          icon={Building2}
+          label="Employers recruiting"
+          value={snapshot.market.activeEmployers}
+          hint={`${snapshot.market.newEmployers} joined this period`}
+          footer={
+            <a href="#employers" className="text-[12px] font-medium text-primary hover:underline">
+              See who they are
+            </a>
+          }
+        />
         <DashboardKpiCard
           icon={Briefcase}
           label="Open full-time jobs"
@@ -73,6 +86,55 @@ export default async function CampusMarketPage({
           </TableBody>
         </Table>
       </DashboardPanel>
+      <div id="employers">
+        <DashboardPanel
+          title="Employers in this window"
+          description={`Every employer behind the count: job posts and applications in ${snapshot.period.label.toLowerCase()}, hires from pipeline status. Open one to see its directory record.`}
+          badge={`${snapshot.market.employers.length}${snapshot.market.employers.length >= 100 ? " (top 100)" : ""}`}
+        >
+          {snapshot.market.employers.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employer</TableHead>
+                  <TableHead>Industry</TableHead>
+                  <TableHead>Job posts</TableHead>
+                  <TableHead>Applications</TableHead>
+                  <TableHead>Hires</TableHead>
+                  <TableHead>Relationship</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {snapshot.market.employers.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      <Link
+                        href={campusQueryHref(`/campus/employers?q=${encodeURIComponent(row.name)}`, snapshot)}
+                        className="font-medium hover:text-primary hover:underline"
+                      >
+                        {row.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{row.industry || "—"}</TableCell>
+                    <TableCell className="tabular-nums">{row.jobs}</TableCell>
+                    <TableCell className="tabular-nums">{row.applications}</TableCell>
+                    <TableCell className="tabular-nums">{row.hires}</TableCell>
+                    <TableCell>
+                      <Badge variant={row.relationship === "partner" ? "default" : "secondary"} className="text-[11px]">
+                        {row.relationship === "partner" ? "Partner" : "Platform"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-[14px] text-muted-foreground">
+              No employer has posted or received an application in this window yet. Change the date range to widen the search.
+            </p>
+          )}
+        </DashboardPanel>
+      </div>
       <DashboardPanel title="Top hiring employers">
         <Table>
           <TableHeader>

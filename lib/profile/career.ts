@@ -11,10 +11,42 @@ import {
   type ResumeWork,
 } from "@/lib/resume/schema"
 
-export type WorkKind = "job" | "internship"
+export type WorkKind = "full_time" | "internship" | "project" | "fellowship"
+
+/** Selectable experience types, in display order. */
+export const WORK_KINDS: { value: WorkKind; label: string }[] = [
+  { value: "full_time", label: "Full time" },
+  { value: "internship", label: "Internship" },
+  { value: "project", label: "Project" },
+  { value: "fellowship", label: "Fellowship" },
+]
+
+export const WORK_KIND_LABEL: Record<WorkKind, string> = {
+  full_time: "Full time",
+  internship: "Internship",
+  project: "Project",
+  fellowship: "Fellowship",
+}
+
+/** Legacy rows stored `kind: "job"`; anything unrecognised falls back to a full-time role. */
+const WORK_KIND_ALIASES: Record<string, WorkKind> = {
+  full_time: "full_time",
+  fulltime: "full_time",
+  "full time": "full_time",
+  "full-time": "full_time",
+  job: "full_time",
+  internship: "internship",
+  project: "project",
+  fellowship: "fellowship",
+}
+
+export function parseWorkKind(raw: unknown): WorkKind {
+  if (typeof raw !== "string") return "full_time"
+  return WORK_KIND_ALIASES[raw.trim().toLowerCase()] ?? "full_time"
+}
 
 export type WorkEntry = ResumeWork & {
-  /** Internship vs. job; defaults to job. */
+  /** Full time, internship, project, or fellowship; defaults to full time. */
   kind: WorkKind
   /** Still working here. Equivalent to an empty endDate. */
   current: boolean
@@ -35,7 +67,7 @@ export function parseWorkHistory(raw: unknown): WorkEntry[] {
   return parsed
     .map((row, index) => {
       const source = (list[index] && typeof list[index] === "object" ? list[index] : {}) as Record<string, unknown>
-      const kind: WorkKind = source.kind === "internship" ? "internship" : "job"
+      const kind = parseWorkKind(source.kind)
       const current = source.current === true || (!row.endDate && Boolean(row.startDate))
       return { ...row, kind, current, endDate: current ? undefined : row.endDate }
     })
@@ -62,8 +94,31 @@ export function parseCareerHistory(row: {
   }
 }
 
-export function emptyWork(kind: WorkKind = "job"): WorkEntry {
+export function emptyWork(kind: WorkKind = "full_time"): WorkEntry {
   return { id: newId(), name: "", position: "", kind, current: false, highlights: [] }
+}
+
+/**
+ * Shared validation for experience rows — returns a user-facing message or null.
+ * Empty rows are ignored so an untouched "add" card never blocks saving.
+ */
+export function validateWorkHistory(entries: WorkEntry[]): string | null {
+  for (const entry of entries) {
+    const hasTitle = Boolean(entry.position.trim())
+    const hasCompany = Boolean(entry.name.trim())
+    if (!hasTitle && !hasCompany) continue
+    const who = entry.position.trim() || entry.name.trim()
+    if (!hasTitle || !hasCompany) {
+      return "Each experience needs both a job title and a company name."
+    }
+    if (!entry.current && entry.endDate && !entry.startDate) {
+      return `Add a start date for ${who}.`
+    }
+    if (!entry.current && entry.endDate && entry.startDate && entry.endDate < entry.startDate) {
+      return `${who} ends before it starts.`
+    }
+  }
+  return null
 }
 
 export function emptyProject(): ProjectEntry {
@@ -128,5 +183,5 @@ export function formatWorkDates(entry: { startDate?: string; endDate?: string; c
 
 /** Most recent current role, used for alumni "current employer" display. */
 export function currentRole(work: WorkEntry[]) {
-  return work.find((w) => w.current && w.kind === "job") || work.find((w) => w.current) || null
+  return work.find((w) => w.current && w.kind === "full_time") || work.find((w) => w.current) || null
 }

@@ -25,10 +25,19 @@ export async function readCampusAccess(): Promise<CampusAccess | null> {
 
   const staffRes = await supabase
     .from("campus_staff")
-    .select("university, staff_role")
+    .select("university, staff_role, access_grants")
     .eq("user_id", user.id)
     .maybeSingle()
-  const staff = staffRes.error ? null : staffRes.data
+  let staff = staffRes.error ? null : staffRes.data
+  // `access_grants` may not have been migrated yet — fall back to the role default.
+  if (staffRes.error) {
+    const retry = await supabase
+      .from("campus_staff")
+      .select("university, staff_role")
+      .eq("user_id", user.id)
+      .maybeSingle()
+    staff = retry.error ? null : (retry.data as typeof staff)
+  }
 
   if (staff?.university) {
     return {
@@ -37,6 +46,7 @@ export async function readCampusAccess(): Promise<CampusAccess | null> {
       staffRole: (staff.staff_role as CampusStaffRole) || "faculty",
       university: staff.university,
       universities: [staff.university],
+      grants: (staff as { access_grants?: string[] | null }).access_grants ?? null,
     }
   }
 

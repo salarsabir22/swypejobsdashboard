@@ -13,6 +13,7 @@ import { PeopleDirectoryTabs } from "@/components/campus/PeopleDirectoryTabs"
 import { EmployerDirectory } from "@/components/campus/EmployerDirectory"
 import { EmployerDirectoryFilters } from "@/components/campus/EmployerDirectoryFilters"
 import { EmployerInviteForm } from "@/components/campus/EmployerInviteForm"
+import { CopyInviteLink } from "@/components/campus/CopyInviteLink"
 import { CampusFrame } from "@/components/campus/CampusFrame"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
 import { DashboardPanel } from "@/components/dashboard/DashboardPanel"
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { createClient } from "@/lib/supabase/server"
+import { siteUrl } from "@/lib/email/mailer"
 
 const FILTER_PARAM_KEYS = ["q", "industry", "size", "inactive", "inactive_n", "suspended"] as const
 
@@ -72,7 +74,7 @@ export default async function CampusEmployersPage({
   const supabase = await createClient()
   const { data: invites } = await supabase
     .from("employer_invitations")
-    .select("id, company_name, contact_email, status, created_at")
+    .select("id, company_name, contact_email, status, created_at, token")
     .eq("university", directory.university)
     .order("created_at", { ascending: false })
     .limit(40)
@@ -176,7 +178,11 @@ export default async function CampusEmployersPage({
         </DashboardPanel>
       ) : null}
 
-      <DashboardPanel title="Invitations sent" badge={`${invites?.length || 0}`}>
+      <DashboardPanel
+        title="Invitations sent"
+        badge={`${invites?.length || 0}`}
+        description="Email is optional — copy the invite link and send it from your own mail client."
+      >
         {invites?.length ? (
           <Table>
             <TableHeader>
@@ -185,6 +191,7 @@ export default async function CampusEmployersPage({
                 <TableHead>Contact</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Sent</TableHead>
+                <TableHead className="text-right">Invite link</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -197,6 +204,13 @@ export default async function CampusEmployersPage({
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {row.created_at ? new Date(row.created_at).toLocaleDateString() : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <CopyInviteLink
+                      url={row.token ? `${siteUrl()}/invite/employer/${row.token}` : null}
+                      email={row.contact_email}
+                      company={row.company_name}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

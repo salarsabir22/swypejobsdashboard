@@ -3,11 +3,13 @@
 import { startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { useRouter } from "next/navigation"
-import { Bell } from "lucide-react"
+import { Bell, Megaphone } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { formatTime, cn } from "@/lib/utils"
 import { resolveNotificationPath } from "@/lib/chat-navigation"
+import { useAnnouncementUnread } from "@/lib/hooks/use-announcement-unread"
 import type { Notification } from "@/types"
+import { NavUnreadBadge } from "@/components/nav/NavUnreadBadge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ListRowSkeleton } from "@/components/skeletons"
@@ -42,7 +44,8 @@ export function NotificationBell() {
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
 
-  const unreadCount = items.filter((n) => !n.is_read).length
+  const announcementCount = useAnnouncementUnread()
+  const unreadCount = items.filter((n) => !n.is_read).length + announcementCount
 
   const placePanel = () => {
     const el = buttonRef.current
@@ -142,7 +145,10 @@ export function NotificationBell() {
       >
         <Bell className="h-[18px] w-[18px]" strokeWidth={1.75} />
         {unreadCount > 0 ? (
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" aria-hidden />
+          <NavUnreadBadge
+            count={unreadCount}
+            className="absolute right-0 top-0 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-background"
+          />
         ) : null}
       </Button>
 
@@ -175,6 +181,27 @@ export function NotificationBell() {
                 className="overflow-y-auto overscroll-contain"
                 style={{ maxHeight: Math.max(0, coords.maxHeight - 48) }}
               >
+                {announcementCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false)
+                      router.push("/announcements")
+                    }}
+                    className="flex w-full items-start gap-2.5 border-b border-border bg-primary/[0.04] px-3 py-2.5 text-left hover:bg-muted/60"
+                  >
+                    <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-body text-xs font-medium leading-snug text-foreground">
+                        {announcementCount} new announcement{announcementCount === 1 ? "" : "s"}
+                      </p>
+                      <p className="mt-0.5 font-body text-[11px] leading-relaxed text-muted-foreground">
+                        From your career office — tap to read and respond.
+                      </p>
+                    </div>
+                    <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
+                  </button>
+                ) : null}
                 {loading ? (
                   <ListRowSkeleton count={4} className="px-3 py-2" />
                 ) : items.length === 0 ? (

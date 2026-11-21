@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation"
 import { Megaphone } from "lucide-react"
 import { getRequestUser } from "@/lib/nav/app-shell-user"
-import { belongsToCampus, readStudentCampusMembership } from "@/lib/campus/student-campus"
-import { announcementTargetsGroup } from "@/lib/campus/announcement-audience"
+import { loadAnnouncementInbox } from "@/lib/campus/announcement-inbox"
 import { AnnouncementAck } from "@/components/portal/AnnouncementAck"
+import { AnnouncementSeenSync } from "@/components/portal/AnnouncementSeenSync"
 import { AnnouncementAudienceBadges } from "@/components/campus/AnnouncementAudienceBadges"
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState"
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader"
@@ -13,39 +13,30 @@ export default async function AnnouncementsPage() {
   const { supabase, user } = await getRequestUser()
   if (!user) redirect("/login?next=/announcements")
 
-  const student = await readStudentCampusMembership(supabase, user)
-  const campusConnected = student.campusConnected !== false
-  const [{ data, error }, acksRes] = await Promise.all([
-    supabase
-      .from("campus_announcements")
-      .select("id, title, body, audience, requires_ack, expires_at, created_at, university")
-      .order("created_at", { ascending: false })
-      .limit(40),
-    supabase.from("announcement_acks").select("announcement_id").eq("user_id", user.id).limit(100),
-  ])
-  const viewerGroup = student.isAlumni ? "alumni" : "students"
-  const rows = (error || !campusConnected ? [] : data || []).filter((row) => {
-    if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return false
-    if (!belongsToCampus(row.university, student.university)) return false
-    return announcementTargetsGroup(row.audience, viewerGroup)
-  })
-  const done = new Set((acksRes.data || []).map((a) => a.announcement_id))
+  const inbox = await loadAnnouncementInbox(supabase, user)
+  const { campusConnected, announcements: rows, acked: done, pending } = inbox
+  // Opening the page is the read receipt for notices that don't need a reply.
+  const unseenIds = rows.filter((row) => !row.requires_ack && !done.has(row.id)).map((row) => row.id)
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      <AnnouncementSeenSync ids={unseenIds} />
       <DashboardPageHeader
         eyebrow="Campus"
         title="Announcements"
         description="Required notices stay on Home until you acknowledge them. Career outcome surveys live under Profile."
       />
-      {error ? (
-        <DashboardEmptyState
-          icon={Megaphone}
-          title="Announcements aren’t available yet"
-          description="Your campus workspace is still being set up. Check Home for anything urgent."
-          primaryAction={{ href: "/dashboard", label: "Back to Home" }}
-        />
-      ) : !campusConnected ? (
+      {pending > 0 ? (
+        <p className="flex items-center gap-2 font-body text-[13px] text-muted-foreground">
+          <Badge variant="secondary" className="font-data text-[10px]">
+            {pending} new
+          </Badge>
+          {inbox.awaitingReply > 0
+            ? `${inbox.awaitingReply} need${inbox.awaitingReply === 1 ? "s" : ""} a reply from you.`
+            : "Posted by your career office."}
+        </p>
+      ) : null}
+      {!campusConnected ? (
         <DashboardEmptyState
           icon={Megaphone}
           title="Not connected to this career center"

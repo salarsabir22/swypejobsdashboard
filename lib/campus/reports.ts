@@ -4,10 +4,16 @@ import { fmtNum, fmtSourced } from "@/lib/campus/format"
 import { campusRangeQuery, withCampusFilters } from "@/lib/campus/range"
 
 export function campusQueryHref(path: string, snapshot: Pick<CampusSnapshot, "access" | "period">) {
-  return withCampusFilters(path, {
-    campus: snapshot.access.university,
-    ...campusRangeQuery(snapshot.period),
-  })
+  // Keep any #anchor after the query string so KPI links can jump to the list.
+  const hashIndex = path.indexOf("#")
+  const base = hashIndex >= 0 ? path.slice(0, hashIndex) : path
+  const hash = hashIndex >= 0 ? path.slice(hashIndex) : ""
+  return (
+    withCampusFilters(base, {
+      campus: snapshot.access.university,
+      ...campusRangeQuery(snapshot.period),
+    }) + hash
+  )
 }
 
 export type CampusReportId = "jobs" | "engagement" | "employers" | "applications" | "placement" | "departments"
@@ -46,7 +52,7 @@ export function campusReportCards(snapshot: CampusSnapshot): CampusReportCard[] 
     },
     {
       id: "employers",
-      href: "/campus/market",
+      href: "/campus/market#employers",
       title: "Employer activity",
       description: "Employers who posted or received applications in this window.",
       dataset: "employers",
@@ -64,7 +70,7 @@ export function campusReportCards(snapshot: CampusSnapshot): CampusReportCard[] 
     },
     {
       id: "placement",
-      href: "/campus/outcomes",
+      href: "/campus/outcomes#placements",
       title: "Placement insights & trends",
       description: "Employed plus continuing education for the current class.",
       dataset: "outcomes",
